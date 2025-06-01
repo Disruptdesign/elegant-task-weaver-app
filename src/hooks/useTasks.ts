@@ -1,12 +1,14 @@
 
 import { useState, useEffect } from 'react';
-import { Task } from '../types/task';
+import { Task, InboxItem } from '../types/task';
 import { taskScheduler } from '../utils/taskScheduler';
 
 const STORAGE_KEY = 'flowsavvy-tasks';
+const INBOX_STORAGE_KEY = 'flowsavvy-inbox';
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
 
   // Charger les tâches depuis le localStorage
   useEffect(() => {
@@ -19,8 +21,21 @@ export function useTasks() {
         updatedAt: new Date(task.updatedAt),
         scheduledStart: task.scheduledStart ? new Date(task.scheduledStart) : undefined,
         scheduledEnd: task.scheduledEnd ? new Date(task.scheduledEnd) : undefined,
+        canStartFrom: task.canStartFrom ? new Date(task.canStartFrom) : undefined,
       }));
       setTasks(parsedTasks);
+    }
+  }, []);
+
+  // Charger l'inbox depuis le localStorage
+  useEffect(() => {
+    const savedInbox = localStorage.getItem(INBOX_STORAGE_KEY);
+    if (savedInbox) {
+      const parsedInbox = JSON.parse(savedInbox).map((item: any) => ({
+        ...item,
+        createdAt: new Date(item.createdAt),
+      }));
+      setInboxItems(parsedInbox);
     }
   }, []);
 
@@ -28,6 +43,11 @@ export function useTasks() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
+
+  // Sauvegarder l'inbox dans le localStorage
+  useEffect(() => {
+    localStorage.setItem(INBOX_STORAGE_KEY, JSON.stringify(inboxItems));
+  }, [inboxItems]);
 
   const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
     const newTask: Task = {
@@ -68,12 +88,41 @@ export function useTasks() {
     setTasks(rescheduledTasks);
   };
 
+  // Fonctions pour l'inbox
+  const addInboxItem = (itemData: Omit<InboxItem, 'id' | 'createdAt'>) => {
+    const newItem: InboxItem = {
+      ...itemData,
+      id: Date.now().toString(),
+      createdAt: new Date(),
+    };
+    setInboxItems([...inboxItems, newItem]);
+  };
+
+  const deleteInboxItem = (id: string) => {
+    setInboxItems(inboxItems.filter(item => item.id !== id));
+  };
+
+  const convertInboxItemToTask = (item: InboxItem) => {
+    // Supprimer l'élément de l'inbox
+    deleteInboxItem(item.id);
+    
+    // Retourner les données pour créer une nouvelle tâche
+    return {
+      title: item.title,
+      description: item.description,
+    };
+  };
+
   return {
     tasks,
+    inboxItems,
     addTask,
     updateTask,
     deleteTask,
     completeTask,
     rescheduleAllTasks,
+    addInboxItem,
+    deleteInboxItem,
+    convertInboxItemToTask,
   };
 }

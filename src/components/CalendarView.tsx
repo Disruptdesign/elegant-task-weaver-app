@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Task } from '../types/task';
-import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours } from 'date-fns';
+import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
 import { TaskForm } from './TaskForm';
 
@@ -12,15 +11,30 @@ interface CalendarViewProps {
   onUpdateTask?: (id: string, updates: Partial<Task>) => void;
 }
 
+type ViewMode = 'week' | 'month';
+
 export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
   
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i); // 9h à 18h
+
+  const getWeekDays = () => {
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  };
+
+  const getMonthDays = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    return eachDayOfInterval({ start: monthStart, end: monthEnd });
+  };
+
+  const getDaysToShow = () => {
+    return viewMode === 'week' ? getWeekDays() : getMonthDays();
+  };
 
   const getTasksForDay = (date: Date) => {
     return tasks.filter(task => 
@@ -35,9 +49,9 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
-    // Position en pourcentage depuis 9h
-    const top = ((startHour - 9) + startMinute / 60) * 60; // 60px par heure
-    const height = (task.estimatedDuration / 60) * 60; // Hauteur basée sur la durée
+    // Position en pourcentage depuis 9h - correction du décalage
+    const top = ((startHour - 9) + startMinute / 60) * 64; // 64px par heure pour un meilleur alignement
+    const height = Math.max((task.estimatedDuration / 60) * 64, 32); // Hauteur minimum de 32px
     
     return { top, height };
   };
@@ -59,9 +73,20 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
     setSelectedTask(undefined);
   };
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    const newDate = addDays(currentDate, direction === 'next' ? 7 : -7);
+  const navigatePeriod = (direction: 'prev' | 'next') => {
+    const amount = viewMode === 'week' ? 7 : 30;
+    const newDate = addDays(currentDate, direction === 'next' ? amount : -amount);
     setCurrentDate(newDate);
+  };
+
+  const getDateRangeText = () => {
+    if (viewMode === 'week') {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const weekEnd = addDays(weekStart, 6);
+      return `${format(weekStart, 'dd MMM')} - ${format(weekEnd, 'dd MMM yyyy', { locale: fr })}`;
+    } else {
+      return format(currentDate, 'MMMM yyyy', { locale: fr });
+    }
   };
 
   return (
@@ -74,13 +99,37 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
             Vue calendrier
           </h1>
           <p className="text-gray-600 mt-2">
-            Semaine du {format(weekStart, 'dd MMM yyyy', { locale: fr })}
+            {getDateRangeText()}
           </p>
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Switch vue semaine/mois */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'week' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Semaine
+            </button>
+            <button
+              onClick={() => setViewMode('month')}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'month' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Mois
+            </button>
+          </div>
+
           <button
-            onClick={() => navigateWeek('prev')}
+            onClick={() => navigatePeriod('prev')}
             className="p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors"
           >
             <ChevronLeft size={20} />
@@ -92,7 +141,7 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
             Aujourd'hui
           </button>
           <button
-            onClick={() => navigateWeek('next')}
+            onClick={() => navigatePeriod('next')}
             className="p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors"
           >
             <ChevronRight size={20} />
@@ -101,103 +150,158 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
       </div>
 
       {/* Calendrier */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* En-têtes des jours */}
-        <div className="grid grid-cols-8 border-b border-gray-200 bg-gray-50">
-          <div className="p-4 text-center text-sm font-medium text-gray-600">
-            Heures
+      {viewMode === 'week' ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* En-têtes des jours */}
+          <div className="grid grid-cols-8 border-b border-gray-200 bg-gray-50">
+            <div className="p-4 text-center text-sm font-medium text-gray-600">
+              Heures
+            </div>
+            {getWeekDays().map((day, index) => {
+              const isToday = isSameDay(day, new Date());
+              const dayTasks = getTasksForDay(day);
+              
+              return (
+                <div
+                  key={index}
+                  className={`p-4 text-center border-l border-gray-200 ${
+                    isToday ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <div className="text-sm font-medium text-gray-900">
+                    {format(day, 'EEE', { locale: fr })}
+                  </div>
+                  <div className={`text-lg font-bold mt-1 ${
+                    isToday ? 'text-blue-600' : 'text-gray-900'
+                  }`}>
+                    {format(day, 'd')}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {dayTasks.length} tâche{dayTasks.length > 1 ? 's' : ''}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          {weekDays.map((day, index) => {
-            const isToday = isSameDay(day, new Date());
-            const dayTasks = getTasksForDay(day);
-            
-            return (
-              <div
-                key={index}
-                className={`p-4 text-center border-l border-gray-200 ${
-                  isToday ? 'bg-blue-50' : ''
-                }`}
-              >
-                <div className="text-sm font-medium text-gray-900">
-                  {format(day, 'EEE', { locale: fr })}
-                </div>
-                <div className={`text-lg font-bold mt-1 ${
-                  isToday ? 'text-blue-600' : 'text-gray-900'
-                }`}>
-                  {format(day, 'd')}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {dayTasks.length} tâche{dayTasks.length > 1 ? 's' : ''}
-                </div>
-              </div>
-            );
-          })}
-        </div>
 
-        {/* Grille horaire */}
-        <div className="relative">
-          <div className="grid grid-cols-8">
-            {/* Colonne des heures */}
-            <div className="bg-gray-50">
-              {workingHours.map(hour => (
-                <div key={hour} className="h-16 border-b border-gray-200 flex items-center justify-center">
-                  <span className="text-sm font-medium text-gray-600">
-                    {hour}:00
-                  </span>
+          {/* Grille horaire */}
+          <div className="relative">
+            <div className="grid grid-cols-8">
+              {/* Colonne des heures */}
+              <div className="bg-gray-50">
+                {workingHours.map(hour => (
+                  <div key={hour} className="h-16 border-b border-gray-200 flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-600">
+                      {hour}:00
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Colonnes des jours */}
+              {getWeekDays().map((day, dayIndex) => (
+                <div key={dayIndex} className="relative border-l border-gray-200">
+                  {/* Lignes horaires */}
+                  {workingHours.map(hour => (
+                    <div
+                      key={hour}
+                      className="h-16 border-b border-gray-100"
+                    />
+                  ))}
+
+                  {/* Tâches */}
+                  <div className="absolute inset-0 p-1">
+                    {getTasksForDay(day).map(task => {
+                      const position = getTaskPosition(task);
+                      if (!position) return null;
+
+                      const taskStatus = getTaskStatus(task);
+                      const statusColors = getTaskStatusColors(taskStatus);
+
+                      return (
+                        <div
+                          key={task.id}
+                          className={`absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-md transition-all z-10 ${
+                            statusColors.bg
+                          } ${statusColors.border} hover:scale-105`}
+                          style={{
+                            top: `${position.top}px`,
+                            height: `${position.height}px`,
+                          }}
+                          onClick={() => handleTaskClick(task)}
+                        >
+                          <div className="text-xs font-medium line-clamp-2 text-gray-900">
+                            {task.title}
+                          </div>
+                          {position.height > 40 && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-gray-600">
+                              <Clock size={10} />
+                              {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
-
-            {/* Colonnes des jours */}
-            {weekDays.map((day, dayIndex) => (
-              <div key={dayIndex} className="relative border-l border-gray-200">
-                {/* Lignes horaires */}
-                {workingHours.map(hour => (
-                  <div
-                    key={hour}
-                    className="h-16 border-b border-gray-100"
-                  />
-                ))}
-
-                {/* Tâches */}
-                <div className="absolute inset-0 p-1">
-                  {getTasksForDay(day).map(task => {
-                    const position = getTaskPosition(task);
-                    if (!position) return null;
-
-                    const taskStatus = getTaskStatus(task);
-                    const statusColors = getTaskStatusColors(taskStatus);
-
-                    return (
-                      <div
-                        key={task.id}
-                        className={`absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-md transition-all ${
-                          statusColors.bg
-                        } ${statusColors.border} hover:scale-105`}
-                        style={{
-                          top: `${position.top}px`,
-                          height: `${Math.max(position.height, 40)}px`,
-                        }}
-                        onClick={() => handleTaskClick(task)}
-                      >
-                        <div className="text-xs font-medium line-clamp-2 text-gray-900">
-                          {task.title}
-                        </div>
-                        {position.height > 40 && (
-                          <div className="flex items-center gap-1 mt-1 text-xs text-gray-600">
-                            <Clock size={10} />
-                            {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+          </div>
+        </div>
+      ) : (
+        // Vue mois
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="grid grid-cols-7 gap-px bg-gray-200">
+            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
+              <div key={day} className="bg-gray-50 p-3 text-center text-sm font-medium text-gray-600">
+                {day}
               </div>
             ))}
           </div>
+          <div className="grid grid-cols-7 gap-px bg-gray-200">
+            {getMonthDays().map((day, index) => {
+              const isToday = isSameDay(day, new Date());
+              const dayTasks = getTasksForDay(day);
+              
+              return (
+                <div
+                  key={index}
+                  className={`bg-white p-2 min-h-[120px] ${
+                    isToday ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <div className={`text-sm font-medium mb-2 ${
+                    isToday ? 'text-blue-600' : 'text-gray-900'
+                  }`}>
+                    {format(day, 'd')}
+                  </div>
+                  <div className="space-y-1">
+                    {dayTasks.slice(0, 3).map(task => {
+                      const taskStatus = getTaskStatus(task);
+                      const statusColors = getTaskStatusColors(taskStatus);
+                      
+                      return (
+                        <div
+                          key={task.id}
+                          className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 ${statusColors.bg} ${statusColors.text} truncate`}
+                          onClick={() => handleTaskClick(task)}
+                        >
+                          {task.title}
+                        </div>
+                      );
+                    })}
+                    {dayTasks.length > 3 && (
+                      <div className="text-xs text-gray-500">
+                        +{dayTasks.length - 3} autres
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Légende */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

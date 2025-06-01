@@ -1,24 +1,34 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Flag, Plus } from 'lucide-react';
+import { X, Calendar, Clock, Flag, Plus, CalendarIcon } from 'lucide-react';
 import { Task, Priority } from '../types/task';
+import { format } from 'date-fns';
+import { Button } from './ui/button';
+import { Calendar as CalendarComponent } from './ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { cn } from '../lib/utils';
 
 interface TaskFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
   editingTask?: Task;
+  initialData?: { title: string; description?: string };
 }
 
-export function TaskForm({ isOpen, onClose, onSubmit, editingTask }: TaskFormProps) {
+export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [estimatedDuration, setEstimatedDuration] = useState(60);
   const [category, setCategory] = useState('');
+  const [canStartFrom, setCanStartFrom] = useState<Date | undefined>();
+  const [bufferBefore, setBufferBefore] = useState(0);
+  const [bufferAfter, setBufferAfter] = useState(0);
+  const [allowSplitting, setAllowSplitting] = useState(false);
+  const [splitDuration, setSplitDuration] = useState(60);
 
-  // Mettre à jour les valeurs du formulaire quand editingTask change
   useEffect(() => {
     if (editingTask) {
       setTitle(editingTask.title);
@@ -27,6 +37,23 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask }: TaskFormPro
       setPriority(editingTask.priority);
       setEstimatedDuration(editingTask.estimatedDuration);
       setCategory(editingTask.category || '');
+      setCanStartFrom(editingTask.canStartFrom);
+      setBufferBefore(editingTask.bufferBefore || 0);
+      setBufferAfter(editingTask.bufferAfter || 0);
+      setAllowSplitting(editingTask.allowSplitting || false);
+      setSplitDuration(editingTask.splitDuration || 60);
+    } else if (initialData) {
+      setTitle(initialData.title);
+      setDescription(initialData.description || '');
+      setDeadline('');
+      setPriority('medium');
+      setEstimatedDuration(60);
+      setCategory('');
+      setCanStartFrom(undefined);
+      setBufferBefore(0);
+      setBufferAfter(0);
+      setAllowSplitting(false);
+      setSplitDuration(60);
     } else {
       // Réinitialiser le formulaire pour une nouvelle tâche
       setTitle('');
@@ -35,14 +62,18 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask }: TaskFormPro
       setPriority('medium');
       setEstimatedDuration(60);
       setCategory('');
+      setCanStartFrom(undefined);
+      setBufferBefore(0);
+      setBufferAfter(0);
+      setAllowSplitting(false);
+      setSplitDuration(60);
     }
-  }, [editingTask, isOpen]);
+  }, [editingTask, initialData, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !deadline) return;
 
-    // Préserver les propriétés existantes lors de la modification
     const taskData = {
       title: title.trim(),
       description: description.trim() || undefined,
@@ -50,6 +81,11 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask }: TaskFormPro
       priority,
       estimatedDuration,
       category: category.trim() || undefined,
+      canStartFrom,
+      bufferBefore: bufferBefore > 0 ? bufferBefore : undefined,
+      bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
+      allowSplitting,
+      splitDuration: allowSplitting && splitDuration > 0 ? splitDuration : undefined,
       // Préserver les dates de planification existantes
       ...(editingTask && {
         scheduledStart: editingTask.scheduledStart,
@@ -72,7 +108,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask }: TaskFormPro
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <h2 className="text-xl font-semibold text-gray-900">
             {editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'}
@@ -85,44 +121,18 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask }: TaskFormPro
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Titre de la tâche
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Que devez-vous faire ?"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description (optionnel)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ajoutez des détails..."
-              rows={3}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Informations de base */}
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar size={16} className="inline mr-2" />
-                Date limite
+                Titre de la tâche
               </label>
               <input
-                type="datetime-local"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Que devez-vous faire ?"
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
@@ -130,60 +140,193 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask }: TaskFormPro
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Clock size={16} className="inline mr-2" />
-                Durée estimée
+                Description (optionnel)
               </label>
-              <select
-                value={estimatedDuration}
-                onChange={(e) => setEstimatedDuration(Number(e.target.value))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value={15}>15 min</option>
-                <option value={30}>30 min</option>
-                <option value={60}>1 heure</option>
-                <option value={90}>1h 30</option>
-                <option value={120}>2 heures</option>
-                <option value={180}>3 heures</option>
-                <option value={240}>4 heures</option>
-                <option value={480}>8 heures</option>
-              </select>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Ajoutez des détails..."
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Flag size={16} className="inline mr-2" />
-              Priorité
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {priorityOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setPriority(option.value)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    priority === option.value
-                      ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
-                      : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
-                  }`}
+          {/* Planification */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">Planification</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Calendar size={16} className="inline mr-2" />
+                  Date limite
+                </label>
+                <input
+                  type="datetime-local"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Clock size={16} className="inline mr-2" />
+                  Durée estimée
+                </label>
+                <select
+                  value={estimatedDuration}
+                  onChange={(e) => setEstimatedDuration(Number(e.target.value))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {option.label}
-                </button>
-              ))}
+                  <option value={15}>15 min</option>
+                  <option value={30}>30 min</option>
+                  <option value={60}>1 heure</option>
+                  <option value={90}>1h 30</option>
+                  <option value={120}>2 heures</option>
+                  <option value={180}>3 heures</option>
+                  <option value={240}>4 heures</option>
+                  <option value={480}>8 heures</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Peut commencer à partir de
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !canStartFrom && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {canStartFrom ? format(canStartFrom, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={canStartFrom}
+                    onSelect={setCanStartFrom}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Catégorie (optionnel)
-            </label>
-            <input
-              type="text"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Travail, Personnel, Santé..."
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          {/* Options avancées */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">Options avancées</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Temps de pause avant (min)
+                </label>
+                <input
+                  type="number"
+                  value={bufferBefore}
+                  onChange={(e) => setBufferBefore(Number(e.target.value))}
+                  min="0"
+                  max="60"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Temps de pause après (min)
+                </label>
+                <input
+                  type="number"
+                  value={bufferAfter}
+                  onChange={(e) => setBufferAfter(Number(e.target.value))}
+                  min="0"
+                  max="60"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={allowSplitting}
+                  onChange={(e) => setAllowSplitting(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Autoriser le découpage de cette tâche
+                </span>
+              </label>
+
+              {allowSplitting && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Durée minimum pour le découpage (min)
+                  </label>
+                  <select
+                    value={splitDuration}
+                    onChange={(e) => setSplitDuration(Number(e.target.value))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value={30}>30 min</option>
+                    <option value={60}>1 heure</option>
+                    <option value={90}>1h 30</option>
+                    <option value={120}>2 heures</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Autres propriétés */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Flag size={16} className="inline mr-2" />
+                Priorité
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {priorityOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setPriority(option.value)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      priority === option.value
+                        ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
+                        : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Catégorie (optionnel)
+              </label>
+              <input
+                type="text"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="Travail, Personnel, Santé..."
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           <div className="flex gap-3 pt-4">

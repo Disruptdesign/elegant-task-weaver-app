@@ -1,15 +1,15 @@
-
 import React from 'react';
-import { CheckCircle2, Clock, AlertTriangle, Calendar } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3 } from 'lucide-react';
 import { Task } from '../types/task';
 import { format, isToday, isTomorrow, isThisWeek, isPast } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface DashboardProps {
   tasks: Task[];
+  onEditTask?: (id: string, updates: Partial<Task>) => void;
 }
 
-export function Dashboard({ tasks }: DashboardProps) {
+export function Dashboard({ tasks, onEditTask }: DashboardProps) {
   const completedTasks = tasks.filter(task => task.completed);
   const pendingTasks = tasks.filter(task => !task.completed);
   const overdueTasks = pendingTasks.filter(task => isPast(new Date(task.deadline)));
@@ -65,6 +65,14 @@ export function Dashboard({ tasks }: DashboardProps) {
       return format(task.scheduledStart, 'EEEE à HH:mm', { locale: fr });
     } else {
       return format(task.scheduledStart, 'dd MMM à HH:mm', { locale: fr });
+    }
+  };
+
+  const handleTaskClick = (task: Task) => {
+    if (onEditTask) {
+      // Pour l'instant, on peut juste marquer comme terminé
+      // L'édition complète sera gérée par un formulaire séparé
+      onEditTask(task.id, { completed: !task.completed });
     }
   };
 
@@ -146,11 +154,21 @@ export function Dashboard({ tasks }: DashboardProps) {
             </div>
             <div className="space-y-3">
               {overdueTasks.slice(0, 3).map(task => (
-                <div key={task.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm">
-                  <span className="font-medium text-gray-900">{task.title}</span>
-                  <span className="text-sm text-red-600 font-medium">
-                    Échéance: {format(task.deadline, 'dd/MM/yyyy')}
-                  </span>
+                <div key={task.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm group hover:shadow-md transition-shadow">
+                  <div className="flex-1">
+                    <span className="font-medium text-gray-900">{task.title}</span>
+                    <div className="text-sm text-red-600 font-medium mt-1">
+                      Échéance: {format(task.deadline, 'dd/MM/yyyy')}
+                    </div>
+                  </div>
+                  {onEditTask && (
+                    <button
+                      onClick={() => handleTaskClick(task)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                  )}
                 </div>
               ))}
               {overdueTasks.length > 3 && (
@@ -178,7 +196,8 @@ export function Dashboard({ tasks }: DashboardProps) {
                 {getUpcomingTasks().map((task, index) => (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group cursor-pointer"
+                    onClick={() => handleTaskClick(task)}
                   >
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900 mb-2">{task.title}</h3>
@@ -198,6 +217,9 @@ export function Dashboard({ tasks }: DashboardProps) {
                       <span className="text-sm text-gray-500 font-medium">
                         {Math.floor(task.estimatedDuration / 60)}h{task.estimatedDuration % 60 > 0 ? ` ${task.estimatedDuration % 60}min` : ''}
                       </span>
+                      {onEditTask && (
+                        <Edit3 className="text-gray-400 group-hover:text-blue-600 transition-colors" size={16} />
+                      )}
                     </div>
                   </div>
                 ))}
