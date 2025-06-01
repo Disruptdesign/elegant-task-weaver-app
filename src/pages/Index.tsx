@@ -1,13 +1,57 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState } from 'react';
+import { Layout } from '../components/Layout';
+import { Dashboard } from '../components/Dashboard';
+import { TaskList } from '../components/TaskList';
+import { CalendarView } from '../components/CalendarView';
+import { useTasks } from '../hooks/useTasks';
 
 const Index = () => {
+  const [currentView, setCurrentView] = useState('dashboard');
+  const {
+    tasks,
+    addTask,
+    updateTask,
+    deleteTask,
+    completeTask,
+    rescheduleAllTasks,
+  } = useTasks();
+
+  const renderContent = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return <Dashboard tasks={tasks} />;
+      case 'tasks':
+        return (
+          <TaskList
+            tasks={tasks}
+            onAddTask={addTask}
+            onUpdateTask={updateTask}
+            onDeleteTask={deleteTask}
+            onCompleteTask={completeTask}
+            onReschedule={rescheduleAllTasks}
+          />
+        );
+      case 'calendar':
+        return <CalendarView tasks={tasks} />;
+      case 'settings':
+        return (
+          <div className="text-center py-12">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Paramètres</h1>
+            <p className="text-gray-600">
+              Cette section sera développée dans une prochaine version.
+            </p>
+          </div>
+        );
+      default:
+        return <Dashboard tasks={tasks} />;
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <Layout currentView={currentView} onViewChange={setCurrentView}>
+      {renderContent()}
+    </Layout>
   );
 };
 
