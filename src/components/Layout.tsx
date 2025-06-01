@@ -19,7 +19,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex">
       {/* Sidebar mobile overlay */}
       {isSidebarOpen && (
         <div 
@@ -29,8 +29,8 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-xl transform transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0 ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-xl transform transition-transform duration-300 lg:relative lg:translate-x-0 ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
@@ -90,7 +90,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
       </div>
 
       {/* Main content */}
-      <div className="lg:ml-64">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <div className="bg-white/80 backdrop-blur-sm border-b border-gray-100 p-4 lg:hidden">
           <button
@@ -102,10 +102,8 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
         </div>
 
         {/* Page content */}
-        <main className="p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+        <main className="flex-1 p-6 lg:p-8 overflow-auto">
+          {children}
         </main>
       </div>
     </div>
