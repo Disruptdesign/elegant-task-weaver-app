@@ -33,7 +33,7 @@ const Index = () => {
           />
         );
       case 'calendar':
-        return <CalendarView tasks={tasks} />;
+        return <CalendarView tasks={tasks} onUpdateTask={updateTask} />;
       case 'settings':
         return (
           <div className="text-center py-12">

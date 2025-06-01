@@ -2,7 +2,7 @@
 import React from 'react';
 import { CheckCircle2, Clock, AlertTriangle, Calendar } from 'lucide-react';
 import { Task } from '../types/task';
-import { format, isToday, isTomorrow, isThisWeek } from 'date-fns';
+import { format, isToday, isTomorrow, isThisWeek, isPast } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface DashboardProps {
@@ -12,17 +12,14 @@ interface DashboardProps {
 export function Dashboard({ tasks }: DashboardProps) {
   const completedTasks = tasks.filter(task => task.completed);
   const pendingTasks = tasks.filter(task => !task.completed);
-  const urgentTasks = pendingTasks.filter(task => task.priority === 'urgent');
+  const overdueTasks = pendingTasks.filter(task => isPast(new Date(task.deadline)));
   const todayTasks = pendingTasks.filter(task => 
     task.scheduledStart && isToday(task.scheduledStart)
-  );
-  const overdueTasks = pendingTasks.filter(task => 
-    new Date(task.deadline) < new Date()
   );
 
   const stats = [
     {
-      title: 'Tâches terminées',
+      title: 'Terminées',
       value: completedTasks.length,
       total: tasks.length,
       color: 'green',
@@ -35,8 +32,8 @@ export function Dashboard({ tasks }: DashboardProps) {
       icon: Clock,
     },
     {
-      title: 'Urgentes',
-      value: urgentTasks.length,
+      title: 'En retard',
+      value: overdueTasks.length,
       color: 'red',
       icon: AlertTriangle,
     },
@@ -50,7 +47,7 @@ export function Dashboard({ tasks }: DashboardProps) {
 
   const getUpcomingTasks = () => {
     return pendingTasks
-      .filter(task => task.scheduledStart)
+      .filter(task => task.scheduledStart && !isPast(new Date(task.deadline)))
       .sort((a, b) => 
         new Date(a.scheduledStart!).getTime() - new Date(b.scheduledStart!).getTime()
       )
@@ -73,7 +70,7 @@ export function Dashboard({ tasks }: DashboardProps) {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      {/* En-tête centré */}
+      {/* En-tête */}
       <div className="text-center py-8">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
           Tableau de bord
@@ -83,7 +80,7 @@ export function Dashboard({ tasks }: DashboardProps) {
         </p>
       </div>
 
-      {/* Statistiques avec un meilleur espacement */}
+      {/* Statistiques */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 px-4">
         {stats.map((stat, index) => {
           const IconComponent = stat.icon;
@@ -166,7 +163,7 @@ export function Dashboard({ tasks }: DashboardProps) {
         </div>
       )}
 
-      {/* Prochaines tâches avec un meilleur design */}
+      {/* Prochaines tâches */}
       <div className="mx-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
           <div className="p-6 border-b border-gray-100">

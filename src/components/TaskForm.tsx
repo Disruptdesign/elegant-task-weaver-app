@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Flag, Plus } from 'lucide-react';
 import { Task, Priority } from '../types/task';
 
@@ -11,37 +11,53 @@ interface TaskFormProps {
 }
 
 export function TaskForm({ isOpen, onClose, onSubmit, editingTask }: TaskFormProps) {
-  const [title, setTitle] = useState(editingTask?.title || '');
-  const [description, setDescription] = useState(editingTask?.description || '');
-  const [deadline, setDeadline] = useState(
-    editingTask?.deadline ? editingTask.deadline.toISOString().slice(0, 16) : ''
-  );
-  const [priority, setPriority] = useState<Priority>(editingTask?.priority || 'medium');
-  const [estimatedDuration, setEstimatedDuration] = useState(
-    editingTask?.estimatedDuration || 60
-  );
-  const [category, setCategory] = useState(editingTask?.category || '');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [priority, setPriority] = useState<Priority>('medium');
+  const [estimatedDuration, setEstimatedDuration] = useState(60);
+  const [category, setCategory] = useState('');
+
+  // Mettre à jour les valeurs du formulaire quand editingTask change
+  useEffect(() => {
+    if (editingTask) {
+      setTitle(editingTask.title);
+      setDescription(editingTask.description || '');
+      setDeadline(editingTask.deadline.toISOString().slice(0, 16));
+      setPriority(editingTask.priority);
+      setEstimatedDuration(editingTask.estimatedDuration);
+      setCategory(editingTask.category || '');
+    } else {
+      // Réinitialiser le formulaire pour une nouvelle tâche
+      setTitle('');
+      setDescription('');
+      setDeadline('');
+      setPriority('medium');
+      setEstimatedDuration(60);
+      setCategory('');
+    }
+  }, [editingTask, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !deadline) return;
 
-    onSubmit({
+    // Préserver les propriétés existantes lors de la modification
+    const taskData = {
       title: title.trim(),
       description: description.trim() || undefined,
       deadline: new Date(deadline),
       priority,
       estimatedDuration,
       category: category.trim() || undefined,
-    });
+      // Préserver les dates de planification existantes
+      ...(editingTask && {
+        scheduledStart: editingTask.scheduledStart,
+        scheduledEnd: editingTask.scheduledEnd,
+      }),
+    };
 
-    // Reset form
-    setTitle('');
-    setDescription('');
-    setDeadline('');
-    setPriority('medium');
-    setEstimatedDuration(60);
-    setCategory('');
+    onSubmit(taskData);
     onClose();
   };
 
