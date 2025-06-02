@@ -5,8 +5,7 @@ import { fr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, GripVertical, ArrowUpDown, Edit, Check, Square } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
 import { AddItemForm } from './AddItemForm';
-import { useTaskDragAndDrop } from '../hooks/useTaskDragAndDrop';
-import { useEventDragAndDrop } from '../hooks/useEventDragAndDrop';
+import { useCalendarDragAndDrop } from '../hooks/useCalendarDragAndDrop';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -32,14 +31,26 @@ export function CalendarView({
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
-  const [testDataAdded, setTestDataAdded] = useState(false);
   
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i);
 
-  console.log('CalendarView: Tasks received:', tasks.length);
-  console.log('CalendarView: Events received:', events.length);
-  console.log('CalendarView: onUpdateTask function provided:', !!onUpdateTask);
-  console.log('CalendarView: onUpdateEvent function provided:', !!onUpdateEvent);
+  console.log('CalendarView render:', { 
+    tasksCount: tasks.length, 
+    eventsCount: events.length,
+    hasUpdateTask: !!onUpdateTask,
+    hasUpdateEvent: !!onUpdateEvent
+  });
+
+  // Utiliser le hook combiné de drag & drop
+  const {
+    taskDragState,
+    eventDragState,
+    startTaskDrag,
+    startEventDrag,
+  } = useCalendarDragAndDrop(
+    onUpdateTask || (() => console.log('No task update function provided')),
+    onUpdateEvent || (() => console.log('No event update function provided'))
+  );
 
   // Ajouter des données de test si nécessaire et si les fonctions sont disponibles
   useEffect(() => {
@@ -76,19 +87,6 @@ export function CalendarView({
     }
   }, [addTask, addEvent, tasks.length, events.length, testDataAdded]);
 
-  // Utiliser les hooks de drag & drop
-  const { dragState: taskDragState, startDrag: startTaskDrag } = useTaskDragAndDrop(
-    onUpdateTask || (() => {
-      console.log('No task update function provided, drag & drop disabled');
-    })
-  );
-
-  const { dragState: eventDragState, startDrag: startEventDrag } = useEventDragAndDrop(
-    onUpdateEvent || (() => {
-      console.log('No event update function provided, drag & drop disabled');
-    })
-  );
-
   const getWeekDays = () => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -105,9 +103,11 @@ export function CalendarView({
   };
 
   const getTasksForDay = (date: Date) => {
-    return tasks.filter(task => 
+    const dayTasks = tasks.filter(task => 
       task.scheduledStart && isSameDay(new Date(task.scheduledStart), date)
     );
+    console.log(`Tasks for ${format(date, 'yyyy-MM-dd')}:`, dayTasks.length);
+    return dayTasks;
   };
 
   const getEventsForDay = (date: Date) => {
@@ -117,12 +117,15 @@ export function CalendarView({
       return isSameDay(eventStart, date) || isSameDay(eventEnd, date) || 
              (eventStart <= date && eventEnd >= date);
     });
-    console.log(`Events for ${format(date, 'yyyy-MM-dd')}:`, dayEvents);
+    console.log(`Events for ${format(date, 'yyyy-MM-dd')}:`, dayEvents.length);
     return dayEvents;
   };
 
   const getTaskPosition = (task: Task) => {
-    if (!task.scheduledStart) return null;
+    if (!task.scheduledStart) {
+      console.log('Task has no scheduledStart:', task.title);
+      return null;
+    }
     
     const start = new Date(task.scheduledStart);
     const startHour = start.getHours();
@@ -130,6 +133,14 @@ export function CalendarView({
     
     const adjustedTop = ((startHour - 9) + startMinute / 60) * 64;
     const height = Math.max((task.estimatedDuration / 60) * 64, 32);
+    
+    console.log('Task position:', { 
+      title: task.title, 
+      startHour, 
+      startMinute, 
+      top: adjustedTop, 
+      height 
+    });
     
     return { top: Math.max(0, adjustedTop), height };
   };
@@ -146,7 +157,13 @@ export function CalendarView({
     const duration = (end.getTime() - start.getTime()) / (1000 * 60);
     const height = Math.max((duration / 60) * 64, 32);
     
-    console.log('Event position calculated:', { event: event.title, top, height, start, end });
+    console.log('Event position:', { 
+      title: event.title, 
+      startHour, 
+      startMinute, 
+      top, 
+      height 
+    });
     
     return { top: Math.max(0, top), height };
   };
@@ -179,6 +196,7 @@ export function CalendarView({
     e.preventDefault();
     e.stopPropagation();
     
+    console.log('Completing task:', task.id, 'current completed:', task.completed);
     if (onUpdateTask) {
       onUpdateTask(task.id, { completed: !task.completed });
     }
@@ -227,8 +245,7 @@ export function CalendarView({
       taskTitle: task.title, 
       hasUpdateFunction: !!onUpdateTask,
       mouseButton: e.button,
-      taskId: task.id,
-      position: { x: e.clientX, y: e.clientY }
+      taskId: task.id
     });
     
     if (e.button !== 0) return;
@@ -248,8 +265,7 @@ export function CalendarView({
       eventTitle: event.title, 
       hasUpdateFunction: !!onUpdateEvent,
       mouseButton: e.button,
-      eventId: event.id,
-      position: { x: e.clientX, y: e.clientY }
+      eventId: event.id
     });
     
     if (e.button !== 0) return;
@@ -320,20 +336,12 @@ export function CalendarView({
         </div>
       </div>
 
-      {/* Messages d'état */}
-      {!onUpdateTask && !onUpdateEvent && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-sm text-blue-800">
-            📖 Mode lecture seule - Aucune modification possible
-          </p>
-        </div>
-      )}
-
-      {/* Info sur les données */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-        <p className="text-sm text-green-800">
-          📊 Données actuelles : {tasks.length} tâche{tasks.length > 1 ? 's' : ''}, {events.length} événement{events.length > 1 ? 's' : ''}
-          {(onUpdateTask || onUpdateEvent) && ' - Glissez les éléments pour les déplacer !'}
+      {/* Debug info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <p className="text-sm text-blue-800">
+          📊 Debug: {tasks.length} tâche{tasks.length > 1 ? 's' : ''}, {events.length} événement{events.length > 1 ? 's' : ''}
+          {tasks.filter(t => t.scheduledStart).length > 0 && ` - ${tasks.filter(t => t.scheduledStart).length} tâche(s) programmée(s)`}
+          {events.filter(e => !e.allDay).length > 0 && ` - ${events.filter(e => !e.allDay).length} événement(s) avec horaire`}
         </p>
       </div>
 
@@ -426,7 +434,7 @@ export function CalendarView({
                               pointerEvents: isBeingDragged ? 'none' : 'auto',
                             }}
                             onClick={(e) => !isBeingDragged && handleEventClick(event, e)}
-                            title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}\n${onUpdateEvent ? 'Glisser pour déplacer, redimensionner par les bords' : 'Mode lecture seule'}`}
+                            title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                           >
                             {onUpdateEvent && position.height > 40 && (
                               <div
@@ -492,7 +500,10 @@ export function CalendarView({
                   <div className="absolute inset-0 p-1">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
-                      if (!position) return null;
+                      if (!position) {
+                        console.log('No position calculated for task:', task.title);
+                        return null;
+                      }
 
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
@@ -514,7 +525,7 @@ export function CalendarView({
                             pointerEvents: isBeingDragged ? 'none' : 'auto',
                           }}
                           onClick={(e) => !isBeingDragged && handleTaskClick(task, e)}
-                          title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}\n${onUpdateTask ? 'Glisser pour déplacer, redimensionner par les bords' : 'Mode lecture seule'}`}
+                          title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}`}
                         >
                           {onUpdateTask && position.height > 40 && (
                             <div
