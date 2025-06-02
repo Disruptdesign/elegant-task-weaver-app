@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Inbox as InboxIcon, ArrowRight, Edit3, Trash2 } from 'lucide-react';
 import { InboxItem } from '../types/task';
@@ -12,7 +11,7 @@ interface InboxProps {
   onConvertToTask: (item: InboxItem) => void;
 }
 
-export function Inbox({ inboxItems, onAddInboxItem, onDeleteInboxItem, onConvertToTask }: InboxProps) {
+function Inbox({ inboxItems, onAddInboxItem, onDeleteInboxItem, onConvertToTask }: InboxProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
@@ -126,3 +125,5 @@ export function Inbox({ inboxItems, onAddInboxItem, onDeleteInboxItem, onConvert
     </div>
   );
 }
+
+export default Inbox;

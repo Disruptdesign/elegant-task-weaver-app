@@ -14,7 +14,7 @@ interface DashboardProps {
   projects?: Project[];
 }
 
-export function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: DashboardProps) {
+function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: DashboardProps) {
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -513,3 +513,5 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [
     </div>
   );
 }
+
+export default Dashboard;
