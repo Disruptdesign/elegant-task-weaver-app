@@ -680,7 +680,7 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches - Style Notion avec contenu aligné en haut */}
+                  {/* Tâches - Style Notion avec couleurs de fond corrigées */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -695,10 +695,10 @@ export function CalendarView({
                       const statusColors = getTaskStatusColors(taskStatus);
                       
                       // Calculer le nombre de lignes possible pour le titre
-                      const lineHeight = 14; // hauteur d'une ligne en pixels
-                      const padding = 8; // padding vertical total
-                      const checkboxWidth = 20; // largeur du checkbox + gap
-                      const timeHeight = position.height > 35 ? 14 : 0; // hauteur de l'heure si affichée
+                      const lineHeight = 14;
+                      const padding = 8;
+                      const checkboxWidth = 20;
+                      const timeHeight = position.height > 35 ? 14 : 0;
                       const availableHeight = position.height - padding - timeHeight;
                       const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
 
@@ -715,8 +715,8 @@ export function CalendarView({
                             height: `${position.height}px`,
                             left: '2px',
                             right: '2px',
-                            backgroundColor: isCompleted ? '#f8f8f8' : statusColors.bg,
-                            border: isCompleted ? '1px solid #e5e5e5' : `1px solid ${statusColors.border.replace('border-', '#')}`,
+                            backgroundColor: isCompleted ? '#f8f8f8' : statusColors.bgColor,
+                            border: `1px solid ${isCompleted ? '#e5e5e5' : statusColors.borderColor}`,
                           }}
                           onMouseDown={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
@@ -742,7 +742,7 @@ export function CalendarView({
                                 className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 ${
                                   isCompleted 
                                     ? 'bg-gray-400 border-gray-400' 
-                                    : `bg-white ${statusColors.border} hover:${statusColors.border.replace('border-', 'border-')}-400`
+                                    : 'bg-white border-gray-300 hover:border-gray-400'
                                 }`}
                                 onClick={(e) => handleTaskCompletion(task, e)}
                               >
@@ -836,39 +836,11 @@ export function CalendarView({
                       </div>
                     ))}
                     
-                    {/* Tâches avec couleurs contextuelles */}
+                    {/* Tâches avec couleurs contextuelles corrigées */}
                     {dayTasks.slice(0, dayEvents.length > 0 ? 1 : 3).map(task => {
                       const isCompleted = task.completed;
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
-                      
-                      // Convertir les couleurs Tailwind en couleurs CSS
-                      const getBgColor = () => {
-                        if (isCompleted) return '#f5f5f5';
-                        switch (taskStatus) {
-                          case 'overdue': return '#fef2f2';
-                          case 'approaching': return '#fff7ed';
-                          default: return '#f0fdf4';
-                        }
-                      };
-                      
-                      const getBorderColor = () => {
-                        if (isCompleted) return '#9e9e9e';
-                        switch (taskStatus) {
-                          case 'overdue': return '#dc2626';
-                          case 'approaching': return '#ea580c';
-                          default: return '#16a34a';
-                        }
-                      };
-                      
-                      const getTextColor = () => {
-                        if (isCompleted) return '#757575';
-                        switch (taskStatus) {
-                          case 'overdue': return '#991b1b';
-                          case 'approaching': return '#c2410c';
-                          default: return '#166534';
-                        }
-                      };
                       
                       return (
                         <div
@@ -878,9 +850,9 @@ export function CalendarView({
                           }`}
                           onClick={() => handleTaskClick(task)}
                           style={{
-                            backgroundColor: getBgColor(),
-                            borderLeftColor: getBorderColor(),
-                            color: getTextColor()
+                            backgroundColor: isCompleted ? '#f5f5f5' : statusColors.bgColor,
+                            borderLeftColor: isCompleted ? '#9e9e9e' : statusColors.borderColor,
+                            color: isCompleted ? '#757575' : statusColors.text.replace('text-', '')
                           }}
                           title={`${task.title}\n${task.estimatedDuration}min\n${task.description || ''}`}
                         >
@@ -893,7 +865,7 @@ export function CalendarView({
                                   : 'bg-white'
                               }`}
                               style={{
-                                borderColor: isCompleted ? '#6b7280' : getBorderColor()
+                                borderColor: isCompleted ? '#6b7280' : statusColors.borderColor
                               }}
                               title={task.completed ? "Marquer comme non terminé" : "Marquer comme terminé"}
                             >
