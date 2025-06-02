@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, Edit, Check, Square } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, Edit, Check, Square, RefreshCw } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
 import { AddItemForm } from './AddItemForm';
 import { useCalendarDragAndDrop } from '../hooks/useCalendarDragAndDrop';
+import { useAlgorithmicScheduler } from '../hooks/useAlgorithmicScheduler';
+import { Button } from './ui/button';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -48,6 +50,9 @@ export function CalendarView({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [testDataAdded, setTestDataAdded] = useState(false);
+  
+  // Hook pour la planification algorithmique
+  const { isScheduling, rescheduleAllTasks } = useAlgorithmicScheduler();
   
   // Gestion des clics avec délai pour éviter l'ouverture pendant le drag
   const clickTimerRef = useRef<number | null>(null);
@@ -270,6 +275,43 @@ export function CalendarView({
     return { top: Math.max(0, top), height };
   };
 
+  // Nouveau gestionnaire pour la replanification
+  const handleReschedule = async () => {
+    if (!onUpdateTask) {
+      console.log('Cannot reschedule: no task update function provided');
+      return;
+    }
+
+    console.log('🔄 Démarrage de la replanification des tâches...');
+    
+    try {
+      const rescheduledTasks = await rescheduleAllTasks(tasks, events);
+      
+      // Mettre à jour chaque tâche avec sa nouvelle planification
+      rescheduledTasks.forEach(task => {
+        const originalTask = tasks.find(t => t.id === task.id);
+        if (originalTask && (
+          originalTask.scheduledStart !== task.scheduledStart ||
+          originalTask.scheduledEnd !== task.scheduledEnd
+        )) {
+          console.log(`📅 Mise à jour tâche "${task.title}":`, {
+            ancien: originalTask.scheduledStart ? format(new Date(originalTask.scheduledStart), 'dd/MM HH:mm') : 'non planifié',
+            nouveau: task.scheduledStart ? format(new Date(task.scheduledStart), 'dd/MM HH:mm') : 'non planifié'
+          });
+          
+          onUpdateTask(task.id, {
+            scheduledStart: task.scheduledStart,
+            scheduledEnd: task.scheduledEnd
+          });
+        }
+      });
+      
+      console.log('✅ Replanification terminée avec succès');
+    } catch (error) {
+      console.error('❌ Erreur lors de la replanification:', error);
+    }
+  };
+
   // Gestionnaires de clic simplifiés
   const handleTaskClick = (task: Task) => {
     console.log('Task clicked for editing:', task.id);
@@ -416,6 +458,22 @@ export function CalendarView({
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Bouton de replanification */}
+          {onUpdateTask && (
+            <Button
+              onClick={handleReschedule}
+              disabled={isScheduling || tasks.filter(t => !t.completed && !t.scheduledStart).length === 0}
+              variant="outline"
+              className="flex items-center gap-2 px-4 py-2"
+            >
+              <RefreshCw 
+                size={16} 
+                className={isScheduling ? 'animate-spin' : ''} 
+              />
+              {isScheduling ? 'Replanification...' : 'Replanifier'}
+            </Button>
+          )}
+          
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode('week')}
@@ -460,7 +518,7 @@ export function CalendarView({
         </div>
       </div>
 
-      {/* Debug info amélioré avec informations de timezone */}
+      {/* Debug info avec statut de replanification */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <p className="text-sm text-blue-800">
           📊 Debug: {tasks.length} tâche{tasks.length > 1 ? 's' : ''}, {events.length} événement{events.length > 1 ? 's' : ''}
@@ -468,6 +526,7 @@ export function CalendarView({
           {events.filter(e => !e.allDay).length > 0 && ` - ${events.filter(e => !e.allDay).length} événement(s) avec horaire`}
           {dragState.isDragging && ' - 🎯 DRAGGING'}
           {dragState.isResizing && ' - 📏 RESIZING'}
+          {isScheduling && ' - 🔄 REPLANIFICATION EN COURS'}
         </p>
         {events.length > 0 && (
           <div className="text-xs text-blue-600 mt-2">
@@ -475,6 +534,11 @@ export function CalendarView({
               const start = normalizeDate(e.startDate);
               return `"${e.title}" (${format(start, 'dd/MM/yyyy HH:mm')})`;
             }).join(', ')}
+          </div>
+        )}
+        {onUpdateTask && tasks.filter(t => !t.completed && !t.scheduledStart).length > 0 && (
+          <div className="text-xs text-green-600 mt-1">
+            💡 {tasks.filter(t => !t.completed && !t.scheduledStart).length} tâche(s) non programmée(s) peuvent être replanifiées
           </div>
         )}
       </div>
@@ -849,6 +913,9 @@ export function CalendarView({
                 <div>• Animations fluides au survol et lors du drag</div>
                 <div>• Palette de couleurs épurée et moderne</div>
                 <div>• Typographie fine et élégante</div>
+                {onUpdateTask && (
+                  <div>• Bouton de replanification intelligente pour optimiser l'organisation</div>
+                )}
               </div>
             </div>
           )}
