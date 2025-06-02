@@ -403,7 +403,7 @@ export function CalendarView({
                 <div 
                   key={dayIndex} 
                   className="relative border-l border-gray-200 overflow-hidden"
-                  style={{ minWidth: '140px', maxWidth: '140px' }}
+                  style={{ width: '140px' }}
                 >
                   {workingHours.map(hour => (
                     <div
@@ -412,7 +412,7 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements avec drag & drop */}
+                  {/* Événements avec contraintes strictes */}
                   <div className="absolute inset-0 p-1">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -433,6 +433,8 @@ export function CalendarView({
                               height: `${position.height}px`,
                               left: '2px',
                               right: '2px',
+                              width: 'auto',
+                              maxWidth: '134px',
                               pointerEvents: isBeingDragged ? 'none' : 'auto',
                             }}
                             onClick={(e) => !isBeingDragged && handleEventClick(event, e)}
@@ -448,23 +450,23 @@ export function CalendarView({
                             )}
 
                             <div
-                              className={`p-1 h-full flex flex-col justify-between relative overflow-hidden ${onUpdateEvent ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                              className={`p-1 h-full w-full max-w-full overflow-hidden ${onUpdateEvent ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                               onMouseDown={onUpdateEvent ? (e) => handleEventMouseDown(e, event, 'move') : undefined}
                             >
-                              <div className="flex items-start gap-1 overflow-hidden min-w-0">
+                              <div className="flex items-start gap-1 w-full max-w-full overflow-hidden">
                                 {onUpdateEvent && (
                                   <GripVertical 
-                                    size={12} 
+                                    size={10} 
                                     className="text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
                                   />
                                 )}
-                                <div className="text-xs font-bold text-purple-900 flex-1 overflow-hidden min-w-0">
-                                  <div className="flex items-center gap-1 overflow-hidden">
-                                    <Users size={10} className="flex-shrink-0" />
-                                    <span className="truncate min-w-0 flex-1">{event.title}</span>
+                                <div className="text-xs font-bold text-purple-900 flex-1 w-0 overflow-hidden">
+                                  <div className="flex items-center gap-1 w-full max-w-full overflow-hidden">
+                                    <Users size={8} className="flex-shrink-0" />
+                                    <span className="truncate w-0 flex-1 break-all text-xs leading-tight">{event.title}</span>
                                   </div>
                                   {position.height > 40 && (
-                                    <div className="text-xs text-purple-700 opacity-75 truncate">
+                                    <div className="text-xs text-purple-700 opacity-75 truncate w-full max-w-full">
                                       {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
                                     </div>
                                   )}
@@ -476,10 +478,10 @@ export function CalendarView({
                                       e.stopPropagation();
                                       handleEventClick(event, e);
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-purple-300 rounded z-50 flex-shrink-0"
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-purple-300 rounded z-50 flex-shrink-0"
                                     title="Modifier l'événement"
                                   >
-                                    <Edit size={10} className="text-purple-700" />
+                                    <Edit size={8} className="text-purple-700" />
                                   </button>
                                 )}
                               </div>
@@ -498,7 +500,7 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches avec drag & drop */}
+                  {/* Tâches avec contraintes strictes */}
                   <div className="absolute inset-0 p-1">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -524,6 +526,8 @@ export function CalendarView({
                             height: `${position.height}px`,
                             left: '2px',
                             right: '2px',
+                            width: 'auto',
+                            maxWidth: '134px',
                             pointerEvents: isBeingDragged ? 'none' : 'auto',
                           }}
                           onClick={(e) => !isBeingDragged && handleTaskClick(task, e)}
@@ -539,10 +543,10 @@ export function CalendarView({
                           )}
 
                           <div
-                            className={`p-1 h-full flex flex-col justify-between overflow-hidden ${onUpdateTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                            className={`p-0.5 h-full w-full max-w-full overflow-hidden ${onUpdateTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                             onMouseDown={onUpdateTask ? (e) => handleTaskMouseDown(e, task, 'move') : undefined}
                           >
-                            <div className="flex items-start gap-1.5 overflow-hidden min-w-0 w-full">
+                            <div className="flex items-start gap-1 w-full max-w-full overflow-hidden">
                               {onUpdateTask && (
                                 <button
                                   onClick={(e) => handleTaskCompletion(task, e)}
@@ -550,21 +554,21 @@ export function CalendarView({
                                   title={task.completed ? "Marquer comme non terminé" : "Marquer comme terminé"}
                                 >
                                   {task.completed ? (
-                                    <Check size={8} className="text-green-600" />
+                                    <Check size={6} className="text-green-600" />
                                   ) : (
-                                    <Square size={8} className="text-gray-500" />
+                                    <Square size={6} className="text-gray-500" />
                                   )}
                                 </button>
                               )}
                               
                               {onUpdateTask && (
                                 <GripVertical 
-                                  size={8} 
+                                  size={6} 
                                   className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
                                 />
                               )}
-                              <div className={`text-xs font-medium text-gray-900 flex-1 min-w-0 overflow-hidden ${task.completed ? 'line-through' : ''}`}>
-                                <div className="truncate w-full break-words min-w-0">{task.title}</div>
+                              <div className={`text-xs font-medium text-gray-900 flex-1 w-0 overflow-hidden ${task.completed ? 'line-through' : ''}`}>
+                                <div className="truncate w-full break-all text-xs leading-tight max-w-full">{task.title}</div>
                               </div>
                                 
                               {onUpdateTask && (
@@ -577,14 +581,14 @@ export function CalendarView({
                                   className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-gray-300 rounded z-50 flex-shrink-0"
                                   title="Modifier la tâche"
                                 >
-                                  <Edit size={8} className="text-gray-700" />
+                                  <Edit size={6} className="text-gray-700" />
                                 </button>
                               )}
                             </div>
                             {position.height > 40 && (
-                              <div className="flex items-center gap-1 text-xs text-gray-600 mt-1 overflow-hidden min-w-0 w-full">
+                              <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5 w-full max-w-full overflow-hidden">
                                 <Clock size={6} className="flex-shrink-0" />
-                                <span className="truncate w-full min-w-0 break-words">
+                                <span className="truncate w-0 flex-1 break-all text-xs leading-tight max-w-full">
                                   {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
                                   {' '}({task.estimatedDuration}min)
                                 </span>
