@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Dashboard } from '../components/Dashboard';
@@ -5,6 +6,7 @@ import { TaskList } from '../components/TaskList';
 import { CalendarView } from '../components/CalendarView';
 import { Inbox } from '../components/Inbox';
 import { ProjectList } from '../components/ProjectList';
+import { ProjectTemplates } from '../components/ProjectTemplates';
 import { TaskTypeSettings } from '../components/TaskTypeSettings';
 import { AddItemForm } from '../components/AddItemForm';
 import { QuickInbox } from '../components/QuickInbox';
@@ -22,6 +24,7 @@ const Index = () => {
     inboxItems,
     projects,
     taskTypes,
+    projectTemplates,
     addTask,
     updateTask,
     deleteTask,
@@ -36,6 +39,10 @@ const Index = () => {
     addTaskType,
     updateTaskType,
     deleteTaskType,
+    addProjectTemplate,
+    updateProjectTemplate,
+    deleteProjectTemplate,
+    createProjectFromTemplate,
   } = useTasks();
 
   console.log('Index: Current data state:', {
@@ -150,6 +157,16 @@ const Index = () => {
             onUpdateProject={updateProject}
             onDeleteProject={deleteProject}
             onEditTask={updateTask}
+          />
+        );
+      case 'templates':
+        return (
+          <ProjectTemplates
+            templates={projectTemplates}
+            onAddTemplate={addProjectTemplate}
+            onUpdateTemplate={updateProjectTemplate}
+            onDeleteTemplate={deleteProjectTemplate}
+            onCreateProjectFromTemplate={createProjectFromTemplate}
           />
         );
       case 'settings':

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Task, Event, InboxItem, Project, TaskType } from '../types/task';
+import { Task, Event, InboxItem, Project, TaskType, ProjectTemplate, TemplateTask } from '../types/task';
 import { useAlgorithmicScheduler } from './useAlgorithmicScheduler';
 
 export interface UseTasksReturn {
@@ -8,6 +8,7 @@ export interface UseTasksReturn {
   inboxItems: InboxItem[];
   projects: Project[];
   taskTypes: TaskType[];
+  projectTemplates: ProjectTemplate[];
   filter: string;
   setFilter: (filter: string) => void;
   addTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
@@ -24,6 +25,10 @@ export interface UseTasksReturn {
   addTaskType: (taskType: Omit<TaskType, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateTaskType: (id: string, updates: Partial<TaskType>) => void;
   deleteTaskType: (id: string) => void;
+  addProjectTemplate: (template: Omit<ProjectTemplate, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateProjectTemplate: (id: string, updates: Partial<ProjectTemplate>) => void;
+  deleteProjectTemplate: (id: string) => void;
+  createProjectFromTemplate: (templateId: string, projectData: { title: string; description?: string; startDate: Date; deadline: Date }) => void;
 }
 
 // Helper function to safely parse JSON from localStorage
@@ -109,6 +114,7 @@ export function useTasks(): UseTasksReturn {
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
+  const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -222,6 +228,28 @@ export function useTasks(): UseTasksReturn {
         console.log('❌ Aucun type de tâche trouvé dans localStorage');
       }
 
+      // Project Templates
+      const savedTemplates = parseStoredData<any>('projectTemplates', []);
+      console.log('🔍 ProjectTemplates from localStorage:', {
+        found: savedTemplates.length,
+        rawData: savedTemplates
+      });
+      
+      if (savedTemplates.length > 0) {
+        const parsedTemplates = savedTemplates.map((template: any) => ({
+          ...template,
+          createdAt: parseDate(template.createdAt),
+          updatedAt: parseDate(template.updatedAt),
+        }));
+        setProjectTemplates(parsedTemplates);
+        console.log('✅ Modèles de projets chargés:', {
+          count: parsedTemplates.length,
+          templates: parsedTemplates.map(t => ({ id: t.id, name: t.name }))
+        });
+      } else {
+        console.log('❌ Aucun modèle de projet trouvé dans localStorage');
+      }
+
       // Filter
       const savedFilter = localStorage.getItem('taskFilter') || 'all';
       setFilter(savedFilter);
@@ -298,6 +326,17 @@ export function useTasks(): UseTasksReturn {
       }
     }
   }, [taskTypes, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      try {
+        localStorage.setItem('projectTemplates', JSON.stringify(projectTemplates));
+        console.log('💾 Modèles de projets sauvegardés:', projectTemplates.length);
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde modèles:', error);
+      }
+    }
+  }, [projectTemplates, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -480,6 +519,103 @@ export function useTasks(): UseTasksReturn {
     setTaskTypes(prev => prev.filter(taskType => taskType.id !== id));
   };
 
+  const addProjectTemplate = (templateData: Omit<ProjectTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newTemplate: ProjectTemplate = {
+      ...templateData,
+      id: `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    console.log('Adding new project template:', newTemplate.name);
+    setProjectTemplates(prev => [...prev, newTemplate]);
+  };
+
+  const updateProjectTemplate = (id: string, updates: Partial<ProjectTemplate>) => {
+    console.log('Updating project template:', id, updates);
+    setProjectTemplates(prev => prev.map(template => 
+      template.id === id 
+        ? { ...template, ...updates, updatedAt: new Date() }
+        : template
+    ));
+  };
+
+  const deleteProjectTemplate = (id: string) => {
+    console.log('Deleting project template:', id);
+    setProjectTemplates(prev => prev.filter(template => template.id !== id));
+  };
+
+  const createProjectFromTemplate = (
+    templateId: string, 
+    projectData: { title: string; description?: string; startDate: Date; deadline: Date }
+  ) => {
+    const template = projectTemplates.find(t => t.id === templateId);
+    if (!template) {
+      console.error('Template not found:', templateId);
+      return;
+    }
+
+    console.log('Creating project from template:', template.name);
+
+    // Créer le projet
+    const newProject: Project = {
+      id: `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title: projectData.title,
+      description: projectData.description,
+      startDate: projectData.startDate,
+      deadline: projectData.deadline,
+      color: template.color,
+      completed: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    setProjects(prev => [...prev, newProject]);
+
+    // Créer les tâches du template
+    const newTasks: Task[] = template.tasks.map(templateTask => {
+      const taskDeadline = new Date(projectData.startDate.getTime() + (templateTask.dayOffset || 0) * 24 * 60 * 60 * 1000);
+      
+      return {
+        id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title: templateTask.title,
+        description: templateTask.description,
+        deadline: taskDeadline,
+        priority: templateTask.priority,
+        estimatedDuration: templateTask.estimatedDuration,
+        completed: false,
+        category: templateTask.category,
+        bufferBefore: templateTask.bufferBefore,
+        bufferAfter: templateTask.bufferAfter,
+        allowSplitting: templateTask.allowSplitting,
+        splitDuration: templateTask.splitDuration,
+        projectId: newProject.id,
+        taskTypeId: templateTask.taskTypeId,
+        dependencies: [], // Les dépendances seront gérées après
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    });
+
+    // Mapper les dépendances du template vers les nouvelles tâches
+    const taskIdMapping = new Map<string, string>();
+    template.tasks.forEach((templateTask, index) => {
+      taskIdMapping.set(templateTask.id, newTasks[index].id);
+    });
+
+    newTasks.forEach((task, index) => {
+      const templateTask = template.tasks[index];
+      if (templateTask.dependencies && templateTask.dependencies.length > 0) {
+        task.dependencies = templateTask.dependencies
+          .map(depId => taskIdMapping.get(depId))
+          .filter(Boolean) as string[];
+      }
+    });
+
+    setTasks(prev => [...prev, ...newTasks]);
+    console.log(`Created project "${newProject.title}" with ${newTasks.length} tasks from template`);
+  };
+
   // Enhanced debug final state
   console.log('🔍 État final useTasks (Enhanced):', { 
     tasks: tasks.length, 
@@ -504,6 +640,7 @@ export function useTasks(): UseTasksReturn {
     inboxItems,
     projects,
     taskTypes,
+    projectTemplates,
     filter,
     setFilter,
     addTask,
@@ -520,5 +657,9 @@ export function useTasks(): UseTasksReturn {
     addTaskType,
     updateTaskType,
     deleteTaskType,
+    addProjectTemplate,
+    updateProjectTemplate,
+    deleteProjectTemplate,
+    createProjectFromTemplate,
   };
 }

@@ -59,6 +59,34 @@ export interface Project {
   updatedAt: Date;
 }
 
+export interface ProjectTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  defaultDuration: number; // Durée par défaut en jours
+  tasks: TemplateTask[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TemplateTask {
+  id: string;
+  title: string;
+  description?: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  estimatedDuration: number; // en minutes
+  category?: string;
+  bufferBefore?: number;
+  bufferAfter?: number;
+  allowSplitting?: boolean;
+  splitDuration?: number;
+  dependencies?: string[]; // IDs des autres tâches du template
+  taskTypeId?: string;
+  // Position relative dans le projet (en jours après le début)
+  dayOffset?: number;
+}
+
 export interface TaskType {
   id: string;
   name: string;
