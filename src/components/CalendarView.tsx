@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, GripVertical, ArrowUpDown, Edit, Check, Square } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, GripVertical, ArrowUpDown, Edit, Check, Square, MoreVertical, Move } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
 import { AddItemForm } from './AddItemForm';
 import { useCalendarDragAndDrop } from '../hooks/useCalendarDragAndDrop';
@@ -32,6 +32,7 @@ export function CalendarView({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [testDataAdded, setTestDataAdded] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   
   // Gestion des clics avec délai pour éviter l'ouverture pendant le drag
   const clickTimerRef = useRef<number | null>(null);
@@ -157,7 +158,7 @@ export function CalendarView({
     const startMinute = start.getMinutes();
     
     const adjustedTop = ((startHour - 9) + startMinute / 60) * 64;
-    const height = Math.max((task.estimatedDuration / 60) * 64, 32);
+    const height = Math.max((task.estimatedDuration / 60) * 64, 40);
     
     console.log('Task position:', { 
       title: task.title, 
@@ -180,7 +181,7 @@ export function CalendarView({
     
     const top = ((startHour - 9) + startMinute / 60) * 64;
     const duration = (end.getTime() - start.getTime()) / (1000 * 60);
-    const height = Math.max((duration / 60) * 64, 32);
+    const height = Math.max((duration / 60) * 64, 40);
     
     console.log('Event position:', { 
       title: event.title, 
@@ -193,7 +194,7 @@ export function CalendarView({
     return { top: Math.max(0, top), height };
   };
 
-  // Gestionnaires de clic simplifiés - maintenant séparés du drag
+  // Gestionnaires de clic simplifiés
   const handleTaskClick = (task: Task) => {
     console.log('Task clicked for editing:', task.id);
     setSelectedTask(task);
@@ -438,7 +439,7 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements avec zones d'interaction optimisées */}
+                  {/* Événements avec interface redessinée */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -447,12 +448,15 @@ export function CalendarView({
                         if (!position) return null;
 
                         const isBeingDragged = dragState.itemId === event.id && dragState.itemType === 'event';
+                        const isHovered = hoveredItem === `event-${event.id}`;
 
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded-lg border transition-all z-30 group select-none bg-purple-100 border-purple-300 overflow-hidden ${
-                              isBeingDragged ? 'opacity-80 shadow-lg ring-2 ring-purple-400 z-50' : 'hover:bg-purple-200 hover:shadow-md'
+                            className={`absolute rounded-xl border-2 transition-all duration-200 group select-none overflow-hidden pointer-events-auto cursor-pointer ${
+                              isBeingDragged 
+                                ? 'opacity-80 shadow-xl ring-4 ring-purple-300 z-50' 
+                                : 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-300 hover:shadow-lg hover:scale-[1.02] hover:border-purple-400'
                             }`}
                             style={{
                               top: `${position.top}px`,
@@ -461,70 +465,74 @@ export function CalendarView({
                               right: '4px',
                               minWidth: '0',
                             }}
-                            title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
+                            onMouseEnter={() => setHoveredItem(`event-${event.id}`)}
+                            onMouseLeave={() => setHoveredItem(null)}
+                            onClick={() => handleEventClick(event)}
                           >
-                            {/* Zone de resize du haut */}
-                            {onUpdateEvent && position.height > 40 && (
-                              <div
-                                className="absolute top-0 left-0 right-0 h-3 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-purple-300 hover:bg-purple-400 rounded-t-lg z-50 pointer-events-auto"
-                                onMouseDown={(e) => handleEventMouseDown(e, event, 'resize', 'top')}
-                              >
-                                <div className="w-8 h-1 bg-purple-600 rounded"></div>
-                              </div>
-                            )}
-
-                            {/* Contenu principal avec meilleure répartition de l'espace */}
-                            <div 
-                              className="flex h-full overflow-hidden pointer-events-auto cursor-pointer"
-                              onClick={() => handleEventClick(event)}
-                            >
-                              {/* Zone de drag compacte */}
-                              {onUpdateEvent && (
+                            {/* Overlay d'actions au survol */}
+                            {isHovered && onUpdateEvent && (
+                              <>
+                                {/* Zone de resize du haut */}
                                 <div
-                                  className="flex-shrink-0 w-4 cursor-grab active:cursor-grabbing bg-purple-200 hover:bg-purple-300 flex items-center justify-center"
+                                  className="absolute -top-1 left-2 right-2 h-3 cursor-n-resize bg-purple-400 hover:bg-purple-500 rounded-t-lg flex items-center justify-center z-50"
+                                  onMouseDown={(e) => handleEventMouseDown(e, event, 'resize', 'top')}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ArrowUpDown size={10} className="text-white" />
+                                </div>
+                                
+                                {/* Zone de drag */}
+                                <div
+                                  className="absolute top-1 left-1 w-6 h-6 cursor-grab active:cursor-grabbing bg-purple-500 hover:bg-purple-600 rounded-lg flex items-center justify-center z-50"
                                   onMouseDown={(e) => handleEventMouseDown(e, event, 'move')}
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <GripVertical size={10} className="text-purple-600" />
+                                  <Move size={12} className="text-white" />
                                 </div>
-                              )}
 
-                              {/* Contenu de l'événement - zone élargie */}
-                              <div className="flex-1 px-2 py-1 min-w-0 overflow-hidden">
-                                <div className="flex items-center gap-1 text-xs font-bold text-purple-900">
-                                  <Users size={10} className="flex-shrink-0" />
-                                  <span className="truncate leading-tight">{event.title}</span>
+                                {/* Zone de resize du bas */}
+                                <div
+                                  className="absolute -bottom-1 left-2 right-2 h-3 cursor-s-resize bg-purple-400 hover:bg-purple-500 rounded-b-lg flex items-center justify-center z-50"
+                                  onMouseDown={(e) => handleEventMouseDown(e, event, 'resize', 'bottom')}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ArrowUpDown size={10} className="text-white" />
                                 </div>
-                                {position.height > 40 && (
-                                  <div className="text-xs text-purple-700 opacity-75 truncate mt-1">
-                                    {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
-                                  </div>
+                              </>
+                            )}
+
+                            {/* Contenu principal - largeur maximale */}
+                            <div className="h-full p-3 flex flex-col justify-center">
+                              <div className="flex items-start gap-2 mb-1">
+                                <Users size={12} className="text-purple-600 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-purple-900 text-sm leading-tight truncate">
+                                    {event.title}
+                                  </h4>
+                                  {position.height > 50 && (
+                                    <p className="text-xs text-purple-700 mt-1 leading-tight">
+                                      {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
+                                    </p>
+                                  )}
+                                  {position.height > 70 && event.location && (
+                                    <p className="text-xs text-purple-600 opacity-80 truncate mt-1">
+                                      📍 {event.location}
+                                    </p>
+                                  )}
+                                </div>
+                                {onUpdateEvent && (
+                                  <Edit size={10} className={`text-purple-700 transition-opacity ${
+                                    isHovered ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                                  }`} />
                                 )}
                               </div>
-
-                              {/* Icône d'édition compacte */}
-                              {onUpdateEvent && (
-                                <div className="flex-shrink-0 w-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Edit size={8} className="text-purple-700" />
-                                </div>
-                              )}
                             </div>
-
-                            {/* Zone de resize du bas */}
-                            {onUpdateEvent && position.height > 40 && (
-                              <div
-                                className="absolute bottom-0 left-0 right-0 h-3 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-purple-300 hover:bg-purple-400 rounded-b-lg z-50 pointer-events-auto"
-                                onMouseDown={(e) => handleEventMouseDown(e, event, 'resize', 'bottom')}
-                              >
-                                <div className="w-8 h-1 bg-purple-600 rounded"></div>
-                              </div>
-                            )}
                           </div>
                         );
                       })}
                   </div>
 
-                  {/* Tâches avec zones d'interaction optimisées */}
+                  {/* Tâches avec interface redessinée */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -536,14 +544,17 @@ export function CalendarView({
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
                       const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
+                      const isHovered = hoveredItem === `task-${task.id}`;
 
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute rounded-lg border transition-all z-20 group select-none overflow-hidden ${
+                          className={`absolute rounded-xl border-2 transition-all duration-200 group select-none overflow-hidden pointer-events-auto cursor-pointer ${
                             statusColors.bg
                           } ${statusColors.border} ${
-                            isBeingDragged ? 'opacity-80 shadow-lg ring-2 ring-blue-400 z-50' : 'hover:shadow-md'
+                            isBeingDragged 
+                              ? 'opacity-80 shadow-xl ring-4 ring-blue-300 z-50' 
+                              : 'hover:shadow-lg hover:scale-[1.02]'
                           } ${task.completed ? 'opacity-60' : ''}`}
                           style={{
                             top: `${position.top}px`,
@@ -552,59 +563,68 @@ export function CalendarView({
                             right: '4px',
                             minWidth: '0',
                           }}
-                          title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}`}
+                          onMouseEnter={() => setHoveredItem(`task-${task.id}`)}
+                          onMouseLeave={() => setHoveredItem(null)}
+                          onClick={() => handleTaskClick(task)}
                         >
-                          {/* Zone de resize du haut */}
-                          {onUpdateTask && position.height > 40 && (
-                            <div
-                              className="absolute top-0 left-0 right-0 h-3 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-300 hover:bg-gray-400 rounded-t-lg z-50 pointer-events-auto"
-                              onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize', 'top')}
-                            >
-                              <div className="w-8 h-1 bg-gray-600 rounded"></div>
-                            </div>
-                          )}
-
-                          {/* Contenu principal avec meilleure répartition de l'espace */}
-                          <div 
-                            className="flex h-full overflow-hidden pointer-events-auto cursor-pointer"
-                            onClick={() => handleTaskClick(task)}
-                          >
-                            {/* Checkbox compacte */}
-                            {onUpdateTask && (
-                              <div 
-                                className="flex-shrink-0 w-4 flex items-center justify-center bg-white bg-opacity-80"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleTaskCompletion(task, e);
-                                }}
-                              >
-                                {task.completed ? (
-                                  <Check size={8} className="text-green-600" />
-                                ) : (
-                                  <Square size={8} className="text-gray-500" />
-                                )}
-                              </div>
-                            )}
-
-                            {/* Zone de drag compacte */}
-                            {onUpdateTask && (
+                          {/* Overlay d'actions au survol */}
+                          {isHovered && onUpdateTask && (
+                            <>
+                              {/* Zone de resize du haut */}
                               <div
-                                className="flex-shrink-0 w-4 cursor-grab active:cursor-grabbing bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+                                className="absolute -top-1 left-2 right-2 h-3 cursor-n-resize bg-gray-400 hover:bg-gray-500 rounded-t-lg flex items-center justify-center z-50"
+                                onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize', 'top')}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ArrowUpDown size={10} className="text-white" />
+                              </div>
+                              
+                              {/* Zone de drag */}
+                              <div
+                                className="absolute top-1 left-1 w-6 h-6 cursor-grab active:cursor-grabbing bg-gray-500 hover:bg-gray-600 rounded-lg flex items-center justify-center z-50"
                                 onMouseDown={(e) => handleTaskMouseDown(e, task, 'move')}
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <GripVertical size={8} className="text-gray-500" />
+                                <Move size={12} className="text-white" />
                               </div>
+
+                              {/* Zone de resize du bas */}
+                              <div
+                                className="absolute -bottom-1 left-2 right-2 h-3 cursor-s-resize bg-gray-400 hover:bg-gray-500 rounded-b-lg flex items-center justify-center z-50"
+                                onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize', 'bottom')}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ArrowUpDown size={10} className="text-white" />
+                              </div>
+                            </>
+                          )}
+
+                          {/* Contenu principal - largeur maximale */}
+                          <div className="h-full p-3 flex items-center gap-2">
+                            {/* Checkbox plus proéminente */}
+                            {onUpdateTask && (
+                              <button
+                                className="flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center bg-white hover:bg-gray-50 transition-colors"
+                                onClick={(e) => handleTaskCompletion(task, e)}
+                                style={{ 
+                                  borderColor: task.completed ? '#10b981' : '#d1d5db',
+                                  backgroundColor: task.completed ? '#10b981' : '#ffffff'
+                                }}
+                              >
+                                {task.completed && <Check size={12} className="text-white" />}
+                              </button>
                             )}
                             
-                            {/* Contenu de la tâche - zone élargie pour la lisibilité */}
-                            <div className="flex-1 px-2 py-1 min-w-0 overflow-hidden">
-                              <div className={`text-xs font-medium text-gray-900 truncate leading-tight ${task.completed ? 'line-through' : ''}`}>
+                            {/* Contenu de la tâche - espace maximisé */}
+                            <div className="flex-1 min-w-0">
+                              <h4 className={`font-semibold text-gray-900 text-sm leading-tight truncate ${
+                                task.completed ? 'line-through opacity-70' : ''
+                              }`}>
                                 {task.title}
-                              </div>
-                              {position.height > 40 && (
+                              </h4>
+                              {position.height > 50 && (
                                 <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
-                                  <Clock size={8} className="flex-shrink-0" />
+                                  <Clock size={10} className="flex-shrink-0" />
                                   <span className="truncate leading-tight">
                                     {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
                                     {' '}({task.estimatedDuration}min)
@@ -613,23 +633,13 @@ export function CalendarView({
                               )}
                             </div>
 
-                            {/* Icône d'édition compacte */}
+                            {/* Icône d'édition */}
                             {onUpdateTask && (
-                              <div className="flex-shrink-0 w-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Edit size={8} className="text-gray-700" />
-                              </div>
+                              <Edit size={12} className={`text-gray-600 transition-opacity ${
+                                isHovered ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                              }`} />
                             )}
                           </div>
-
-                          {/* Zone de resize du bas */}
-                          {onUpdateTask && position.height > 40 && (
-                            <div
-                              className="absolute bottom-0 left-0 right-0 h-3 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-300 hover:bg-gray-400 rounded-b-lg z-50 pointer-events-auto"
-                              onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize', 'bottom')}
-                            >
-                              <div className="w-8 h-1 bg-gray-600 rounded"></div>
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -727,7 +737,7 @@ export function CalendarView({
       )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-sm font-medium text-gray-900 mb-4">Légende et Instructions</h3>
+        <h3 className="text-sm font-medium text-gray-900 mb-4">Nouvelle interface intuitive</h3>
         <div className="space-y-4">
           <div className="flex flex-wrap gap-6">
             <div className="flex items-center gap-2">
@@ -750,26 +760,15 @@ export function CalendarView({
           
           {(onUpdateTask || onUpdateEvent) && (
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Interactions disponibles :</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Nouvelle expérience utilisateur :</h4>
               <div className="text-xs text-gray-600 space-y-1">
-                <div className="flex items-center gap-2">
-                  <GripVertical size={12} className="text-gray-400" />
-                  <span>Zone grise à gauche : glisser pour déplacer</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ArrowUpDown size={12} className="text-gray-400" />
-                  <span>Bords gris haut/bas : glisser pour ajuster la durée</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check size={12} className="text-green-600" />
-                  <span>Checkbox (tâches) : marquer comme terminées</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Edit size={12} className="text-gray-400" />
-                  <span>Zone principale : clic pour éditer</span>
-                </div>
-                <div>• Chaque zone a sa fonction propre - plus de conflit entre clic et drag</div>
-                <div>• Interface claire et prévisible pour l'utilisateur</div>
+                <div>• Interface épurée : le titre est maintenant parfaitement lisible</div>
+                <div>• Interactions au survol : les outils apparaissent uniquement quand nécessaire</div>
+                <div>• Zone principale : clic pour éditer (plus de conflit)</div>
+                <div>• Contrôles contextuels : apparaissent seulement au survol</div>
+                <div>• Checkbox améliorée : plus visible et accessible pour les tâches</div>
+                <div>• Design moderne : bordures arrondies et transitions fluides</div>
+                <div>• Feedback visuel : échelle et ombres au survol pour guider l'utilisateur</div>
               </div>
             </div>
           )}
