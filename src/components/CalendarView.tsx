@@ -52,11 +52,6 @@ export function CalendarView({
     onUpdateEvent || (() => console.log('No event update function provided'))
   );
 
-  // Suivre l'état du drag pour empêcher les clics indésirables
-  useEffect(() => {
-    setIsDragInProgress(dragState.isDragging || dragState.isResizing);
-  }, [dragState.isDragging, dragState.isResizing]);
-
   // Ajouter des données de test si nécessaire et si les fonctions sont disponibles
   useEffect(() => {
     if (!testDataAdded && (tasks.length === 0 || events.length === 0)) {
