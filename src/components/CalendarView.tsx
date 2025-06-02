@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -25,8 +24,19 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i); // 9h à 18h
 
   console.log('CalendarView: Events received:', events);
+  console.log('CalendarView: onUpdateTask function provided:', !!onUpdateTask);
 
-  const { dragState, startDrag } = useTaskDragAndDrop(onUpdateTask || (() => {}));
+  // Utiliser le hook de drag & drop seulement si onUpdateTask est fourni
+  const { dragState, startDrag, cleanup } = useTaskDragAndDrop(
+    onUpdateTask || (() => {
+      console.log('No update function provided, drag & drop disabled');
+    })
+  );
+
+  // Cleanup lors du démontage du composant
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
 
   const getWeekDays = () => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -95,8 +105,12 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
 
   const handleTaskClick = (task: Task, e: React.MouseEvent) => {
     // Ne pas ouvrir le formulaire si on est en train de drag & drop
-    if (dragState.isDragging || dragState.isResizing) return;
+    if (dragState.isDragging || dragState.isResizing) {
+      console.log('Task click ignored during drag operation');
+      return;
+    }
     
+    console.log('Task clicked:', task.title);
     setSelectedTask(task);
     setIsFormOpen(true);
   };
@@ -127,6 +141,17 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
     } else {
       return format(currentDate, 'MMMM yyyy', { locale: fr });
     }
+  };
+
+  const handleTaskDragStart = (e: React.MouseEvent, task: Task, action: 'move' | 'resize', resizeHandle?: 'top' | 'bottom') => {
+    console.log('Task drag start requested:', { action, taskTitle: task.title, hasUpdateFunction: !!onUpdateTask });
+    
+    if (!onUpdateTask) {
+      console.log('Cannot start drag: no update function provided');
+      return;
+    }
+    
+    startDrag(e, task, action, resizeHandle);
   };
 
   return (
@@ -194,6 +219,15 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p className="text-sm text-blue-800">
             Debug: {events.length} événement(s) chargé(s)
+          </p>
+        </div>
+      )}
+
+      {/* Debug: État du drag & drop */}
+      {onUpdateTask && (dragState.isDragging || dragState.isResizing) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <p className="text-sm text-yellow-800">
+            Debug: {dragState.isDragging ? 'Déplacement' : 'Redimensionnement'} en cours pour la tâche {dragState.taskId}
           </p>
         </div>
       )}
@@ -342,13 +376,13 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                             height: `${position.height}px`,
                           }}
                           onClick={(e) => handleTaskClick(task, e)}
-                          title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}\nGlisser pour déplacer, redimensionner par les bords`}
+                          title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}\n${onUpdateTask ? 'Glisser pour déplacer, redimensionner par les bords' : 'Mode lecture seule'}`}
                         >
                           {/* Handle de redimensionnement haut */}
                           {onUpdateTask && position.height > 40 && (
                             <div
                               className="absolute top-0 left-0 right-0 h-2 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                              onMouseDown={(e) => startDrag(e, task, 'resize', 'top')}
+                              onMouseDown={(e) => handleTaskDragStart(e, task, 'resize', 'top')}
                             >
                               <div className="w-8 h-1 bg-gray-400 rounded"></div>
                             </div>
@@ -357,7 +391,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                           {/* Contenu de la tâche avec handle de déplacement */}
                           <div
                             className="p-2 h-full flex flex-col justify-between"
-                            onMouseDown={onUpdateTask ? (e) => startDrag(e, task, 'move') : undefined}
+                            onMouseDown={onUpdateTask ? (e) => handleTaskDragStart(e, task, 'move') : undefined}
                           >
                             <div className="flex items-start gap-1">
                               {onUpdateTask && (
@@ -385,7 +419,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                           {onUpdateTask && position.height > 40 && (
                             <div
                               className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                              onMouseDown={(e) => startDrag(e, task, 'resize', 'bottom')}
+                              onMouseDown={(e) => handleTaskDragStart(e, task, 'resize', 'bottom')}
                             >
                               <div className="w-8 h-1 bg-gray-400 rounded"></div>
                             </div>
