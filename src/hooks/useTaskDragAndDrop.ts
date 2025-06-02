@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Task } from '../types/task';
 
 interface DragState {
@@ -29,79 +29,90 @@ export function useTaskDragAndDrop(
     originalDay: null,
   });
 
+  const dragStateRef = useRef(dragState);
+  const onUpdateTaskRef = useRef(onUpdateTask);
+
+  // Garder les refs à jour
+  useEffect(() => {
+    dragStateRef.current = dragState;
+  }, [dragState]);
+
+  useEffect(() => {
+    onUpdateTaskRef.current = onUpdateTask;
+  }, [onUpdateTask]);
+
   const snapToQuarterHour = (duration: number): number => {
     return Math.round(duration / 15) * 15;
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    setDragState(currentState => {
-      if (!currentState.taskId || !currentState.startTime || !onUpdateTask) {
-        return currentState;
-      }
+    const currentState = dragStateRef.current;
+    const updateTask = onUpdateTaskRef.current;
+    
+    if (!currentState.taskId || !currentState.startTime || !updateTask) {
+      return;
+    }
 
-      if (currentState.isDragging) {
-        const deltaY = e.clientY - currentState.startY;
-        const deltaX = e.clientX - currentState.startX;
-        
-        const minutesDelta = Math.round((deltaY / 64) * 60);
-        const daysDelta = Math.round(deltaX / 150);
+    if (currentState.isDragging) {
+      const deltaY = e.clientY - currentState.startY;
+      const deltaX = e.clientX - currentState.startX;
+      
+      const minutesDelta = Math.round((deltaY / 64) * 60);
+      const daysDelta = Math.round(deltaX / 150);
 
-        let newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
-        
-        if (daysDelta !== 0) {
-          newStartTime = new Date(newStartTime.getTime() + daysDelta * 24 * 60 * 60 * 1000);
-        }
-        
-        const minute = newStartTime.getMinutes();
-        const roundedMinutes = Math.round(minute / 15) * 15;
-        newStartTime.setMinutes(roundedMinutes, 0, 0);
-
-        console.log('Updating task position:', { 
-          taskId: currentState.taskId, 
-          newStartTime: newStartTime.toISOString(),
-          daysDelta
-        });
-
-        onUpdateTask(currentState.taskId, {
-          scheduledStart: newStartTime,
-          scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
-        });
-        
-      } else if (currentState.isResizing) {
-        const deltaY = e.clientY - currentState.startY;
-        const minutesDelta = Math.round((deltaY / 64) * 60);
-        
-        let newDuration = currentState.originalDuration;
-        
-        if (currentState.resizeHandle === 'bottom') {
-          const rawDuration = currentState.originalDuration + minutesDelta;
-          newDuration = Math.max(15, snapToQuarterHour(rawDuration));
-        } else if (currentState.resizeHandle === 'top') {
-          const rawDuration = currentState.originalDuration - minutesDelta;
-          newDuration = Math.max(15, snapToQuarterHour(rawDuration));
-          if (newDuration !== currentState.originalDuration) {
-            const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
-            
-            onUpdateTask(currentState.taskId, {
-              scheduledStart: newStartTime,
-              scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
-              estimatedDuration: newDuration,
-            });
-            return currentState;
-          }
-        }
-
-        if (newDuration !== currentState.originalDuration) {
-          onUpdateTask(currentState.taskId, {
-            estimatedDuration: newDuration,
-            scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
-          });
-        }
+      let newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
+      
+      if (daysDelta !== 0) {
+        newStartTime = new Date(newStartTime.getTime() + daysDelta * 24 * 60 * 60 * 1000);
       }
       
-      return currentState;
-    });
-  }, [onUpdateTask, snapToQuarterHour]);
+      const minute = newStartTime.getMinutes();
+      const roundedMinutes = Math.round(minute / 15) * 15;
+      newStartTime.setMinutes(roundedMinutes, 0, 0);
+
+      console.log('Updating task position:', { 
+        taskId: currentState.taskId, 
+        newStartTime: newStartTime.toISOString(),
+        daysDelta
+      });
+
+      updateTask(currentState.taskId, {
+        scheduledStart: newStartTime,
+        scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
+      });
+      
+    } else if (currentState.isResizing) {
+      const deltaY = e.clientY - currentState.startY;
+      const minutesDelta = Math.round((deltaY / 64) * 60);
+      
+      let newDuration = currentState.originalDuration;
+      
+      if (currentState.resizeHandle === 'bottom') {
+        const rawDuration = currentState.originalDuration + minutesDelta;
+        newDuration = Math.max(15, snapToQuarterHour(rawDuration));
+      } else if (currentState.resizeHandle === 'top') {
+        const rawDuration = currentState.originalDuration - minutesDelta;
+        newDuration = Math.max(15, snapToQuarterHour(rawDuration));
+        if (newDuration !== currentState.originalDuration) {
+          const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
+          
+          updateTask(currentState.taskId, {
+            scheduledStart: newStartTime,
+            scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
+            estimatedDuration: newDuration,
+          });
+          return;
+        }
+      }
+
+      if (newDuration !== currentState.originalDuration) {
+        updateTask(currentState.taskId, {
+          estimatedDuration: newDuration,
+          scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
+        });
+      }
+    }
+  }, [snapToQuarterHour]);
 
   const handleMouseUp = useCallback(() => {
     console.log('Mouse up: cleaning up drag state');
@@ -169,6 +180,10 @@ export function useTaskDragAndDrop(
     console.log('Setting drag state:', newDragState);
     setDragState(newDragState);
 
+    // Nettoyer les anciens listeners avant d'ajouter les nouveaux
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    
     document.addEventListener('mousemove', handleMouseMove, { passive: false });
     document.addEventListener('mouseup', handleMouseUp, { passive: false });
     
@@ -178,7 +193,7 @@ export function useTaskDragAndDrop(
     console.log('Event listeners added');
   }, [handleMouseMove, handleMouseUp, onUpdateTask]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
