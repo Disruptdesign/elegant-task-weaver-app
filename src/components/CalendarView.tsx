@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
@@ -9,19 +8,21 @@ import { AddItemForm } from './AddItemForm';
 
 interface CalendarViewProps {
   tasks: Task[];
-  events?: Event[];
+  events: Event[];
   onUpdateTask?: (id: string, updates: Partial<Task>) => void;
 }
 
 type ViewMode = 'week' | 'month';
 
-export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewProps) {
+export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i); // 9h à 18h
+
+  console.log('CalendarView: Events received:', events);
 
   const getWeekDays = () => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -45,12 +46,14 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
   };
 
   const getEventsForDay = (date: Date) => {
-    return events.filter(event => {
+    const dayEvents = events.filter(event => {
       const eventStart = new Date(event.startDate);
       const eventEnd = new Date(event.endDate);
       return isSameDay(eventStart, date) || isSameDay(eventEnd, date) || 
              (eventStart <= date && eventEnd >= date);
     });
+    console.log(`Events for ${format(date, 'yyyy-MM-dd')}:`, dayEvents);
+    return dayEvents;
   };
 
   const getTaskPosition = (task: Task) => {
@@ -80,6 +83,8 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
     const top = ((startHour - 9) + startMinute / 60) * 64;
     const duration = (end.getTime() - start.getTime()) / (1000 * 60); // en minutes
     const height = Math.max((duration / 60) * 64, 32);
+    
+    console.log('Event position calculated:', { event: event.title, top, height, start, end });
     
     return { top: Math.max(0, top), height };
   };
@@ -177,6 +182,15 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
         </div>
       </div>
 
+      {/* Debug: Afficher le nombre d'événements */}
+      {events.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p className="text-sm text-blue-800">
+            Debug: {events.length} événement(s) chargé(s)
+          </p>
+        </div>
+      )}
+
       {/* Calendrier */}
       {viewMode === 'week' ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -244,6 +258,21 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
                     />
                   ))}
 
+                  {/* Événements toute la journée */}
+                  <div className="absolute top-0 left-1 right-1 z-40">
+                    {getEventsForDay(day)
+                      .filter(event => event.allDay)
+                      .map((event, index) => (
+                        <div
+                          key={`allday-${event.id}`}
+                          className="mb-1 p-2 bg-purple-200 text-purple-900 text-xs rounded border border-purple-300 font-medium"
+                          style={{ top: `${index * 24}px` }}
+                        >
+                          <span className="truncate block">🗓️ {event.title}</span>
+                        </div>
+                      ))}
+                  </div>
+
                   {/* Événements - affichés avec z-index plus élevé */}
                   <div className="absolute inset-0 p-1">
                     {getEventsForDay(day)
@@ -252,48 +281,35 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
                         const position = getEventPosition(event);
                         if (!position) return null;
 
+                        console.log('Rendering event:', event.title, 'at position:', position);
+
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className="absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-md transition-all z-30 bg-purple-100 border-purple-300"
+                            className="absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-lg transition-all z-30 bg-purple-100 border-purple-300 hover:bg-purple-200"
                             style={{
                               top: `${position.top}px`,
                               height: `${position.height}px`,
                             }}
-                            title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}`}
+                            title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                           >
-                            <div className="flex items-center gap-1 text-xs font-medium text-purple-800 mb-1">
+                            <div className="flex items-center gap-1 text-xs font-bold text-purple-900 mb-1">
                               <Users size={10} />
                               <span className="truncate">{event.title}</span>
                             </div>
                             {position.height > 40 && (
-                              <div className="text-xs text-purple-600">
+                              <div className="text-xs text-purple-700 font-medium">
                                 {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
                               </div>
                             )}
                             {event.location && position.height > 60 && (
-                              <div className="text-xs text-purple-500 truncate">
+                              <div className="text-xs text-purple-600 truncate">
                                 📍 {event.location}
                               </div>
                             )}
                           </div>
                         );
                       })}
-                  </div>
-
-                  {/* Événements toute la journée */}
-                  <div className="absolute top-0 left-1 right-1">
-                    {getEventsForDay(day)
-                      .filter(event => event.allDay)
-                      .map((event, index) => (
-                        <div
-                          key={`allday-${event.id}`}
-                          className="mb-1 p-1 bg-purple-200 text-purple-800 text-xs rounded border border-purple-300"
-                          style={{ top: `${index * 20}px` }}
-                        >
-                          <span className="truncate block">🗓️ {event.title}</span>
-                        </div>
-                      ))}
                   </div>
 
                   {/* Tâches sans affichage des buffers */}
@@ -372,8 +388,8 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
                     {dayEvents.slice(0, 2).map(event => (
                       <div
                         key={`month-event-${event.id}`}
-                        className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate"
-                        title={`${event.title}\n${event.allDay ? 'Toute la journée' : format(new Date(event.startDate), 'HH:mm') + ' - ' + format(new Date(event.endDate), 'HH:mm')}`}
+                        className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate font-medium"
+                        title={`${event.title}\n${event.allDay ? 'Toute la journée' : format(new Date(event.startDate), 'HH:mm') + ' - ' + format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                       >
                         {event.allDay ? '🗓️' : '📅'} {event.title}
                       </div>

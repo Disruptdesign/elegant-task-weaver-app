@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { LayoutDashboard, CheckSquare, Calendar, Settings, Menu, X } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar, Settings, Menu, X, FolderOpen, Inbox } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -16,7 +15,8 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { id: 'tasks', name: 'Tâches', icon: CheckSquare },
     { id: 'calendar', name: 'Calendrier', icon: Calendar },
-    { id: 'inbox', name: 'Inbox', icon: CheckSquare },
+    { id: 'projects', name: 'Projets', icon: FolderOpen },
+    { id: 'inbox', name: 'Inbox', icon: Inbox },
     { id: 'settings', name: 'Paramètres', icon: Settings },
   ];
 

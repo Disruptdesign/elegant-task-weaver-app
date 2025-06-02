@@ -41,6 +41,8 @@ const Index = () => {
     deleteTaskType,
   } = useTasks();
 
+  console.log('Index: Events loaded:', events);
+
   const handleConvertInboxItem = (item: any) => {
     const initialData = convertInboxItemToTask(item, false); // Ne pas supprimer automatiquement
     setTaskFormData(initialData);

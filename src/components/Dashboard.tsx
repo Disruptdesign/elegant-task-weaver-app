@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3, Users } from 'lucide-react';
 import { Task, Event } from '../types/task';
@@ -6,17 +7,21 @@ import { fr } from 'date-fns/locale';
 
 interface DashboardProps {
   tasks: Task[];
-  events?: Event[];
+  events: Event[];
   onEditTask?: (id: string, updates: Partial<Task>) => void;
 }
 
-export function Dashboard({ tasks, events = [], onEditTask }: DashboardProps) {
+export function Dashboard({ tasks, events, onEditTask }: DashboardProps) {
   const completedTasks = tasks.filter(task => task.completed);
   const pendingTasks = tasks.filter(task => !task.completed);
   const overdueTasks = pendingTasks.filter(task => isPast(new Date(task.deadline)));
   const todayTasks = pendingTasks.filter(task => 
     task.scheduledStart && isToday(task.scheduledStart)
   );
+
+  // Événements d'aujourd'hui et à venir
+  const todayEvents = events.filter(event => isToday(new Date(event.startDate)));
+  const upcomingEvents = events.filter(event => isFuture(new Date(event.startDate)));
 
   const stats = [
     {
@@ -56,8 +61,7 @@ export function Dashboard({ tasks, events = [], onEditTask }: DashboardProps) {
   };
 
   const getUpcomingEvents = () => {
-    return events
-      .filter(event => isFuture(new Date(event.startDate)))
+    return upcomingEvents
       .sort((a, b) => 
         new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
       )
@@ -161,6 +165,39 @@ export function Dashboard({ tasks, events = [], onEditTask }: DashboardProps) {
           );
         })}
       </div>
+
+      {/* Événements d'aujourd'hui */}
+      {todayEvents.length > 0 && (
+        <div className="mx-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-purple-100 rounded-xl">
+                <Users className="text-purple-600" size={24} />
+              </div>
+              <h2 className="text-xl font-semibold text-purple-800">
+                Événements d'aujourd'hui ({todayEvents.length})
+              </h2>
+            </div>
+            <div className="space-y-3">
+              {todayEvents.map(event => (
+                <div key={event.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm">
+                  <div className="flex-1">
+                    <span className="font-medium text-gray-900">{event.title}</span>
+                    <div className="text-sm text-purple-600 font-medium mt-1">
+                      {event.allDay ? 'Toute la journée' : `${format(event.startDate, 'HH:mm')} - ${format(event.endDate, 'HH:mm')}`}
+                    </div>
+                    {event.location && (
+                      <div className="text-sm text-gray-600 mt-1">
+                        📍 {event.location}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tâches en retard */}
       {overdueTasks.length > 0 && (
