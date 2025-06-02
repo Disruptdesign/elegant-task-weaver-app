@@ -12,6 +12,7 @@ interface DragState {
   originalDuration: number;
   resizeHandle: 'top' | 'bottom' | null;
   isPendingDrag: boolean;
+  action: 'move' | 'resize';
 }
 
 interface DragCallbacks {
@@ -34,6 +35,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     originalDuration: 0,
     resizeHandle: null,
     isPendingDrag: false,
+    action: 'move',
   });
 
   const dragStateRef = useRef(dragState);
@@ -78,14 +80,17 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       originalDuration: 0,
       resizeHandle: null,
       isPendingDrag: false,
+      action: 'move',
     });
 
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
   }, []);
 
-  const startActualDrag = useCallback((action: 'move' | 'resize') => {
-    console.log('Starting actual drag operation');
+  const startActualDrag = useCallback(() => {
+    console.log('Starting actual drag operation for action:', dragStateRef.current.action);
+    
+    const action = dragStateRef.current.action;
     
     setDragState(prev => ({
       ...prev,
@@ -110,10 +115,10 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     const deltaX = e.clientX - currentState.startX;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    // Si on est en attente de drag et qu'on a bougé assez, démarrer le drag
+    // Si on est en attente et qu'on a bougé assez, démarrer l'action appropriée
     if (currentState.isPendingDrag && distance > DRAG_THRESHOLD) {
-      console.log('Distance threshold reached, starting drag');
-      startActualDrag(currentState.isResizing ? 'resize' : 'move');
+      console.log('Distance threshold reached, starting action:', currentState.action);
+      startActualDrag();
       
       // Annuler le clic en attente
       pendingClickRef.current = null;
@@ -125,7 +130,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       }
     }
 
-    // Ne continuer que si on est vraiment en train de draguer
+    // Ne continuer que si on est vraiment en train de draguer ou redimensionner
     if (!currentState.isDragging && !currentState.isResizing) {
       return;
     }
@@ -238,7 +243,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('Starting drag preparation:', { action, itemType, itemId: item.id });
+    console.log('Starting drag preparation:', { action, itemType, itemId: item.id, resizeHandle });
 
     // Vérifications
     if (itemType === 'task' && !item.scheduledStart) {
@@ -256,8 +261,8 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       ? item.estimatedDuration 
       : (new Date(item.endDate).getTime() - new Date(item.startDate).getTime()) / (1000 * 60);
 
-    // Stocker le clic en attente
-    if (onItemClick) {
+    // Stocker le clic en attente seulement pour les actions de déplacement
+    if (onItemClick && action === 'move') {
       pendingClickRef.current = {
         item,
         itemType,
@@ -276,6 +281,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       originalDuration: duration,
       resizeHandle: resizeHandle || null,
       isPendingDrag: true,
+      action,
     };
 
     console.log('Setting pending drag state:', newDragState);
@@ -289,15 +295,20 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     document.addEventListener('mousemove', handleMouseMove, { passive: false });
     document.addEventListener('mouseup', handleMouseUp, { passive: false });
     
-    // Démarrer le drag après un délai si pas de mouvement
-    dragTimeoutRef.current = window.setTimeout(() => {
-      console.log('Drag timeout reached, starting drag');
-      startActualDrag(action);
-      // Annuler le clic en attente
-      pendingClickRef.current = null;
-    }, DRAG_DELAY);
+    // Pour le resize, démarrer immédiatement si on bouge la souris
+    if (action === 'resize') {
+      console.log('Resize action: starting immediately on mouse move');
+    } else {
+      // Pour le move, démarrer le drag après un délai si pas de mouvement
+      dragTimeoutRef.current = window.setTimeout(() => {
+        console.log('Drag timeout reached, starting drag');
+        startActualDrag();
+        // Annuler le clic en attente
+        pendingClickRef.current = null;
+      }, DRAG_DELAY);
+    }
     
-    console.log('Event listeners added, timeout set');
+    console.log('Event listeners added, timeout set for action:', action);
   }, [handleMouseMove, handleMouseUp, startActualDrag]);
 
   // Nettoyage lors du démontage
