@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Flag, Plus, CalendarIcon } from 'lucide-react';
 import { Task, Priority } from '../types/task';
 import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { Button } from './ui/button';
 import { Calendar as CalendarComponent } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
