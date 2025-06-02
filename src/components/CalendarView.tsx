@@ -60,7 +60,8 @@ export function CalendarView({
   const clickTimerRef = useRef<number | null>(null);
   const dragStartedRef = useRef(false);
   
-  const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i);
+  // Étendre les heures pour couvrir toute la journée (00h à 23h)
+  const allDayHours = Array.from({ length: 24 }, (_, i) => i);
 
   console.log('CalendarView render:', { 
     tasksCount: tasks.length, 
@@ -233,10 +234,11 @@ export function CalendarView({
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
-    const adjustedTop = ((startHour - 9) + startMinute / 60) * 64;
+    // Ajuster le calcul pour couvrir toute la journée (00h à 23h)
+    const adjustedTop = (startHour + startMinute / 60) * 64;
     const height = Math.max((task.estimatedDuration / 60) * 64, 28);
     
-    console.log('Task position (normalisée):', { 
+    console.log('Task position (normalisée pour 24h):', { 
       title: task.title, 
       originalStart: task.scheduledStart,
       normalizedStart: start.toISOString(),
@@ -257,11 +259,12 @@ export function CalendarView({
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
-    const top = ((startHour - 9) + startMinute / 60) * 64;
+    // Ajuster le calcul pour couvrir toute la journée (00h à 23h)
+    const top = (startHour + startMinute / 60) * 64;
     const duration = (end.getTime() - start.getTime()) / (1000 * 60);
     const height = Math.max((duration / 60) * 64, 28);
     
-    console.log('Event position (normalisée):', { 
+    console.log('Event position (normalisée pour 24h):', { 
       title: event.title, 
       originalStart: event.startDate,
       originalEnd: event.endDate,
@@ -624,15 +627,15 @@ export function CalendarView({
             })}
           </div>
 
-          {/* Grille horaire - Style Notion */}
-          <div className="relative">
+          {/* Grille horaire - Style Notion pour 24 heures avec hauteur réduite */}
+          <div className="relative max-h-[80vh] overflow-y-auto">
             <div className="grid grid-cols-8">
-              {/* Colonne des heures */}
+              {/* Colonne des heures - Toute la journée */}
               <div className="w-16 bg-gray-50/30 border-r border-gray-200">
-                {workingHours.map(hour => (
+                {allDayHours.map(hour => (
                   <div key={hour} className="h-16 border-b border-gray-100 flex items-start justify-center pt-1">
                     <span className="text-xs font-medium text-gray-400">
-                      {hour}:00
+                      {hour.toString().padStart(2, '0')}:00
                     </span>
                   </div>
                 ))}
@@ -645,7 +648,7 @@ export function CalendarView({
                   className="relative border-r border-gray-200 bg-white hover:bg-gray-50/30 transition-colors"
                 >
                   {/* Lignes horaires */}
-                  {workingHours.map(hour => (
+                  {allDayHours.map(hour => (
                     <div
                       key={hour}
                       className="h-16 border-b border-gray-100"
