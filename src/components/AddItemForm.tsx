@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Flag, Plus, CalendarIcon, MapPin, Video, Repeat } from 'lucide-react';
 import { Task, Event, Priority, ItemType, Project, TaskType } from '../types/task';
@@ -58,6 +57,15 @@ export function AddItemForm({
   const [googleMeetLink, setGoogleMeetLink] = useState('');
   const [location, setLocation] = useState('');
   const [repeat, setRepeat] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
+
+  // Debug logging to check if props are received
+  console.log('AddItemForm: Props received:', {
+    isOpen,
+    projects: projects.length,
+    taskTypes: taskTypes.length,
+    projectsData: projects,
+    taskTypesData: taskTypes
+  });
 
   useEffect(() => {
     if (editingTask) {
@@ -145,6 +153,11 @@ export function AddItemForm({
         }),
       };
 
+      console.log('AddItemForm: Submitting task with data:', {
+        projectId,
+        taskTypeId,
+        taskData
+      });
       onSubmitTask(taskData);
     } else {
       if (!startDate || !endDate) return;
@@ -283,12 +296,15 @@ export function AddItemForm({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Projet (optionnel)
+                    Projet (optionnel) - {projects.length} disponible{projects.length > 1 ? 's' : ''}
                   </label>
                   <select
                     value={projectId}
-                    onChange={(e) => setProjectId(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={(e) => {
+                      console.log('Project selected:', e.target.value);
+                      setProjectId(e.target.value);
+                    }}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
                     <option value="">Aucun projet</option>
                     {projects.map(project => (
@@ -297,16 +313,24 @@ export function AddItemForm({
                       </option>
                     ))}
                   </select>
+                  {projects.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Aucun projet disponible. Créez-en un dans l'onglet Projets.
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Type de tâche
+                    Type de tâche - {taskTypes.length} disponible{taskTypes.length > 1 ? 's' : ''}
                   </label>
                   <select
                     value={taskTypeId}
-                    onChange={(e) => setTaskTypeId(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={(e) => {
+                      console.log('TaskType selected:', e.target.value);
+                      setTaskTypeId(e.target.value);
+                    }}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
                     <option value="">Choisir un type</option>
                     {taskTypes.map(taskType => (
@@ -315,6 +339,11 @@ export function AddItemForm({
                       </option>
                     ))}
                   </select>
+                  {taskTypes.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Aucun type de tâche disponible. Créez-en un dans les paramètres.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -412,7 +441,7 @@ export function AddItemForm({
                         {canStartFrom ? format(canStartFrom, "PPP", { locale: fr }) : <span>Choisir une date</span>}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0 bg-white" align="start">
                       <CalendarComponent
                         mode="single"
                         selected={canStartFrom}
