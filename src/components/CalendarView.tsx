@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Task, Event, Project } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, Edit, Check, Square, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, Edit, Check, Square, RefreshCw, AlertTriangle } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
 import { AddItemForm } from './AddItemForm';
 import { useCalendarDragAndDrop } from '../hooks/useCalendarDragAndDrop';
@@ -24,7 +25,6 @@ type ViewMode = 'week' | 'month';
 // Fonction utilitaire pour normaliser les dates et éviter les problèmes de timezone
 const normalizeDate = (date: Date | string): Date => {
   if (typeof date === 'string') {
-    // Si c'est une chaîne ISO, la parser en préservant l'heure locale
     return new Date(date);
   }
   return date instanceof Date ? date : new Date(date);
@@ -36,6 +36,9 @@ const isSameDayNormalized = (date1: Date | string, date2: Date | string): boolea
   const d2 = normalizeDate(date2);
   return isSameDay(d1, d2);
 };
+
+// Limite de sécurité pour éviter le blocage de l'interface
+const MAX_ITEMS_TO_RENDER = 100;
 
 export function CalendarView({ 
   tasks, 
@@ -51,44 +54,56 @@ export function CalendarView({
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
-  const [testDataAdded, setTestDataAdded] = useState(false);
+  const [showOverloadWarning, setShowOverloadWarning] = useState(false);
   
-  // Hook pour la planification algorithmique - utiliser rescheduleAllTasks pour la replanification
+  // Protection contre la surcharge de données
+  const isTooManyItems = tasks.length > 1000 || events.length > 500;
+  const safeTasks = isTooManyItems ? tasks.slice(0, MAX_ITEMS_TO_RENDER) : tasks;
+  const safeEvents = isTooManyItems ? events.slice(0, MAX_ITEMS_TO_RENDER) : events;
+  
+  // Hook pour la planification algorithmique
   const { isScheduling, rescheduleAllTasks } = useAlgorithmicScheduler();
   
-  // Gestion des clics avec délai pour éviter l'ouverture pendant le drag
+  // Gestion des clics simplifiée
   const clickTimerRef = useRef<number | null>(null);
   const dragStartedRef = useRef(false);
   
-  // Étendre les heures pour couvrir toute la journée (00h à 23h)
-  const allDayHours = Array.from({ length: 24 }, (_, i) => i);
+  // Heures de travail (8h-18h pour éviter la surcharge)
+  const workingHours = Array.from({ length: 11 }, (_, i) => i + 8);
 
-  console.log('CalendarView render:', { 
-    tasksCount: tasks.length, 
-    eventsCount: events.length,
+  console.log('CalendarView render (protection activée):', { 
+    originalTasks: tasks.length,
+    originalEvents: events.length,
+    safeTasks: safeTasks.length, 
+    safeEvents: safeEvents.length,
+    isTooManyItems,
     hasUpdateTask: !!onUpdateTask,
     hasUpdateEvent: !!onUpdateEvent
   });
 
-  // Debug des événements reçus avec normalisation
+  // Afficher l'avertissement si trop de données
   useEffect(() => {
-    console.log('🎭 CalendarView: Événements reçus (normalisés):', events.map(e => {
-      const startDate = normalizeDate(e.startDate);
-      const endDate = normalizeDate(e.endDate);
-      return {
-        id: e.id,
-        title: e.title,
-        originalStartDate: e.startDate,
-        originalEndDate: e.endDate,
-        normalizedStartDate: startDate.toISOString(),
-        normalizedEndDate: endDate.toISOString(),
-        startHour: startDate.getHours(),
-        startMinute: startDate.getMinutes()
-      };
-    }));
-  }, [events]);
+    if (isTooManyItems && !showOverloadWarning) {
+      setShowOverloadWarning(true);
+      console.warn('⚠️ Trop de données détectées, limitation du rendu pour maintenir les performances');
+    }
+  }, [isTooManyItems, showOverloadWarning]);
 
-  // Utiliser le hook unifié de drag & drop
+  // Nettoyer le localStorage si surchargé
+  useEffect(() => {
+    if (tasks.length > 10000) {
+      console.warn('🧹 Nettoyage du localStorage nécessaire - trop de tâches stockées');
+      try {
+        localStorage.removeItem('flowsavvy_tasks');
+        localStorage.removeItem('flowsavvy_events');
+        window.location.reload();
+      } catch (error) {
+        console.error('Erreur lors du nettoyage:', error);
+      }
+    }
+  }, [tasks.length]);
+
+  // Utiliser le hook unifié de drag & drop avec protection
   const {
     dragState,
     startTaskDrag,
@@ -103,12 +118,10 @@ export function CalendarView({
     if (dragState.isDragging || dragState.isResizing) {
       dragStartedRef.current = true;
       if (clickTimerRef.current) {
-        console.log('Drag started - cancelling pending click');
         clearTimeout(clickTimerRef.current);
         clickTimerRef.current = null;
       }
     } else if (dragStartedRef.current) {
-      // Reset du flag après la fin du drag
       setTimeout(() => {
         dragStartedRef.current = false;
       }, 100);
@@ -123,41 +136,6 @@ export function CalendarView({
       }
     };
   }, []);
-
-  // Ajouter des données de test si nécessaire et si les fonctions sont disponibles
-  useEffect(() => {
-    if (!testDataAdded && (tasks.length === 0 || events.length === 0)) {
-      if (addTask && tasks.length === 0) {
-        console.log('Adding test task for demonstration');
-        const testTask: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'> = {
-          title: 'Tâche test drag & drop',
-          description: 'Tâche pour tester le glisser-déposer',
-          deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          priority: 'medium',
-          estimatedDuration: 60,
-          scheduledStart: new Date(Date.now() + 60 * 60 * 1000),
-          scheduledEnd: new Date(Date.now() + 2 * 60 * 60 * 1000),
-        };
-        addTask(testTask);
-      }
-      
-      if (addEvent && events.length === 0) {
-        console.log('Adding test event for demonstration');
-        const testEvent: Omit<Event, 'id' | 'createdAt' | 'updatedAt'> = {
-          title: 'Événement test drag & drop',
-          description: 'Événement pour tester le glisser-déposer',
-          startDate: new Date(Date.now() + 3 * 60 * 60 * 1000),
-          endDate: new Date(Date.now() + 4 * 60 * 60 * 1000),
-          allDay: false,
-          markAsBusy: true,
-          location: 'Bureau',
-        };
-        addEvent(testEvent);
-      }
-      
-      setTestDataAdded(true);
-    }
-  }, [addTask, addEvent, tasks.length, events.length, testDataAdded]);
 
   const getWeekDays = () => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -175,78 +153,42 @@ export function CalendarView({
   };
 
   const getTasksForDay = (date: Date) => {
-    const dayTasks = tasks.filter(task => 
+    const dayTasks = safeTasks.filter(task => 
       task.scheduledStart && isSameDayNormalized(task.scheduledStart, date)
     );
-    console.log(`Tasks for ${format(date, 'yyyy-MM-dd')}:`, dayTasks.length);
     return dayTasks;
   };
 
   const getEventsForDay = (date: Date) => {
-    console.log(`🔍 Filtrage événements pour ${format(date, 'yyyy-MM-dd')} (amélioré):`);
-    
-    const dayEvents = events.filter(event => {
-      // Normaliser les dates avec gestion robuste des timezones
+    const dayEvents = safeEvents.filter(event => {
       const eventStart = normalizeDate(event.startDate);
       const eventEnd = normalizeDate(event.endDate);
       
-      // Utiliser isSameDay de date-fns qui est plus robuste
       const isEventStartSameDay = isSameDay(eventStart, date);
       const isEventEndSameDay = isSameDay(eventEnd, date);
       
-      // Pour les événements multi-jours, vérifier si la date cible est dans la plage
       const targetTime = date.getTime();
       const eventStartTime = startOfDay(eventStart).getTime();
       const eventEndTime = startOfDay(eventEnd).getTime();
       const isInRange = targetTime >= eventStartTime && targetTime <= eventEndTime;
       
-      console.log(`   - Événement "${event.title}":`, {
-        eventStart: eventStart.toISOString(),
-        eventEnd: eventEnd.toISOString(),
-        targetDate: date.toISOString(),
-        isEventStartSameDay,
-        isEventEndSameDay,
-        isInRange,
-        eventStartHour: eventStart.getHours(),
-        eventStartMinute: eventStart.getMinutes()
-      });
-      
-      const matches = isEventStartSameDay || isEventEndSameDay || isInRange;
-      
-      if (matches) {
-        console.log(`   ✅ Événement "${event.title}" correspond au jour ${format(date, 'yyyy-MM-dd')}`);
-      }
-      
-      return matches;
+      return isEventStartSameDay || isEventEndSameDay || isInRange;
     });
     
-    console.log(`📊 Total événements pour ${format(date, 'yyyy-MM-dd')}:`, dayEvents.length);
     return dayEvents;
   };
 
   const getTaskPosition = (task: Task) => {
-    if (!task.scheduledStart) {
-      console.log('Task has no scheduledStart:', task.title);
-      return null;
-    }
+    if (!task.scheduledStart) return null;
     
     const start = normalizeDate(task.scheduledStart);
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
-    // Ajuster le calcul pour couvrir toute la journée (00h à 23h)
-    const adjustedTop = (startHour + startMinute / 60) * 64;
-    const height = Math.max((task.estimatedDuration / 60) * 64, 28);
-    
-    console.log('Task position (normalisée pour 24h):', { 
-      title: task.title, 
-      originalStart: task.scheduledStart,
-      normalizedStart: start.toISOString(),
-      startHour, 
-      startMinute, 
-      top: adjustedTop, 
-      height 
-    });
+    // Ajuster pour les heures de travail seulement
+    const adjustedHour = Math.max(8, Math.min(18, startHour));
+    const adjustedTop = (adjustedHour - 8 + startMinute / 60) * 64;
+    const height = Math.max((task.estimatedDuration || 60) / 60 * 64, 28);
     
     return { top: Math.max(0, adjustedTop), height };
   };
@@ -259,70 +201,36 @@ export function CalendarView({
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
-    // Ajuster le calcul pour couvrir toute la journée (00h à 23h)
-    const top = (startHour + startMinute / 60) * 64;
+    // Ajuster pour les heures de travail seulement
+    const adjustedHour = Math.max(8, Math.min(18, startHour));
+    const top = (adjustedHour - 8 + startMinute / 60) * 64;
     const duration = (end.getTime() - start.getTime()) / (1000 * 60);
     const height = Math.max((duration / 60) * 64, 28);
-    
-    console.log('Event position (normalisée pour 24h):', { 
-      title: event.title, 
-      originalStart: event.startDate,
-      originalEnd: event.endDate,
-      normalizedStart: start.toISOString(),
-      normalizedEnd: end.toISOString(),
-      startHour, 
-      startMinute, 
-      duration,
-      top, 
-      height 
-    });
     
     return { top: Math.max(0, top), height };
   };
 
-  // Gestionnaire amélioré pour la replanification algorithmique AGGRESSIVE
+  // Gestionnaire simplifié pour la replanification
   const handleReschedule = async () => {
-    if (!onUpdateTask) {
-      console.log('🚫 Impossible de replanifier : aucune fonction de mise à jour des tâches fournie');
+    if (!onUpdateTask || tasks.length > 1000) {
+      console.log('🚫 Replanification désactivée : trop de tâches ou fonction manquante');
       return;
     }
 
-    console.log('🔄 Démarrage de la replanification algorithmique AGGRESSIVE...');
-    console.log('📊 État initial:', {
-      totalTasks: tasks.length,
-      scheduledTasks: tasks.filter(t => t.scheduledStart && !t.completed).length,
-      unscheduledTasks: tasks.filter(t => !t.scheduledStart && !t.completed).length,
-      completedTasks: tasks.filter(t => t.completed).length,
-      events: events.length
-    });
+    console.log('🔄 Démarrage de la replanification...');
     
     try {
-      // Utiliser la replanification aggressive qui va replanifier TOUTES les tâches non terminées
-      const rescheduledTasks = await rescheduleAllTasks(tasks, events);
+      const rescheduledTasks = await rescheduleAllTasks(safeTasks, safeEvents);
       
-      console.log('📈 Résultats de la replanification aggressive:', {
-        tasksProcessed: rescheduledTasks.length,
-        newlyScheduled: rescheduledTasks.filter(t => t.scheduledStart && !t.completed).length,
-        totalUnscheduled: rescheduledTasks.filter(t => !t.scheduledStart && !t.completed).length
-      });
-      
-      // Appliquer les changements pour chaque tâche modifiée
       let updatedCount = 0;
       rescheduledTasks.forEach(rescheduledTask => {
         const originalTask = tasks.find(t => t.id === rescheduledTask.id);
         if (originalTask) {
-          // Vérifier si la planification a changé
           const hasScheduleChanged = 
             originalTask.scheduledStart !== rescheduledTask.scheduledStart ||
             originalTask.scheduledEnd !== rescheduledTask.scheduledEnd;
           
           if (hasScheduleChanged) {
-            console.log(`📅 Mise à jour tâche "${rescheduledTask.title}":`, {
-              avant: originalTask.scheduledStart ? format(new Date(originalTask.scheduledStart), 'dd/MM HH:mm') : 'non planifiée',
-              après: rescheduledTask.scheduledStart ? format(new Date(rescheduledTask.scheduledStart), 'dd/MM HH:mm') : 'non planifiée',
-              durée: rescheduledTask.estimatedDuration + 'min'
-            });
-            
             onUpdateTask(rescheduledTask.id, {
               scheduledStart: rescheduledTask.scheduledStart,
               scheduledEnd: rescheduledTask.scheduledEnd
@@ -332,23 +240,21 @@ export function CalendarView({
         }
       });
       
-      console.log(`✅ Replanification aggressive terminée avec succès ! ${updatedCount} tâche(s) mise(s) à jour.`);
+      console.log(`✅ Replanification terminée ! ${updatedCount} tâche(s) mise(s) à jour.`);
       
     } catch (error) {
-      console.error('❌ Erreur lors de la replanification algorithmique:', error);
+      console.error('❌ Erreur lors de la replanification:', error);
     }
   };
 
   // Gestionnaires de clic simplifiés
   const handleTaskClick = (task: Task) => {
-    console.log('Task clicked for editing:', task.id);
     setSelectedTask(task);
     setSelectedEvent(undefined);
     setIsFormOpen(true);
   };
 
   const handleEventClick = (event: Event) => {
-    console.log('Event clicked for editing:', event.id);
     setSelectedEvent(event);
     setSelectedTask(undefined);
     setIsFormOpen(true);
@@ -358,14 +264,12 @@ export function CalendarView({
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('Completing task:', task.id, 'current completed:', task.completed);
     if (onUpdateTask) {
       onUpdateTask(task.id, { completed: !task.completed });
     }
   };
 
   const handleFormSubmit = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
-    console.log('📝 Task form submitted:', taskData);
     if (selectedTask && onUpdateTask) {
       onUpdateTask(selectedTask.id, taskData);
     } else if (addTask) {
@@ -375,13 +279,7 @@ export function CalendarView({
   };
 
   const handleEventFormSubmit = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
-    console.log('📝 Event form submitted (dates normalisées):', {
-      ...eventData,
-      startDate: normalizeDate(eventData.startDate).toISOString(),
-      endDate: normalizeDate(eventData.endDate).toISOString()
-    });
     if (selectedEvent && onUpdateEvent) {
-      // Normaliser les dates avant la mise à jour
       const normalizedData = {
         ...eventData,
         startDate: normalizeDate(eventData.startDate),
@@ -389,12 +287,6 @@ export function CalendarView({
       };
       onUpdateEvent(selectedEvent.id, normalizedData);
     } else if (addEvent) {
-      console.log('🎯 Ajout nouvel événement via CalendarView (normalisé):', {
-        title: eventData.title,
-        startDate: normalizeDate(eventData.startDate).toISOString(),
-        endDate: normalizeDate(eventData.endDate).toISOString()
-      });
-      // Normaliser les dates avant l'ajout
       const normalizedData = {
         ...eventData,
         startDate: normalizeDate(eventData.startDate),
@@ -427,56 +319,45 @@ export function CalendarView({
     }
   };
 
-  // Gestionnaires pour le drag & drop des tâches
+  // Gestionnaires pour le drag & drop simplifiés
   const handleTaskMouseDown = (e: React.MouseEvent, task: Task, action: 'move' | 'resize', resizeHandle?: 'top' | 'bottom') => {
-    console.log('Task mouse down:', { 
-      action, 
-      taskTitle: task.title, 
-      hasUpdateFunction: !!onUpdateTask,
-      mouseButton: e.button,
-      taskId: task.id
-    });
+    if (e.button !== 0 || !onUpdateTask) return;
     
-    if (e.button !== 0) return;
-    
-    if (!onUpdateTask) {
-      console.log('Cannot start task drag: no update function provided');
-      return;
-    }
-    
-    // Passer la fonction de clic appropriée
     const onTaskClick = action === 'move' ? () => handleTaskClick(task) : undefined;
     startTaskDrag(e, task, action, resizeHandle, onTaskClick);
   };
 
-  // Gestionnaires pour le drag & drop des événements
   const handleEventMouseDown = (e: React.MouseEvent, event: Event, action: 'move' | 'resize', resizeHandle?: 'top' | 'bottom') => {
-    console.log('Event mouse down:', { 
-      action, 
-      eventTitle: event.title, 
-      hasUpdateFunction: !!onUpdateEvent,
-      mouseButton: e.button,
-      eventId: event.id
-    });
+    if (e.button !== 0 || !onUpdateEvent) return;
     
-    if (e.button !== 0) return;
-    
-    if (!onUpdateEvent) {
-      console.log('Cannot start event drag: no update function provided');
-      return;
-    }
-    
-    // Passer la fonction de clic appropriée
     const onEventClick = action === 'move' ? () => handleEventClick(event) : undefined;
     startEventDrag(e, event, action, resizeHandle, onEventClick);
   };
 
-  // Calculer le nombre de tâches à replanifier
-  const unscheduledTasksCount = tasks.filter(t => !t.completed && !t.scheduledStart).length;
-  const schedulableTasksCount = tasks.filter(t => !t.completed).length;
+  // Calculer le nombre de tâches non programmées (avec limite)
+  const unscheduledTasksCount = Math.min(
+    safeTasks.filter(t => !t.completed && !t.scheduledStart).length,
+    50
+  );
 
   return (
     <div className="space-y-6 h-full">
+      {/* Avertissement de surcharge */}
+      {showOverloadWarning && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="text-orange-600" size={20} />
+            <div>
+              <h3 className="font-medium text-orange-800">Trop de données détectées</h3>
+              <p className="text-sm text-orange-700 mt-1">
+                Pour maintenir les performances, seuls les {MAX_ITEMS_TO_RENDER} premiers éléments sont affichés.
+                Vous avez {tasks.length} tâches et {events.length} événements au total.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
@@ -489,11 +370,11 @@ export function CalendarView({
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Bouton de replanification algorithmique amélioré */}
-          {onUpdateTask && (
+          {/* Bouton de replanification avec protection */}
+          {onUpdateTask && !isTooManyItems && (
             <Button
               onClick={handleReschedule}
-              disabled={isScheduling || schedulableTasksCount === 0}
+              disabled={isScheduling || safeTasks.length === 0}
               variant="outline"
               className={`flex items-center gap-2 px-4 py-2 transition-all ${
                 unscheduledTasksCount > 0 
@@ -564,35 +445,14 @@ export function CalendarView({
         </div>
       </div>
 
-      {/* Debug info amélioré avec informations de planification */}
+      {/* Debug info simplifié */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <p className="text-sm text-blue-800">
-          📊 Debug: {tasks.length} tâche{tasks.length > 1 ? 's' : ''}, {events.length} événement{events.length > 1 ? 's' : ''}
-          {tasks.filter(t => t.scheduledStart && !t.completed).length > 0 && ` - ${tasks.filter(t => t.scheduledStart && !t.completed).length} tâche(s) programmée(s)`}
-          {unscheduledTasksCount > 0 && ` - ${unscheduledTasksCount} tâche(s) non programmée(s)`}
-          {events.filter(e => !e.allDay).length > 0 && ` - ${events.filter(e => !e.allDay).length} événement(s) avec horaire`}
+          📊 Affichage: {safeTasks.length}/{tasks.length} tâche{tasks.length > 1 ? 's' : ''}, {safeEvents.length}/{events.length} événement{events.length > 1 ? 's' : ''}
+          {isTooManyItems && ' (Mode performance activé)'}
           {dragState.isDragging && ' - 🎯 DRAGGING'}
           {dragState.isResizing && ' - 📏 RESIZING'}
-          {isScheduling && ' - 🤖 REPLANIFICATION ALGORITHMIQUE EN COURS'}
         </p>
-        {events.length > 0 && (
-          <div className="text-xs text-blue-600 mt-2">
-            Événements détectés: {events.map(e => {
-              const start = normalizeDate(e.startDate);
-              return `"${e.title}" (${format(start, 'dd/MM/yyyy HH:mm')})`;
-            }).join(', ')}
-          </div>
-        )}
-        {onUpdateTask && unscheduledTasksCount > 0 && (
-          <div className="text-xs text-green-600 mt-1">
-            🤖 {unscheduledTasksCount} tâche(s) peuvent être planifiées automatiquement avec l'algorithme optimisé
-          </div>
-        )}
-        {onUpdateTask && schedulableTasksCount > unscheduledTasksCount && (
-          <div className="text-xs text-amber-600 mt-1">
-            🔄 {schedulableTasksCount - unscheduledTasksCount} tâche(s) déjà programmée(s) peuvent être replanifiées pour optimisation
-          </div>
-        )}
       </div>
 
       {viewMode === 'week' ? (
@@ -600,7 +460,7 @@ export function CalendarView({
           {/* En-tête des jours */}
           <div className="grid grid-cols-8 border-b border-gray-200">
             <div className="p-3 text-center text-xs font-medium text-gray-500 border-r border-gray-200 bg-gray-50/30">
-              GMT+1
+              Heures
             </div>
             {getWeekDays().map((day, index) => {
               const isToday = isSameDayNormalized(day, new Date());
@@ -625,12 +485,12 @@ export function CalendarView({
             })}
           </div>
 
-          {/* Grille horaire avec scroll natif fonctionnel */}
-          <div className="relative max-h-[80vh] overflow-y-auto overflow-x-hidden">
-            <div className="grid grid-cols-8 min-h-full">
+          {/* Grille horaire simplifiée */}
+          <div className="h-[600px] overflow-y-auto">
+            <div className="grid grid-cols-8">
               {/* Colonne des heures */}
-              <div className="bg-gray-50/30 border-r border-gray-200 sticky left-0 z-10">
-                {allDayHours.map(hour => (
+              <div className="bg-gray-50/30 border-r border-gray-200">
+                {workingHours.map(hour => (
                   <div key={hour} className="h-16 border-b border-gray-100 flex items-start justify-center pt-1">
                     <span className="text-xs font-medium text-gray-400">
                       {hour.toString().padStart(2, '0')}:00
@@ -643,40 +503,31 @@ export function CalendarView({
               {getWeekDays().map((day, dayIndex) => (
                 <div 
                   key={dayIndex} 
-                  className="relative border-r border-gray-200 last:border-r-0 bg-white hover:bg-gray-50/30 transition-colors cursor-pointer"
+                  className="relative border-r border-gray-200 last:border-r-0 bg-white hover:bg-gray-50/30 transition-colors"
                 >
-                  {/* Lignes horaires cliquables */}
-                  {allDayHours.map(hour => (
+                  {/* Lignes horaires */}
+                  {workingHours.map(hour => (
                     <div
                       key={hour}
-                      className="h-16 border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
-                      onClick={() => {
-                        // Permettre de cliquer pour ajouter des événements/tâches
-                        console.log(`Clicked on ${format(day, 'yyyy-MM-dd')} at ${hour}:00`);
-                      }}
+                      className="h-16 border-b border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer"
                     />
                   ))}
 
-                  {/* Événements - avec interactions simplifiées */}
-                  <div className="absolute inset-0 p-1">
+                  {/* Événements */}
+                  <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
+                      .slice(0, 10) // Limite pour éviter surcharge
                       .map(event => {
                         const position = getEventPosition(event);
                         if (!position) return null;
 
                         const isBeingDragged = dragState.itemId === event.id && dragState.itemType === 'event';
-                        
-                        const lineHeight = 14;
-                        const padding = 8;
-                        const timeHeight = position.height > 35 ? 14 : 0;
-                        const availableHeight = position.height - padding - timeHeight;
-                        const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
 
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer select-none shadow-sm group ${
+                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer select-none shadow-sm pointer-events-auto ${
                               isBeingDragged 
                                 ? 'opacity-80 shadow-lg z-50' 
                                 : 'hover:shadow-md z-20'
@@ -707,142 +558,104 @@ export function CalendarView({
                               }
                             }}
                           >
-                            {/* Zones de redimensionnement */}
-                            <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
-                            
-                            {/* Contenu */}
                             <div className="h-full px-2 py-1 flex flex-col justify-start">
-                              <div 
-                                className="text-xs font-medium text-sky-800 leading-tight"
-                                style={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: maxLines,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  wordBreak: 'break-word',
-                                }}
-                              >
+                              <div className="text-xs font-medium text-sky-800 leading-tight truncate">
                                 {event.title}
                               </div>
                               {position.height > 35 && (
-                                <div className="text-xs text-sky-600 leading-tight mt-0.5 opacity-75 flex-shrink-0">
+                                <div className="text-xs text-sky-600 leading-tight mt-0.5 opacity-75">
                                   {format(new Date(event.startDate), 'HH:mm')}
                                 </div>
                               )}
                             </div>
-                            
-                            <div className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         );
                       })}
                   </div>
 
-                  {/* Tâches - avec interactions simplifiées */}
-                  <div className="absolute inset-0 p-1">
-                    {getTasksForDay(day).map(task => {
-                      const position = getTaskPosition(task);
-                      if (!position) {
-                        console.log('No position calculated for task:', task.title);
-                        return null;
-                      }
+                  {/* Tâches */}
+                  <div className="absolute inset-0 p-1 pointer-events-none">
+                    {getTasksForDay(day)
+                      .slice(0, 10) // Limite pour éviter surcharge
+                      .map(task => {
+                        const position = getTaskPosition(task);
+                        if (!position) return null;
 
-                      const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
-                      const isCompleted = task.completed;
-                      const taskStatus = getTaskStatus(task);
-                      const statusColors = getTaskStatusColors(taskStatus);
-                      
-                      const lineHeight = 14;
-                      const padding = 8;
-                      const timeHeight = position.height > 35 ? 14 : 0;
-                      const availableHeight = position.height - padding - timeHeight;
-                      const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
+                        const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
+                        const isCompleted = task.completed;
+                        const taskStatus = getTaskStatus(task);
+                        const statusColors = getTaskStatusColors(taskStatus);
 
-                      return (
-                        <div
-                          key={`task-${task.id}`}
-                          className={`absolute rounded-lg transition-all duration-200 cursor-pointer select-none shadow-sm group ${
-                            isBeingDragged 
-                              ? 'opacity-80 shadow-lg z-50' 
-                              : 'hover:shadow-md z-20'
-                          } ${isCompleted ? 'opacity-60' : ''}`}
-                          style={{
-                            top: `${position.top}px`,
-                            height: `${position.height}px`,
-                            left: '2px',
-                            right: '2px',
-                            backgroundColor: isCompleted ? '#f8f8f8' : statusColors.bgColor,
-                            border: `1px solid ${isCompleted ? '#e5e5e5' : statusColors.borderColor}`,
-                          }}
-                          onMouseDown={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const relativeY = e.clientY - rect.top;
-                            
-                            if (relativeY <= 4 && onUpdateTask) {
-                              handleTaskMouseDown(e, task, 'resize', 'top');
-                            } else if (relativeY >= rect.height - 4 && onUpdateTask) {
-                              handleTaskMouseDown(e, task, 'resize', 'bottom');
-                            } else if (onUpdateTask) {
-                              handleTaskMouseDown(e, task, 'move');
-                            }
-                          }}
-                          onClick={() => {
-                            if (!dragStartedRef.current) {
-                              handleTaskClick(task);
-                            }
-                          }}
-                        >
-                          {/* Zones de redimensionnement */}
-                          <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
-                          
-                          {/* Contenu */}
-                          <div className="h-full px-2 py-1 flex items-start gap-1.5">
-                            {/* Checkbox */}
-                            {onUpdateTask && (
-                              <button
-                                className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 ${
-                                  isCompleted 
-                                    ? 'bg-gray-400 border-gray-400' 
-                                    : 'bg-white border-gray-300 hover:border-gray-400'
-                                }`}
-                                onClick={(e) => handleTaskCompletion(task, e)}
-                              >
-                                {isCompleted && (
-                                  <Check size={10} className="text-white m-auto" />
-                                )}
-                              </button>
-                            )}
-                            
-                            <div className="flex-1 min-w-0 flex flex-col justify-start">
-                              <div 
-                                className={`text-xs font-medium leading-tight ${
+                        return (
+                          <div
+                            key={`task-${task.id}`}
+                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer select-none shadow-sm pointer-events-auto ${
+                              isBeingDragged 
+                                ? 'opacity-80 shadow-lg z-50' 
+                                : 'hover:shadow-md z-20'
+                            } ${isCompleted ? 'opacity-60' : ''}`}
+                            style={{
+                              top: `${position.top}px`,
+                              height: `${position.height}px`,
+                              left: '2px',
+                              right: '2px',
+                              backgroundColor: isCompleted ? '#f8f8f8' : statusColors.bgColor,
+                              border: `1px solid ${isCompleted ? '#e5e5e5' : statusColors.borderColor}`,
+                            }}
+                            onMouseDown={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const relativeY = e.clientY - rect.top;
+                              
+                              if (relativeY <= 4 && onUpdateTask) {
+                                handleTaskMouseDown(e, task, 'resize', 'top');
+                              } else if (relativeY >= rect.height - 4 && onUpdateTask) {
+                                handleTaskMouseDown(e, task, 'resize', 'bottom');
+                              } else if (onUpdateTask) {
+                                handleTaskMouseDown(e, task, 'move');
+                              }
+                            }}
+                            onClick={() => {
+                              if (!dragStartedRef.current) {
+                                handleTaskClick(task);
+                              }
+                            }}
+                          >
+                            <div className="h-full px-2 py-1 flex items-start gap-1.5">
+                              {onUpdateTask && (
+                                <button
+                                  className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 ${
+                                    isCompleted 
+                                      ? 'bg-gray-400 border-gray-400' 
+                                      : 'bg-white border-gray-300 hover:border-gray-400'
+                                  }`}
+                                  onClick={(e) => handleTaskCompletion(task, e)}
+                                >
+                                  {isCompleted && (
+                                    <Check size={10} className="text-white m-auto" />
+                                  )}
+                                </button>
+                              )}
+                              
+                              <div className="flex-1 min-w-0 flex flex-col justify-start">
+                                <div className={`text-xs font-medium leading-tight truncate ${
                                   isCompleted 
                                     ? 'text-gray-500 line-through' 
                                     : statusColors.text
-                                }`}
-                                style={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: maxLines,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  wordBreak: 'break-word',
-                                }}
-                              >
-                                {task.title}
-                              </div>
-                              {position.height > 35 && (
-                                <div className={`text-xs leading-tight mt-0.5 opacity-75 flex-shrink-0 ${
-                                  isCompleted ? 'text-gray-400' : statusColors.text
                                 }`}>
-                                  {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
+                                  {task.title}
                                 </div>
-                              )}
+                                {position.height > 35 && (
+                                  <div className={`text-xs leading-tight mt-0.5 opacity-75 ${
+                                    isCompleted ? 'text-gray-400' : statusColors.text
+                                  }`}>
+                                    {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          
-                          <div className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 </div>
               ))}
@@ -850,6 +663,7 @@ export function CalendarView({
           </div>
         </div>
       ) : (
+        // Vue mois simplifiée
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="grid grid-cols-7 gap-px bg-gray-200">
             {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
@@ -861,8 +675,8 @@ export function CalendarView({
           <div className="grid grid-cols-7 gap-px bg-gray-200">
             {getMonthDays().map((day, index) => {
               const isToday = isSameDayNormalized(day, new Date());
-              const dayTasks = getTasksForDay(day);
-              const dayEvents = getEventsForDay(day);
+              const dayTasks = getTasksForDay(day).slice(0, 3); // Limite affichage
+              const dayEvents = getEventsForDay(day).slice(0, 2); // Limite affichage
               
               return (
                 <div
@@ -877,8 +691,8 @@ export function CalendarView({
                     {format(day, 'd')}
                   </div>
                   <div className="space-y-1">
-                    {/* Événements avec style Google Calendar */}
-                    {dayEvents.slice(0, 2).map(event => (
+                    {/* Événements */}
+                    {dayEvents.map(event => (
                       <div
                         key={`month-event-${event.id}`}
                         className="text-xs p-1 rounded cursor-pointer hover:opacity-80 truncate font-medium border-l-2"
@@ -888,14 +702,14 @@ export function CalendarView({
                           borderLeftColor: '#1976d2',
                           color: '#1976d2'
                         }}
-                        title={`${event.title}\n${event.allDay ? 'Toute la journée' : format(new Date(event.startDate), 'HH:mm') + ' - ' + format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
+                        title={event.title}
                       >
                         {event.title}
                       </div>
                     ))}
                     
-                    {/* Tâches avec couleurs contextuelles corrigées */}
-                    {dayTasks.slice(0, dayEvents.length > 0 ? 1 : 3).map(task => {
+                    {/* Tâches */}
+                    {dayTasks.map(task => {
                       const isCompleted = task.completed;
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
@@ -910,9 +724,8 @@ export function CalendarView({
                           style={{
                             backgroundColor: isCompleted ? '#f5f5f5' : statusColors.bgColor,
                             borderLeftColor: isCompleted ? '#9e9e9e' : statusColors.borderColor,
-                            color: isCompleted ? '#757575' : statusColors.text.replace('text-', '')
                           }}
-                          title={`${task.title}\n${task.estimatedDuration}min\n${task.description || ''}`}
+                          title={task.title}
                         >
                           {onUpdateTask && (
                             <button
@@ -925,7 +738,6 @@ export function CalendarView({
                               style={{
                                 borderColor: isCompleted ? '#6b7280' : statusColors.borderColor
                               }}
-                              title={task.completed ? "Marquer comme non terminé" : "Marquer comme terminé"}
                             >
                               {isCompleted && <Check size={6} className="text-white m-auto" />}
                             </button>
@@ -938,9 +750,9 @@ export function CalendarView({
                     })}
                     
                     {/* Indicateur d'overflow */}
-                    {(dayEvents.length + dayTasks.length) > 3 && (
+                    {(getEventsForDay(day).length + getTasksForDay(day).length) > 5 && (
                       <div className="text-xs text-gray-500">
-                        +{(dayEvents.length + dayTasks.length) - 3} autres
+                        +{(getEventsForDay(day).length + getTasksForDay(day).length) - 5} autres
                       </div>
                     )}
                   </div>
@@ -950,44 +762,6 @@ export function CalendarView({
           </div>
         </div>
       )}
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-sm font-medium text-gray-900 mb-4">Planification algorithmique intelligente</h3>
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-2 rounded-lg border" style={{ backgroundColor: '#f0f9ff', borderColor: '#e0f2fe' }} />
-              <span className="text-sm text-gray-600">Événements</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-2 rounded-lg border" style={{ backgroundColor: '#fef7ed', borderColor: '#fed7aa' }} />
-              <span className="text-sm text-gray-600">Tâches</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-2 rounded-lg border" style={{ backgroundColor: '#f8f8f8', borderColor: '#e5e5e5' }} />
-              <span className="text-sm text-gray-600">Tâches terminées</span>
-            </div>
-          </div>
-          
-          {onUpdateTask && (
-            <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Algorithme de planification :</h4>
-              <div className="text-xs text-gray-600 space-y-1">
-                <div>• Planification automatique basée sur les priorités et les deadlines</div>
-                <div>• Respect des heures de travail et des événements existants</div>
-                <div>• Optimisation des créneaux pour minimiser les conflits</div>
-                <div>• Replanification intelligente après modification d'événements</div>
-                <div>• Gestion des buffers entre les tâches pour éviter la fatigue</div>
-                {unscheduledTasksCount > 0 && (
-                  <div className="text-orange-600 font-medium">
-                    • {unscheduledTasksCount} tâche(s) en attente de planification automatique
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
       {(onUpdateTask || onUpdateEvent || addTask || addEvent) && (
         <AddItemForm
