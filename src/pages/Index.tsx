@@ -45,7 +45,7 @@ const Index = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard tasks={tasks} onEditTask={updateTask} />;
+        return <Dashboard tasks={tasks} events={events} onEditTask={updateTask} />;
       case 'tasks':
         return (
           <TaskList
@@ -58,7 +58,7 @@ const Index = () => {
           />
         );
       case 'calendar':
-        return <CalendarView tasks={tasks} onUpdateTask={updateTask} />;
+        return <CalendarView tasks={tasks} events={events} onUpdateTask={updateTask} />;
       case 'inbox':
         return (
           <Inbox
@@ -78,7 +78,7 @@ const Index = () => {
           </div>
         );
       default:
-        return <Dashboard tasks={tasks} onEditTask={updateTask} />;
+        return <Dashboard tasks={tasks} events={events} onEditTask={updateTask} />;
     }
   };
 

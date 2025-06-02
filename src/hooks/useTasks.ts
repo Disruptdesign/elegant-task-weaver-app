@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Task, Event, InboxItem } from '../types/task';
 import { taskScheduler } from '../utils/taskScheduler';
@@ -81,7 +80,7 @@ export function useTasks() {
     };
 
     const updatedTasks = [...tasks, newTask];
-    const rescheduledTasks = taskScheduler.rescheduleAllTasks(updatedTasks);
+    const rescheduledTasks = taskScheduler.rescheduleAllTasks(updatedTasks, events);
     setTasks(rescheduledTasks);
   };
 
@@ -91,13 +90,13 @@ export function useTasks() {
         ? { ...task, ...updates, updatedAt: new Date() }
         : task
     );
-    const rescheduledTasks = taskScheduler.rescheduleAllTasks(updatedTasks);
+    const rescheduledTasks = taskScheduler.rescheduleAllTasks(updatedTasks, events);
     setTasks(rescheduledTasks);
   };
 
   const deleteTask = (id: string) => {
     const updatedTasks = tasks.filter(task => task.id !== id);
-    const rescheduledTasks = taskScheduler.rescheduleAllTasks(updatedTasks);
+    const rescheduledTasks = taskScheduler.rescheduleAllTasks(updatedTasks, events);
     setTasks(rescheduledTasks);
   };
 
@@ -106,7 +105,7 @@ export function useTasks() {
   };
 
   const rescheduleAllTasks = () => {
-    const rescheduledTasks = taskScheduler.rescheduleAllTasks(tasks);
+    const rescheduledTasks = taskScheduler.rescheduleAllTasks(tasks, events);
     setTasks(rescheduledTasks);
   };
 
@@ -118,19 +117,34 @@ export function useTasks() {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    setEvents([...events, newEvent]);
+    const updatedEvents = [...events, newEvent];
+    setEvents(updatedEvents);
+    
+    // Replanifier toutes les tâches avec le nouvel événement
+    const rescheduledTasks = taskScheduler.rescheduleAllTasks(tasks, updatedEvents);
+    setTasks(rescheduledTasks);
   };
 
   const updateEvent = (id: string, updates: Partial<Event>) => {
-    setEvents(events.map(event =>
+    const updatedEvents = events.map(event =>
       event.id === id
         ? { ...event, ...updates, updatedAt: new Date() }
         : event
-    ));
+    );
+    setEvents(updatedEvents);
+    
+    // Replanifier toutes les tâches avec les événements mis à jour
+    const rescheduledTasks = taskScheduler.rescheduleAllTasks(tasks, updatedEvents);
+    setTasks(rescheduledTasks);
   };
 
   const deleteEvent = (id: string) => {
-    setEvents(events.filter(event => event.id !== id));
+    const updatedEvents = events.filter(event => event.id !== id);
+    setEvents(updatedEvents);
+    
+    // Replanifier toutes les tâches sans l'événement supprimé
+    const rescheduledTasks = taskScheduler.rescheduleAllTasks(tasks, updatedEvents);
+    setTasks(rescheduledTasks);
   };
 
   // Fonctions pour l'inbox

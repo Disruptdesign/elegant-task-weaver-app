@@ -1,15 +1,16 @@
 import React from 'react';
-import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3 } from 'lucide-react';
-import { Task } from '../types/task';
-import { format, isToday, isTomorrow, isThisWeek, isPast } from 'date-fns';
+import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3, Users } from 'lucide-react';
+import { Task, Event } from '../types/task';
+import { format, isToday, isTomorrow, isThisWeek, isPast, isFuture, isAfter } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface DashboardProps {
   tasks: Task[];
+  events?: Event[];
   onEditTask?: (id: string, updates: Partial<Task>) => void;
 }
 
-export function Dashboard({ tasks, onEditTask }: DashboardProps) {
+export function Dashboard({ tasks, events = [], onEditTask }: DashboardProps) {
   const completedTasks = tasks.filter(task => task.completed);
   const pendingTasks = tasks.filter(task => !task.completed);
   const overdueTasks = pendingTasks.filter(task => isPast(new Date(task.deadline)));
@@ -54,6 +55,15 @@ export function Dashboard({ tasks, onEditTask }: DashboardProps) {
       .slice(0, 5);
   };
 
+  const getUpcomingEvents = () => {
+    return events
+      .filter(event => isFuture(new Date(event.startDate)))
+      .sort((a, b) => 
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      )
+      .slice(0, 5);
+  };
+
   const formatTaskTime = (task: Task) => {
     if (!task.scheduledStart) return 'Non planifié';
     
@@ -65,6 +75,18 @@ export function Dashboard({ tasks, onEditTask }: DashboardProps) {
       return format(task.scheduledStart, 'EEEE à HH:mm', { locale: fr });
     } else {
       return format(task.scheduledStart, 'dd MMM à HH:mm', { locale: fr });
+    }
+  };
+
+  const formatEventTime = (event: Event) => {
+    if (isToday(event.startDate)) {
+      return `Aujourd'hui à ${format(event.startDate, 'HH:mm')}`;
+    } else if (isTomorrow(event.startDate)) {
+      return `Demain à ${format(event.startDate, 'HH:mm')}`;
+    } else if (isThisWeek(event.startDate)) {
+      return format(event.startDate, 'EEEE à HH:mm', { locale: fr });
+    } else {
+      return format(event.startDate, 'dd MMM à HH:mm', { locale: fr });
     }
   };
 
@@ -180,6 +202,59 @@ export function Dashboard({ tasks, onEditTask }: DashboardProps) {
           </div>
         </div>
       )}
+
+      {/* Prochains événements */}
+      <div className="mx-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+          <div className="p-6 border-b border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-3">
+              <Users className="text-purple-600" size={24} />
+              Prochains événements
+            </h2>
+          </div>
+          <div className="p-6">
+            {getUpcomingEvents().length > 0 ? (
+              <div className="space-y-4">
+                {getUpcomingEvents().map((event, index) => (
+                  <div
+                    key={event.id}
+                    className="flex items-center justify-between p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900 mb-2">{event.title}</h3>
+                      <p className="text-sm text-purple-600 mb-1">{formatEventTime(event)}</p>
+                      {event.location && (
+                        <p className="text-sm text-gray-600">📍 {event.location}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {event.allDay ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          Toute la journée
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-500 font-medium">
+                          {format(event.startDate, 'HH:mm')} - {format(event.endDate, 'HH:mm')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Users className="mx-auto text-gray-400 mb-4" size={48} />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Aucun événement planifié
+                </h3>
+                <p className="text-gray-600">
+                  Vos prochains événements apparaîtront ici
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Prochaines tâches */}
       <div className="mx-4">

@@ -1,19 +1,21 @@
+
 import React, { useState } from 'react';
-import { Task } from '../types/task';
+import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
 import { AddItemForm } from './AddItemForm';
 
 interface CalendarViewProps {
   tasks: Task[];
+  events?: Event[];
   onUpdateTask?: (id: string, updates: Partial<Task>) => void;
 }
 
 type ViewMode = 'week' | 'month';
 
-export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
+export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -42,6 +44,12 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
     );
   };
 
+  const getEventsForDay = (date: Date) => {
+    return events.filter(event => 
+      isSameDay(new Date(event.startDate), date)
+    );
+  };
+
   const getTaskPosition = (task: Task) => {
     if (!task.scheduledStart) return null;
     
@@ -58,6 +66,21 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
     const height = Math.max((totalDuration / 60) * 64, 32);
     
     return { top: Math.max(0, adjustedTop), height };
+  };
+
+  const getEventPosition = (event: Event) => {
+    if (event.allDay) return null;
+    
+    const start = new Date(event.startDate);
+    const end = new Date(event.endDate);
+    const startHour = start.getHours();
+    const startMinute = start.getMinutes();
+    
+    const top = ((startHour - 9) + startMinute / 60) * 64;
+    const duration = (end.getTime() - start.getTime()) / (1000 * 60); // en minutes
+    const height = Math.max((duration / 60) * 64, 32);
+    
+    return { top: Math.max(0, top), height };
   };
 
   const handleTaskClick = (task: Task) => {
@@ -164,6 +187,7 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
             {getWeekDays().map((day, index) => {
               const isToday = isSameDay(day, new Date());
               const dayTasks = getTasksForDay(day);
+              const dayEvents = getEventsForDay(day);
               
               return (
                 <div
@@ -181,7 +205,13 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
                     {format(day, 'd')}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {dayTasks.length} tâche{dayTasks.length > 1 ? 's' : ''}
+                    {dayEvents.length > 0 && (
+                      <span className="text-purple-600">{dayEvents.length} événement{dayEvents.length > 1 ? 's' : ''}</span>
+                    )}
+                    {dayEvents.length > 0 && dayTasks.length > 0 && ' • '}
+                    {dayTasks.length > 0 && (
+                      <span>{dayTasks.length} tâche{dayTasks.length > 1 ? 's' : ''}</span>
+                    )}
                   </div>
                 </div>
               );
@@ -212,6 +242,37 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
                       className="h-16 border-b border-gray-100"
                     />
                   ))}
+
+                  {/* Événements */}
+                  <div className="absolute inset-0 p-1">
+                    {getEventsForDay(day)
+                      .filter(event => !event.allDay)
+                      .map(event => {
+                        const position = getEventPosition(event);
+                        if (!position) return null;
+
+                        return (
+                          <div
+                            key={event.id}
+                            className="absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-md transition-all z-20 bg-purple-100 border-purple-300"
+                            style={{
+                              top: `${position.top}px`,
+                              height: `${position.height}px`,
+                            }}
+                          >
+                            <div className="flex items-center gap-1 text-xs font-medium text-purple-800 mb-1">
+                              <Users size={10} />
+                              {event.title}
+                            </div>
+                            {position.height > 40 && (
+                              <div className="text-xs text-purple-600">
+                                {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
 
                   {/* Tâches avec buffers */}
                   <div className="absolute inset-0 p-1">
@@ -280,6 +341,7 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
             {getMonthDays().map((day, index) => {
               const isToday = isSameDay(day, new Date());
               const dayTasks = getTasksForDay(day);
+              const dayEvents = getEventsForDay(day);
               
               return (
                 <div
@@ -294,7 +356,18 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
                     {format(day, 'd')}
                   </div>
                   <div className="space-y-1">
-                    {dayTasks.slice(0, 3).map(task => {
+                    {/* Événements */}
+                    {dayEvents.slice(0, 2).map(event => (
+                      <div
+                        key={event.id}
+                        className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate"
+                      >
+                        📅 {event.title}
+                      </div>
+                    ))}
+                    
+                    {/* Tâches */}
+                    {dayTasks.slice(0, dayEvents.length > 0 ? 1 : 3).map(task => {
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
                       
@@ -308,9 +381,11 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
                         </div>
                       );
                     })}
-                    {dayTasks.length > 3 && (
+                    
+                    {/* Compteur d'éléments cachés */}
+                    {(dayEvents.length + dayTasks.length) > 3 && (
                       <div className="text-xs text-gray-500">
-                        +{dayTasks.length - 3} autres
+                        +{(dayEvents.length + dayTasks.length) - 3} autres
                       </div>
                     )}
                   </div>
@@ -323,11 +398,15 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
 
       {/* Légende */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-sm font-medium text-gray-900 mb-4">Légende des échéances</h3>
+        <h3 className="text-sm font-medium text-gray-900 mb-4">Légende</h3>
         <div className="flex flex-wrap gap-6">
           <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded border bg-purple-100 border-purple-300" />
+            <span className="text-sm text-gray-600">Événements</span>
+          </div>
+          <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded border bg-green-50 border-green-200" />
-            <span className="text-sm text-gray-600">Dans les temps</span>
+            <span className="text-sm text-gray-600">Tâches dans les temps</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded border bg-orange-50 border-orange-200" />

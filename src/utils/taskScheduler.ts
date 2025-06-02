@@ -1,5 +1,5 @@
 
-import { Task, TimeSlot } from '../types/task';
+import { Task, Event, TimeSlot } from '../types/task';
 
 export class TaskScheduler {
   private workingHours = {
@@ -7,9 +7,10 @@ export class TaskScheduler {
     end: 18,  // 18h
   };
 
-  scheduleTask(task: Task, existingTasks: Task[] = []): Task {
+  scheduleTask(task: Task, existingTasks: Task[] = [], events: Event[] = []): Task {
     const now = new Date();
     const deadline = new Date(task.deadline);
+    const canStartFrom = task.canStartFrom ? new Date(task.canStartFrom) : now;
     
     // Calculer la priorité numérique
     const priorityWeight = this.getPriorityWeight(task.priority);
@@ -21,19 +22,23 @@ export class TaskScheduler {
     // Score de planification (plus bas = plus prioritaire)
     const schedulingScore = daysUntilDeadline / priorityWeight;
     
-    // Trouver le prochain créneau disponible
+    // Trouver le prochain créneau disponible en tenant compte de la date de début possible
+    const startDate = new Date(Math.max(canStartFrom.getTime(), now.getTime()));
     const scheduledStart = this.findNextAvailableSlot(
-      task.estimatedDuration,
+      task.estimatedDuration + (task.bufferBefore || 0) + (task.bufferAfter || 0),
       existingTasks,
-      now
+      events,
+      startDate
     );
     
-    const scheduledEnd = new Date(scheduledStart.getTime() + task.estimatedDuration * 60000);
+    const taskStart = new Date(scheduledStart.getTime() + (task.bufferBefore || 0) * 60000);
+    const taskEnd = new Date(taskStart.getTime() + task.estimatedDuration * 60000);
+    const scheduledEnd = new Date(taskEnd.getTime() + (task.bufferAfter || 0) * 60000);
     
     return {
       ...task,
-      scheduledStart,
-      scheduledEnd,
+      scheduledStart: taskStart,
+      scheduledEnd: taskEnd,
     };
   }
 
@@ -48,16 +53,22 @@ export class TaskScheduler {
   }
 
   private findNextAvailableSlot(
-    duration: number,
+    totalDuration: number, // Durée totale incluant les buffers
     existingTasks: Task[],
+    events: Event[] = [],
     startFrom: Date = new Date()
   ): Date {
     const start = new Date(startFrom);
-    start.setHours(this.workingHours.start, 0, 0, 0);
+    
+    // Commencer aux heures de travail si on est avant
+    if (start.getHours() < this.workingHours.start) {
+      start.setHours(this.workingHours.start, 0, 0, 0);
+    }
     
     // Si on est déjà passé les heures de travail, commencer le lendemain
-    if (startFrom.getHours() >= this.workingHours.end) {
+    if (start.getHours() >= this.workingHours.end) {
       start.setDate(start.getDate() + 1);
+      start.setHours(this.workingHours.start, 0, 0, 0);
     }
     
     let currentSlot = new Date(start);
@@ -70,16 +81,67 @@ export class TaskScheduler {
         continue;
       }
       
-      // Vérifier les conflits avec les tâches existantes
-      const endSlot = new Date(currentSlot.getTime() + duration * 60000);
-      const hasConflict = existingTasks.some(task => {
-        if (!task.scheduledStart || !task.scheduledEnd) return false;
-        return (
-          currentSlot < task.scheduledEnd && endSlot > task.scheduledStart
-        );
+      // Vérifier si le week-end (samedi = 6, dimanche = 0)
+      if (currentSlot.getDay() === 0 || currentSlot.getDay() === 6) {
+        currentSlot.setDate(currentSlot.getDate() + (currentSlot.getDay() === 0 ? 1 : 2));
+        currentSlot.setHours(this.workingHours.start, 0, 0, 0);
+        continue;
+      }
+      
+      // Calculer la fin du créneau
+      const endSlot = new Date(currentSlot.getTime() + totalDuration * 60000);
+      
+      // Vérifier si le créneau dépasse les heures de travail
+      if (endSlot.getHours() > this.workingHours.end || 
+          (endSlot.getHours() === this.workingHours.end && endSlot.getMinutes() > 0)) {
+        currentSlot.setDate(currentSlot.getDate() + 1);
+        currentSlot.setHours(this.workingHours.start, 0, 0, 0);
+        continue;
+      }
+      
+      // Vérifier les conflits avec les événements (priorité aux événements)
+      const hasEventConflict = events.some(event => {
+        const eventStart = new Date(event.startDate);
+        const eventEnd = new Date(event.endDate);
+        return (currentSlot < eventEnd && endSlot > eventStart);
       });
       
-      if (!hasConflict && endSlot.getHours() <= this.workingHours.end) {
+      if (hasEventConflict) {
+        // Trouver le prochain créneau après tous les événements en conflit
+        const conflictingEvents = events.filter(event => {
+          const eventStart = new Date(event.startDate);
+          const eventEnd = new Date(event.endDate);
+          return (currentSlot < eventEnd && endSlot > eventStart);
+        });
+        
+        const latestEventEnd = conflictingEvents.reduce((latest, event) => {
+          const eventEnd = new Date(event.endDate);
+          return eventEnd > latest ? eventEnd : latest;
+        }, new Date(0));
+        
+        currentSlot = new Date(latestEventEnd);
+        // Arrondir au prochain créneau de 30 minutes
+        const minutes = currentSlot.getMinutes();
+        if (minutes % 30 !== 0) {
+          currentSlot.setMinutes(Math.ceil(minutes / 30) * 30, 0, 0);
+        }
+        continue;
+      }
+      
+      // Vérifier les conflits avec les tâches existantes
+      const hasTaskConflict = existingTasks.some(task => {
+        if (!task.scheduledStart || !task.scheduledEnd) return false;
+        const taskStart = new Date(task.scheduledStart);
+        const taskEnd = new Date(task.scheduledEnd);
+        
+        // Inclure les buffers dans le calcul
+        const taskStartWithBuffer = new Date(taskStart.getTime() - (task.bufferBefore || 0) * 60000);
+        const taskEndWithBuffer = new Date(taskEnd.getTime() + (task.bufferAfter || 0) * 60000);
+        
+        return (currentSlot < taskEndWithBuffer && endSlot > taskStartWithBuffer);
+      });
+      
+      if (!hasTaskConflict) {
         return currentSlot;
       }
       
@@ -88,7 +150,7 @@ export class TaskScheduler {
     }
   }
 
-  rescheduleAllTasks(tasks: Task[]): Task[] {
+  rescheduleAllTasks(tasks: Task[], events: Event[] = []): Task[] {
     const uncompletedTasks = tasks.filter(task => !task.completed);
     const scheduledTasks: Task[] = [];
     
@@ -106,7 +168,7 @@ export class TaskScheduler {
     
     // Planifier chaque tâche
     for (const task of sortedTasks) {
-      const scheduledTask = this.scheduleTask(task, scheduledTasks);
+      const scheduledTask = this.scheduleTask(task, scheduledTasks, events);
       scheduledTasks.push(scheduledTask);
     }
     
