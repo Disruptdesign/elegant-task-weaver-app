@@ -46,6 +46,17 @@ export function CalendarView({
     hasUpdateEvent: !!onUpdateEvent
   });
 
+  // Debug des événements reçus
+  useEffect(() => {
+    console.log('🎭 CalendarView: Événements reçus:', events.map(e => ({
+      id: e.id,
+      title: e.title,
+      startDate: e.startDate,
+      startDateType: typeof e.startDate,
+      startDateString: e.startDate instanceof Date ? e.startDate.toISOString() : String(e.startDate)
+    })));
+  }, [events]);
+
   // Utiliser le hook unifié de drag & drop
   const {
     dragState,
@@ -141,13 +152,33 @@ export function CalendarView({
   };
 
   const getEventsForDay = (date: Date) => {
+    console.log(`🔍 Filtrage événements pour ${format(date, 'yyyy-MM-dd')}:`);
+    
     const dayEvents = events.filter(event => {
-      const eventStart = new Date(event.startDate);
-      const eventEnd = new Date(event.endDate);
-      return isSameDay(eventStart, date) || isSameDay(eventEnd, date) || 
+      // S'assurer que les dates sont bien des objets Date
+      const eventStart = event.startDate instanceof Date ? event.startDate : new Date(event.startDate);
+      const eventEnd = event.endDate instanceof Date ? event.endDate : new Date(event.endDate);
+      
+      console.log(`   - Événement "${event.title}":`, {
+        eventStart: eventStart.toISOString(),
+        eventEnd: eventEnd.toISOString(),
+        targetDate: date.toISOString(),
+        isSameStart: isSameDay(eventStart, date),
+        isSameEnd: isSameDay(eventEnd, date),
+        isInRange: eventStart <= date && eventEnd >= date
+      });
+      
+      const matches = isSameDay(eventStart, date) || isSameDay(eventEnd, date) || 
              (eventStart <= date && eventEnd >= date);
+      
+      if (matches) {
+        console.log(`   ✅ Événement "${event.title}" correspond au jour ${format(date, 'yyyy-MM-dd')}`);
+      }
+      
+      return matches;
     });
-    console.log(`Events for ${format(date, 'yyyy-MM-dd')}:`, dayEvents.length);
+    
+    console.log(`📊 Total événements pour ${format(date, 'yyyy-MM-dd')}:`, dayEvents.length);
     return dayEvents;
   };
 
@@ -224,15 +255,26 @@ export function CalendarView({
   };
 
   const handleFormSubmit = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
+    console.log('📝 Task form submitted:', taskData);
     if (selectedTask && onUpdateTask) {
       onUpdateTask(selectedTask.id, taskData);
+    } else if (addTask) {
+      addTask(taskData);
     }
     setSelectedTask(undefined);
   };
 
   const handleEventFormSubmit = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
+    console.log('📝 Event form submitted:', eventData);
     if (selectedEvent && onUpdateEvent) {
       onUpdateEvent(selectedEvent.id, eventData);
+    } else if (addEvent) {
+      console.log('🎯 Ajout nouvel événement via CalendarView:', {
+        title: eventData.title,
+        startDate: eventData.startDate,
+        endDate: eventData.endDate
+      });
+      addEvent(eventData);
     }
     setSelectedEvent(undefined);
   };
@@ -361,7 +403,7 @@ export function CalendarView({
         </div>
       </div>
 
-      {/* Debug info */}
+      {/* Debug info amélioré */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <p className="text-sm text-blue-800">
           📊 Debug: {tasks.length} tâche{tasks.length > 1 ? 's' : ''}, {events.length} événement{events.length > 1 ? 's' : ''}
@@ -370,6 +412,11 @@ export function CalendarView({
           {dragState.isDragging && ' - 🎯 DRAGGING'}
           {dragState.isResizing && ' - 📏 RESIZING'}
         </p>
+        {events.length > 0 && (
+          <div className="text-xs text-blue-600 mt-2">
+            Événements détectés: {events.map(e => `"${e.title}" (${e.startDate instanceof Date ? e.startDate.toLocaleDateString() : 'date invalide'})`).join(', ')}
+          </div>
+        )}
       </div>
 
       {viewMode === 'week' ? (
@@ -748,7 +795,7 @@ export function CalendarView({
         </div>
       </div>
 
-      {(onUpdateTask || onUpdateEvent) && (
+      {(onUpdateTask || onUpdateEvent || addTask || addEvent) && (
         <AddItemForm
           isOpen={isFormOpen}
           onClose={handleFormClose}
