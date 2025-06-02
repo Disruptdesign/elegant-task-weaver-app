@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Flag, Plus, CalendarIcon } from 'lucide-react';
-import { Task, Priority } from '../types/task';
+import { X, Calendar, Clock, Flag, Plus, CalendarIcon, FolderOpen } from 'lucide-react';
+import { Task, Priority, Project, TaskType } from '../types/task';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from './ui/button';
@@ -15,20 +15,24 @@ interface TaskFormProps {
   onSubmit: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
   editingTask?: Task;
   initialData?: { title: string; description?: string };
+  projects?: Project[];
+  taskTypes?: TaskType[];
 }
 
-export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData }: TaskFormProps) {
+export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, projects = [], taskTypes = [] }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [estimatedDuration, setEstimatedDuration] = useState(60);
-  const [category, setCategory] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [taskTypeId, setTaskTypeId] = useState('');
   const [canStartFrom, setCanStartFrom] = useState<Date | undefined>();
   const [bufferBefore, setBufferBefore] = useState(0);
   const [bufferAfter, setBufferAfter] = useState(0);
   const [allowSplitting, setAllowSplitting] = useState(false);
   const [splitDuration, setSplitDuration] = useState(60);
+  const [dependencies, setDependencies] = useState<string[]>([]);
 
   useEffect(() => {
     if (editingTask) {
@@ -37,24 +41,28 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData }
       setDeadline(editingTask.deadline.toISOString().slice(0, 16));
       setPriority(editingTask.priority);
       setEstimatedDuration(editingTask.estimatedDuration);
-      setCategory(editingTask.category || '');
+      setProjectId(editingTask.projectId || '');
+      setTaskTypeId(editingTask.taskTypeId || '');
       setCanStartFrom(editingTask.canStartFrom);
       setBufferBefore(editingTask.bufferBefore || 0);
       setBufferAfter(editingTask.bufferAfter || 0);
       setAllowSplitting(editingTask.allowSplitting || false);
       setSplitDuration(editingTask.splitDuration || 60);
+      setDependencies(editingTask.dependencies || []);
     } else if (initialData) {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
       setDeadline('');
       setPriority('medium');
       setEstimatedDuration(60);
-      setCategory('');
+      setProjectId('');
+      setTaskTypeId('');
       setCanStartFrom(undefined);
       setBufferBefore(0);
       setBufferAfter(0);
       setAllowSplitting(false);
       setSplitDuration(60);
+      setDependencies([]);
     } else {
       // Réinitialiser le formulaire pour une nouvelle tâche
       setTitle('');
@@ -62,12 +70,14 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData }
       setDeadline('');
       setPriority('medium');
       setEstimatedDuration(60);
-      setCategory('');
+      setProjectId('');
+      setTaskTypeId('');
       setCanStartFrom(undefined);
       setBufferBefore(0);
       setBufferAfter(0);
       setAllowSplitting(false);
       setSplitDuration(60);
+      setDependencies([]);
     }
   }, [editingTask, initialData, isOpen]);
 
@@ -81,12 +91,14 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData }
       deadline: new Date(deadline),
       priority,
       estimatedDuration,
-      category: category.trim() || undefined,
+      projectId: projectId || undefined,
+      taskTypeId: taskTypeId || undefined,
       canStartFrom,
       bufferBefore: bufferBefore > 0 ? bufferBefore : undefined,
       bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
       allowSplitting,
       splitDuration: allowSplitting && splitDuration > 0 ? splitDuration : undefined,
+      dependencies: dependencies.length > 0 ? dependencies : undefined,
       // Préserver les dates de planification existantes
       ...(editingTask && {
         scheduledStart: editingTask.scheduledStart,
@@ -104,6 +116,13 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData }
     { value: 'high', label: 'Haute', color: 'text-orange-600' },
     { value: 'urgent', label: 'Urgente', color: 'text-red-600' },
   ] as const;
+
+  // Obtenir les tâches du même projet pour les dépendances
+  const getProjectTasks = () => {
+    if (!projectId) return [];
+    // Cette fonction devrait recevoir toutes les tâches en props, mais pour l'instant on retourne un tableau vide
+    return [];
+  };
 
   if (!isOpen) return null;
 
@@ -150,6 +169,46 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData }
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
+            </div>
+          </div>
+
+          {/* Projet et type */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FolderOpen size={16} className="inline mr-2" />
+                Projet (optionnel)
+              </label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Aucun projet</option>
+                {projects.map(project => (
+                  <option key={project.id} value={project.id}>
+                    {project.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Type de tâche
+              </label>
+              <select
+                value={taskTypeId}
+                onChange={(e) => setTaskTypeId(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Choisir un type</option>
+                {taskTypes.map(taskType => (
+                  <option key={taskType.id} value={taskType.id}>
+                    {taskType.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -291,42 +350,27 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData }
             </div>
           </div>
 
-          {/* Autres propriétés */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Flag size={16} className="inline mr-2" />
-                Priorité
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {priorityOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setPriority(option.value)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      priority === option.value
-                        ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
-                        : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Catégorie (optionnel)
-              </label>
-              <input
-                type="text"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="Travail, Personnel, Santé..."
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+          {/* Priorité */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Flag size={16} className="inline mr-2" />
+              Priorité
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {priorityOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setPriority(option.value)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    priority === option.value
+                      ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
+                      : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
 

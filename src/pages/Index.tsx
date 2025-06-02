@@ -5,6 +5,8 @@ import { Dashboard } from '../components/Dashboard';
 import { TaskList } from '../components/TaskList';
 import { CalendarView } from '../components/CalendarView';
 import { Inbox } from '../components/Inbox';
+import { ProjectList } from '../components/ProjectList';
+import { TaskTypeSettings } from '../components/TaskTypeSettings';
 import { AddItemForm } from '../components/AddItemForm';
 import { QuickInbox } from '../components/QuickInbox';
 import { useTasks } from '../hooks/useTasks';
@@ -18,6 +20,8 @@ const Index = () => {
     tasks,
     events,
     inboxItems,
+    projects,
+    taskTypes,
     addTask,
     updateTask,
     deleteTask,
@@ -29,10 +33,16 @@ const Index = () => {
     addInboxItem,
     deleteInboxItem,
     convertInboxItemToTask,
+    addProject,
+    updateProject,
+    deleteProject,
+    addTaskType,
+    updateTaskType,
+    deleteTaskType,
   } = useTasks();
 
   const handleConvertInboxItem = (item: any) => {
-    const initialData = convertInboxItemToTask(item);
+    const initialData = convertInboxItemToTask(item, false); // Ne pas supprimer automatiquement
     setTaskFormData(initialData);
     setIsAddFormOpen(true);
   };
@@ -40,6 +50,19 @@ const Index = () => {
   const handleAddFormClose = () => {
     setIsAddFormOpen(false);
     setTaskFormData(undefined);
+  };
+
+  const handleTaskSubmit = (taskData: any) => {
+    addTask(taskData);
+    // Si c'était une conversion d'inbox, supprimer l'item maintenant
+    if (taskFormData) {
+      const inboxItem = inboxItems.find(item => 
+        item.title === taskFormData.title && item.description === taskFormData.description
+      );
+      if (inboxItem) {
+        deleteInboxItem(inboxItem.id);
+      }
+    }
   };
 
   const renderContent = () => {
@@ -68,15 +91,24 @@ const Index = () => {
             onConvertToTask={handleConvertInboxItem}
           />
         );
-      case 'settings':
+      case 'projects':
         return (
-          <div className="text-center py-12">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Paramètres</h1>
-            <p className="text-gray-600">
-              Cette section sera développée dans une prochaine version.
-            </p>
-          </div>
+          <ProjectList
+            projects={projects}
+            tasks={tasks}
+            onAddProject={addProject}
+            onUpdateProject={updateProject}
+            onDeleteProject={deleteProject}
+            onEditTask={updateTask}
+          />
         );
+      case 'settings':
+        return <TaskTypeSettings 
+          taskTypes={taskTypes}
+          onAddTaskType={addTaskType}
+          onUpdateTaskType={updateTaskType}
+          onDeleteTaskType={deleteTaskType}
+        />;
       default:
         return <Dashboard tasks={tasks} events={events} onEditTask={updateTask} />;
     }
@@ -95,7 +127,7 @@ const Index = () => {
       <AddItemForm
         isOpen={isAddFormOpen}
         onClose={handleAddFormClose}
-        onSubmitTask={addTask}
+        onSubmitTask={handleTaskSubmit}
         onSubmitEvent={addEvent}
         initialData={taskFormData}
       />
