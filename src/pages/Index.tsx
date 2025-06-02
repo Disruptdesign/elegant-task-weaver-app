@@ -40,7 +40,7 @@ const Index = () => {
 
   console.log('Index: Tasks loaded:', tasks.length);
   console.log('Index: Events loaded:', events.length);
-  console.log('Index: All functions available:', {
+  console.log('Index: Update functions available:', {
     addTask: !!addTask,
     updateTask: !!updateTask,
     addEvent: !!addEvent,
@@ -58,6 +58,7 @@ const Index = () => {
   };
 
   const handleCompleteTask = (id: string) => {
+    console.log('Completing task:', id);
     const task = tasks.find(t => t.id === id);
     if (task) {
       updateTask(id, { completed: !task.completed });
@@ -75,6 +76,7 @@ const Index = () => {
   };
 
   const handleTaskSubmit = (taskData: any) => {
+    console.log('Submitting task:', taskData);
     addTask(taskData);
     // Si c'était une conversion d'inbox, supprimer l'item maintenant
     if (taskFormData) {
@@ -103,6 +105,7 @@ const Index = () => {
           />
         );
       case 'calendar':
+        console.log('Rendering calendar with:', { tasks: tasks.length, events: events.length });
         return (
           <CalendarView 
             tasks={tasks} 

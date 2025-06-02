@@ -30,7 +30,8 @@ const parseStoredData = <T>(key: string, defaultValue: T[]): T[] => {
   try {
     const stored = localStorage.getItem(key);
     if (!stored) return defaultValue;
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : defaultValue;
   } catch (error) {
     console.error(`Error parsing ${key} from localStorage:`, error);
     return defaultValue;
@@ -108,6 +109,7 @@ export function useTasks(): UseTasksReturn {
   const [projects, setProjects] = useState<Project[]>([]);
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
   const [filter, setFilter] = useState<string>('all');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -116,7 +118,7 @@ export function useTasks(): UseTasksReturn {
     try {
       // Tasks
       const savedTasks = parseStoredData<any>('tasks', []);
-      console.log('Tâches sauvegardées trouvées:', savedTasks);
+      console.log('Tâches sauvegardées trouvées:', savedTasks.length);
       
       if (savedTasks.length > 0) {
         const parsedTasks = savedTasks.map((task: any) => ({
@@ -135,12 +137,14 @@ export function useTasks(): UseTasksReturn {
         console.log('❌ Aucune tâche en localStorage, création de données de démo');
         const { demoTasks } = createInitialData();
         setTasks(demoTasks);
-        console.log('✅ Tâches de démo créées:', demoTasks.length);
+        // Sauvegarder immédiatement les données de démo
+        localStorage.setItem('tasks', JSON.stringify(demoTasks));
+        console.log('✅ Tâches de démo créées et sauvegardées:', demoTasks.length);
       }
 
       // Events
       const savedEvents = parseStoredData<any>('events', []);
-      console.log('Événements sauvegardés trouvés:', savedEvents);
+      console.log('Événements sauvegardés trouvés:', savedEvents.length);
       
       if (savedEvents.length > 0) {
         const parsedEvents = savedEvents.map((event: any) => ({
@@ -157,7 +161,9 @@ export function useTasks(): UseTasksReturn {
         console.log('❌ Aucun événement en localStorage, création de données de démo');
         const { demoEvents } = createInitialData();
         setEvents(demoEvents);
-        console.log('✅ Événements de démo créés:', demoEvents.length);
+        // Sauvegarder immédiatement les données de démo
+        localStorage.setItem('events', JSON.stringify(demoEvents));
+        console.log('✅ Événements de démo créés et sauvegardés:', demoEvents.length);
       }
 
       // Inbox Items
@@ -196,6 +202,7 @@ export function useTasks(): UseTasksReturn {
       const savedFilter = localStorage.getItem('taskFilter') || 'all';
       setFilter(savedFilter);
       
+      setIsInitialized(true);
       console.log('=== FIN DU CHARGEMENT DES DONNÉES ===');
       
     } catch (error) {
@@ -204,13 +211,17 @@ export function useTasks(): UseTasksReturn {
       const { demoTasks, demoEvents } = createInitialData();
       setTasks(demoTasks);
       setEvents(demoEvents);
+      // Sauvegarder les données de récupération
+      localStorage.setItem('tasks', JSON.stringify(demoTasks));
+      localStorage.setItem('events', JSON.stringify(demoEvents));
       console.log('✅ Données de démo créées après erreur');
+      setIsInitialized(true);
     }
   }, []);
 
-  // Save data to localStorage when it changes
+  // Save data to localStorage when it changes (but only after initialization)
   useEffect(() => {
-    if (tasks.length > 0) {
+    if (isInitialized && tasks.length >= 0) {
       try {
         localStorage.setItem('tasks', JSON.stringify(tasks));
         console.log('💾 Tâches sauvegardées:', tasks.length);
@@ -218,10 +229,10 @@ export function useTasks(): UseTasksReturn {
         console.error('❌ Erreur sauvegarde tâches:', error);
       }
     }
-  }, [tasks]);
+  }, [tasks, isInitialized]);
 
   useEffect(() => {
-    if (events.length > 0) {
+    if (isInitialized && events.length >= 0) {
       try {
         localStorage.setItem('events', JSON.stringify(events));
         console.log('💾 Événements sauvegardés:', events.length);
@@ -229,43 +240,51 @@ export function useTasks(): UseTasksReturn {
         console.error('❌ Erreur sauvegarde événements:', error);
       }
     }
-  }, [events]);
+  }, [events, isInitialized]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('inboxItems', JSON.stringify(inboxItems));
-      console.log('💾 Éléments inbox sauvegardés:', inboxItems.length);
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde inbox:', error);
+    if (isInitialized) {
+      try {
+        localStorage.setItem('inboxItems', JSON.stringify(inboxItems));
+        console.log('💾 Éléments inbox sauvegardés:', inboxItems.length);
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde inbox:', error);
+      }
     }
-  }, [inboxItems]);
+  }, [inboxItems, isInitialized]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('projects', JSON.stringify(projects));
-      console.log('💾 Projets sauvegardés:', projects.length);
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde projets:', error);
+    if (isInitialized) {
+      try {
+        localStorage.setItem('projects', JSON.stringify(projects));
+        console.log('💾 Projets sauvegardés:', projects.length);
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde projets:', error);
+      }
     }
-  }, [projects]);
+  }, [projects, isInitialized]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('taskTypes', JSON.stringify(taskTypes));
-      console.log('💾 Types de tâches sauvegardés:', taskTypes.length);
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde types:', error);
+    if (isInitialized) {
+      try {
+        localStorage.setItem('taskTypes', JSON.stringify(taskTypes));
+        console.log('💾 Types de tâches sauvegardés:', taskTypes.length);
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde types:', error);
+      }
     }
-  }, [taskTypes]);
+  }, [taskTypes, isInitialized]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('taskFilter', filter);
-      console.log('💾 Filtre sauvegardé:', filter);
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde filtre:', error);
+    if (isInitialized) {
+      try {
+        localStorage.setItem('taskFilter', filter);
+        console.log('💾 Filtre sauvegardé:', filter);
+      } catch (error) {
+        console.error('❌ Erreur sauvegarde filtre:', error);
+      }
     }
-  }, [filter]);
+  }, [filter, isInitialized]);
 
   // Enhanced task creation with better ID generation
   const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
@@ -411,7 +430,8 @@ export function useTasks(): UseTasksReturn {
     tasks: tasks.length, 
     events: events.length,
     tasksWithSchedule: tasks.filter(t => t.scheduledStart).length,
-    eventsToday: events.filter(e => new Date(e.startDate).toDateString() === new Date().toDateString()).length
+    eventsToday: events.filter(e => new Date(e.startDate).toDateString() === new Date().toDateString()).length,
+    isInitialized
   });
 
   return {
