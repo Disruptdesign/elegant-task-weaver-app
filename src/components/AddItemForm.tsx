@@ -58,13 +58,29 @@ export function AddItemForm({
   const [location, setLocation] = useState('');
   const [repeat, setRepeat] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
 
-  // Debug logging to check if props are received
-  console.log('AddItemForm: Props received:', {
+  // État pour forcer le re-rendu des dropdowns
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Surveillance des changements de props pour forcer la mise à jour
+  useEffect(() => {
+    console.log('AddItemForm: Props changed, forcing update', {
+      projects: projects.length,
+      taskTypes: taskTypes.length,
+      isOpen
+    });
+    setForceUpdate(prev => prev + 1);
+  }, [projects, taskTypes, isOpen]);
+
+  // Debug logging amélioré
+  console.log('AddItemForm: Current state:', {
     isOpen,
     projects: projects.length,
     taskTypes: taskTypes.length,
-    projectsData: projects,
-    taskTypesData: taskTypes
+    projectId,
+    taskTypeId,
+    forceUpdate,
+    validProjects: projects.filter(p => p && p.id && p.title),
+    validTaskTypes: taskTypes.filter(t => t && t.id && t.name)
   });
 
   useEffect(() => {
@@ -210,6 +226,19 @@ export function AddItemForm({
 
   if (!isOpen) return null;
 
+  // Validation des données avec logs détaillés
+  const validProjects = projects.filter(p => p && p.id && p.title);
+  const validTaskTypes = taskTypes.filter(t => t && t.id && t.name);
+
+  console.log('AddItemForm: Validated data for rendering:', {
+    originalProjects: projects.length,
+    validProjects: validProjects.length,
+    originalTaskTypes: taskTypes.length,
+    validTaskTypes: validTaskTypes.length,
+    projectsList: validProjects.map(p => ({ id: p.id, title: p.title })),
+    taskTypesList: validTaskTypes.map(t => ({ id: p.id, name: p.name }))
+  });
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -292,13 +321,14 @@ export function AddItemForm({
           {/* Propriétés spécifiques aux tâches */}
           {itemType === 'task' && (
             <>
-              {/* Projet et type */}
+              {/* Projet et type avec keys pour forcer le re-rendu */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Projet (optionnel) - {projects.length} disponible{projects.length > 1 ? 's' : ''}
+                    Projet (optionnel) - {validProjects.length} disponible{validProjects.length > 1 ? 's' : ''}
                   </label>
                   <select
+                    key={`project-select-${forceUpdate}-${validProjects.length}`}
                     value={projectId}
                     onChange={(e) => {
                       console.log('Project selected:', e.target.value);
@@ -307,24 +337,28 @@ export function AddItemForm({
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
                     <option value="">Aucun projet</option>
-                    {projects.map(project => (
-                      <option key={project.id} value={project.id}>
+                    {validProjects.map(project => (
+                      <option key={`${project.id}-${forceUpdate}`} value={project.id}>
                         {project.title}
                       </option>
                     ))}
                   </select>
-                  {projects.length === 0 && (
+                  {validProjects.length === 0 && (
                     <p className="text-xs text-gray-500 mt-1">
                       Aucun projet disponible. Créez-en un dans l'onglet Projets.
                     </p>
                   )}
+                  <p className="text-xs text-blue-500 mt-1">
+                    Debug: {validProjects.length} projets valides trouvés
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Type de tâche - {taskTypes.length} disponible{taskTypes.length > 1 ? 's' : ''}
+                    Type de tâche - {validTaskTypes.length} disponible{validTaskTypes.length > 1 ? 's' : ''}
                   </label>
                   <select
+                    key={`tasktype-select-${forceUpdate}-${validTaskTypes.length}`}
                     value={taskTypeId}
                     onChange={(e) => {
                       console.log('TaskType selected:', e.target.value);
@@ -333,17 +367,20 @@ export function AddItemForm({
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
                     <option value="">Choisir un type</option>
-                    {taskTypes.map(taskType => (
-                      <option key={taskType.id} value={taskType.id}>
+                    {validTaskTypes.map(taskType => (
+                      <option key={`${taskType.id}-${forceUpdate}`} value={taskType.id}>
                         {taskType.name}
                       </option>
                     ))}
                   </select>
-                  {taskTypes.length === 0 && (
+                  {validTaskTypes.length === 0 && (
                     <p className="text-xs text-gray-500 mt-1">
                       Aucun type de tâche disponible. Créez-en un dans les paramètres.
                     </p>
                   )}
+                  <p className="text-xs text-blue-500 mt-1">
+                    Debug: {validTaskTypes.length} types de tâches valides trouvés
+                  </p>
                 </div>
               </div>
 
