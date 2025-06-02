@@ -267,15 +267,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
         </div>
       </div>
 
-      {/* Debug: États - Seulement pour le drag (pas pour le resize) */}
-      {onUpdateTask && dragState.isDragging && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-          <p className="text-sm text-yellow-800">
-            🟡 Déplacement en cours pour la tâche {dragState.taskId}
-          </p>
-        </div>
-      )}
-
+      {/* Messages d'état sans le message de déplacement */}
       {!onUpdateTask && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p className="text-sm text-blue-800">
@@ -288,7 +280,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
       {onUpdateTask && hasAddedTestTask && tasksWithTest.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
           <p className="text-sm text-green-800">
-            ✅ Tâche de test ajoutée ! Vous pouvez maintenant tester le drag & drop.
+            ✅ Tâche de test ajoutée ! Vous pouvez maintenant tester le drag & drop entre les jours.
           </p>
         </div>
       )}
@@ -567,14 +559,14 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
               <div className="text-xs text-gray-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <GripVertical size={12} className="text-gray-400" />
-                  <span>Glisser le contenu pour déplacer la tâche (même jour ou vers d'autres jours)</span>
+                  <span>Glisser le contenu pour déplacer la tâche librement (même jour ou vers d'autres jours)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ArrowUpDown size={12} className="text-gray-400" />
                   <span>Glisser les bords gris haut/bas pour ajuster la durée</span>
                 </div>
                 <div>• Cliquer pour éditer les détails de la tâche</div>
-                <div>• Les modifications maintiennent l'auto-planification pour les autres tâches</div>
+                <div>• Aucune contrainte horaire lors du déplacement entre jours</div>
               </div>
             </div>
           )}

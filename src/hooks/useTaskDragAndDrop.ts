@@ -54,27 +54,16 @@ export function useTaskDragAndDrop(
     console.log('Mouse move calculation:', { deltaY, minutesDelta });
 
     if (currentState.isDragging) {
-      // Déplacer la tâche
+      // Déplacer la tâche - permettre le déplacement libre entre les jours
       const newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
       
-      // Arrondir aux créneaux de 15 minutes pour un déplacement plus fluide
+      // Arrondir aux créneaux de 15 minutes
       const minute = newStartTime.getMinutes();
       const roundedMinutes = Math.round(minute / 15) * 15;
       newStartTime.setMinutes(roundedMinutes, 0, 0);
 
-      // Contraindre aux heures de travail seulement si on reste dans la même journée
-      const originalDay = currentState.startTime.getDate();
-      const newDay = newStartTime.getDate();
-      
-      if (originalDay === newDay) {
-        // Même jour : contraindre aux heures de travail
-        const hour = newStartTime.getHours();
-        if (hour < 9) {
-          newStartTime.setHours(9, 0, 0, 0);
-        } else if (hour >= 18) {
-          newStartTime.setHours(17, 45, 0, 0);
-        }
-      }
+      // NE PAS contraindre aux heures de travail lors du drag entre jours
+      // Permettre un déplacement libre
 
       console.log('Updating task position:', { 
         taskId: currentState.taskId, 
@@ -173,8 +162,8 @@ export function useTaskDragAndDrop(
     }
 
     const newDragState = {
-      isDragging: action === 'move',
-      isResizing: action === 'resize',
+      isDragging: action === 'move', // Seulement true pour le déplacement
+      isResizing: action === 'resize', // Seulement true pour le redimensionnement
       taskId: task.id,
       startY: e.clientY,
       startTime: new Date(task.scheduledStart),
