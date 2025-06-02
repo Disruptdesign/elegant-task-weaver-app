@@ -19,7 +19,7 @@ interface DragCallbacks {
   onUpdateEvent?: (id: string, updates: any) => void;
 }
 
-const DRAG_THRESHOLD = 3; // pixels - seuil réduit pour une réactivité améliorée
+const DRAG_THRESHOLD = 5;
 
 export function useDragAndDrop(callbacks: DragCallbacks) {
   const [dragState, setDragState] = useState<DragState>({
@@ -40,7 +40,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
   const pendingClickRef = useRef<(() => void) | null>(null);
   const hasDragStartedRef = useRef(false);
 
-  // Maintenir les refs à jour
+  // Toujours maintenir les refs à jour
   useEffect(() => {
     dragStateRef.current = dragState;
   }, [dragState]);
@@ -86,15 +86,11 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     const deltaX = e.clientX - currentState.startX;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    // Démarrer le drag si on dépasse le seuil et qu'on n'a pas encore commencé
     if (!hasDragStartedRef.current && distance > DRAG_THRESHOLD) {
       console.log('🎯 Starting drag operation:', currentState.action);
       hasDragStartedRef.current = true;
-      
-      // Annuler le clic en attente
       pendingClickRef.current = null;
       
-      // Mettre à jour l'état pour refléter le début du drag
       setDragState(prev => ({
         ...prev,
         isDragging: prev.action === 'move',
@@ -106,13 +102,11 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
         (currentState.resizeHandle === 'top' ? 'n-resize' : 's-resize');
     }
 
-    // Ne continuer que si le drag a vraiment commencé
     if (!hasDragStartedRef.current) {
       return;
     }
     
     if (currentState.action === 'move') {
-      // Logique de déplacement
       const minutesDelta = Math.round((deltaY / 64) * 60);
       const daysDelta = Math.round(deltaX / 150);
 
@@ -122,7 +116,6 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
         newStartTime = new Date(newStartTime.getTime() + daysDelta * 24 * 60 * 60 * 1000);
       }
       
-      // Snap aux quarts d'heure
       const minute = newStartTime.getMinutes();
       const roundedMinutes = Math.round(minute / 15) * 15;
       newStartTime.setMinutes(roundedMinutes, 0, 0);
@@ -141,7 +134,6 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       }
       
     } else if (currentState.action === 'resize') {
-      // Logique de redimensionnement
       const minutesDelta = Math.round((deltaY / 64) * 60);
       let newDuration = currentState.originalDuration;
       
@@ -150,7 +142,6 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       } else if (currentState.resizeHandle === 'top') {
         newDuration = snapToQuarterHour(currentState.originalDuration - minutesDelta);
         
-        // Ajuster le temps de début pour le redimensionnement par le haut
         const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
         
         if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
@@ -168,7 +159,6 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
         return;
       }
 
-      // Mise à jour pour le redimensionnement par le bas
       if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
         currentCallbacks.onUpdateTask(currentState.itemId, {
           estimatedDuration: newDuration,
@@ -185,20 +175,14 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
   const handleMouseUp = useCallback(() => {
     console.log('🖱️ Mouse up - finalizing drag operation');
     
-    // Exécuter le clic en attente seulement si aucun drag n'a eu lieu
     if (pendingClickRef.current && !hasDragStartedRef.current) {
       console.log('👆 Executing pending click');
       const clickHandler = pendingClickRef.current;
       pendingClickRef.current = null;
-      
-      // Exécuter le clic après le nettoyage pour éviter les conflits
       setTimeout(() => clickHandler(), 0);
     }
     
-    // Nettoyer l'état
     cleanupDrag();
-    
-    // Supprimer les event listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   }, [cleanupDrag, handleMouseMove]);
@@ -216,7 +200,6 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
 
     console.log('🚀 Initializing drag:', { action, itemType, itemId: item.id, resizeHandle });
 
-    // Vérifications de base
     if (itemType === 'task' && !item.scheduledStart) {
       console.log('❌ Task has no scheduled start time');
       return;
@@ -232,18 +215,15 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       ? item.estimatedDuration 
       : (new Date(item.endDate).getTime() - new Date(item.startDate).getTime()) / (1000 * 60);
 
-    // Stocker le gestionnaire de clic seulement pour les déplacements
     if (onItemClick && action === 'move') {
       pendingClickRef.current = onItemClick;
     }
 
-    // Réinitialiser l'état
     hasDragStartedRef.current = false;
     
-    // Configurer l'état de drag
     setDragState({
-      isDragging: false, // Sera activé quand le seuil sera dépassé
-      isResizing: false, // Sera activé quand le seuil sera dépassé
+      isDragging: false,
+      isResizing: false,
       itemId: item.id,
       itemType,
       startY: e.clientY,
@@ -254,18 +234,14 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       action,
     });
 
-    // Nettoyer les anciens listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-    
-    // Ajouter les nouveaux listeners
     document.addEventListener('mousemove', handleMouseMove, { passive: false });
     document.addEventListener('mouseup', handleMouseUp, { passive: false });
     
     console.log('✅ Drag initialization complete');
   }, [handleMouseMove, handleMouseUp]);
 
-  // Nettoyage lors du démontage
   useEffect(() => {
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);

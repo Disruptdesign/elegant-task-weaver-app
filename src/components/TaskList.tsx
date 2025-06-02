@@ -4,7 +4,6 @@ import { Task, Project, TaskType } from '../types/task';
 import { TaskCard } from './TaskCard';
 import { AddItemForm } from './AddItemForm';
 import { Plus, Search, Filter, RefreshCw, ListTodo, CheckCircle, ArrowUpDown } from 'lucide-react';
-import { getTaskStatus } from '../utils/taskStatus';
 
 interface TaskListProps {
   tasks: Task[];
@@ -29,6 +28,7 @@ export function TaskList({
   projects = [],
   taskTypes = [],
 }: TaskListProps) {
+  // Tous les hooks en début de composant, dans le bon ordre
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,9 +39,11 @@ export function TaskList({
 
   console.log('TaskList: Rendering with props:', {
     projects: projects.length,
-    taskTypes: taskTypes.length
+    taskTypes: taskTypes.length,
+    tasks: tasks.length
   });
 
+  // Filtrage et tri des tâches
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -84,6 +86,7 @@ export function TaskList({
     return sortOrder === 'asc' ? comparison : -comparison;
   });
 
+  // Fonctions de gestion
   const handleEdit = (task: Task) => {
     setEditingTask(task);
     setIsFormOpen(true);
@@ -107,7 +110,6 @@ export function TaskList({
     setEditingTask(undefined);
   };
 
-  // Fonction améliorée pour gérer le basculement de l'état de completion
   const handleToggleComplete = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
@@ -128,7 +130,6 @@ export function TaskList({
   const pendingTasks = sortedTasks.filter(task => !task.completed);
   const completedTasks = sortedTasks.filter(task => task.completed);
 
-  // Calculer les compteurs sur la base de TOUTES les tâches, pas seulement les filtrées
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
   const totalCompletedTasks = tasks.filter(task => task.completed).length;
   const totalTasks = tasks.length;
@@ -149,7 +150,7 @@ export function TaskList({
 
   return (
     <div className="space-y-6">
-      {/* En-tête amélioré pour mobile */}
+      {/* En-tête */}
       <div className="flex flex-col gap-4 items-start">
         <div className="space-y-1 w-full">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3 flex-wrap">
@@ -186,10 +187,9 @@ export function TaskList({
         </div>
       </div>
 
-      {/* Barre de recherche et filtres améliorée pour mobile */}
+      {/* Barre de recherche et filtres */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
         <div className="space-y-4">
-          {/* Recherche */}
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
@@ -201,9 +201,7 @@ export function TaskList({
             />
           </div>
 
-          {/* Filtres et tri - améliorés pour mobile */}
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Filtres de statut */}
             <div className="flex items-center gap-2 flex-wrap">
               <Filter size={16} className="text-gray-400 flex-shrink-0" />
               <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
@@ -223,7 +221,6 @@ export function TaskList({
               </div>
             </div>
 
-            {/* Filtre de priorité */}
             <select
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value as any)}
@@ -236,7 +233,6 @@ export function TaskList({
               <option value="low">🟢 Faible</option>
             </select>
 
-            {/* Options de tri */}
             <div className="flex items-center gap-2">
               <ArrowUpDown size={16} className="text-gray-400 flex-shrink-0" />
               <select
@@ -262,7 +258,7 @@ export function TaskList({
         </div>
       </div>
 
-      {/* Liste des tâches - améliorée pour mobile */}
+      {/* Liste des tâches */}
       {sortedTasks.length === 0 ? (
         <div className="text-center py-12 sm:py-16 bg-white rounded-2xl border border-gray-100">
           <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full flex items-center justify-center mb-6">
@@ -295,7 +291,6 @@ export function TaskList({
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Tâches en cours */}
           {pendingTasks.length > 0 && (filterStatus === 'all' || filterStatus === 'pending') && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -322,7 +317,6 @@ export function TaskList({
             </div>
           )}
 
-          {/* Tâches terminées */}
           {completedTasks.length > 0 && (filterStatus === 'all' || filterStatus === 'completed') && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -352,7 +346,6 @@ export function TaskList({
         </div>
       )}
 
-      {/* Formulaire de tâche */}
       <AddItemForm
         isOpen={isFormOpen}
         onClose={handleFormClose}

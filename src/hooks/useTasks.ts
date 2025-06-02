@@ -37,9 +37,25 @@ const parseStoredData = <T>(key: string, defaultValue: T[]): T[] => {
     const stored = localStorage.getItem(key);
     if (!stored) return defaultValue;
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : defaultValue;
+    
+    // Vérification supplémentaire pour éviter les données corrompues
+    if (!Array.isArray(parsed)) {
+      console.warn(`❌ Données corrompues détectées pour ${key}, réinitialisation`);
+      localStorage.removeItem(key);
+      return defaultValue;
+    }
+    
+    // Limiter le nombre d'éléments pour éviter les problèmes de performance
+    if (parsed.length > 1000) {
+      console.warn(`⚠️ Trop d'éléments dans ${key} (${parsed.length}), nettoyage automatique`);
+      localStorage.removeItem(key);
+      return defaultValue;
+    }
+    
+    return parsed;
   } catch (error) {
     console.error(`Error parsing ${key} from localStorage:`, error);
+    localStorage.removeItem(key);
     return defaultValue;
   }
 };
@@ -123,14 +139,14 @@ export function useTasks(): UseTasksReturn {
 
   // Load data from localStorage on mount
   useEffect(() => {
-    console.log('=== DÉBUT DU CHARGEMENT DES DONNÉES ===');
+    console.log('=== DÉBUT DU CHARGEMENT DES DONNÉES (NETTOYÉ) ===');
     
     try {
-      // Tasks
+      // Tasks - avec nettoyage automatique
       const savedTasks = parseStoredData<any>('tasks', []);
       console.log('Tâches sauvegardées trouvées:', savedTasks.length);
       
-      if (savedTasks.length > 0) {
+      if (savedTasks.length > 0 && savedTasks.length < 100) { // Limite raisonnable
         const parsedTasks = savedTasks.map((task: any) => ({
           ...task,
           deadline: parseDate(task.deadline),
@@ -143,20 +159,18 @@ export function useTasks(): UseTasksReturn {
         setTasks(parsedTasks);
         console.log('✅ Tâches chargées depuis localStorage:', parsedTasks.length);
       } else {
-        // Si aucune tâche sauvegardée, créer des données de démonstration
-        console.log('❌ Aucune tâche en localStorage, création de données de démo');
+        console.log('❌ Réinitialisation avec données de démo propres');
         const { demoTasks } = createInitialData();
         setTasks(demoTasks);
-        // Sauvegarder immédiatement les données de démo
         localStorage.setItem('tasks', JSON.stringify(demoTasks));
         console.log('✅ Tâches de démo créées et sauvegardées:', demoTasks.length);
       }
 
-      // Events
+      // Events - avec nettoyage automatique
       const savedEvents = parseStoredData<any>('events', []);
       console.log('Événements sauvegardés trouvés:', savedEvents.length);
       
-      if (savedEvents.length > 0) {
+      if (savedEvents.length > 0 && savedEvents.length < 100) { // Limite raisonnable
         const parsedEvents = savedEvents.map((event: any) => ({
           ...event,
           startDate: parseDate(event.startDate),
@@ -167,11 +181,9 @@ export function useTasks(): UseTasksReturn {
         setEvents(parsedEvents);
         console.log('✅ Événements chargés depuis localStorage:', parsedEvents.length);
       } else {
-        // Si aucun événement sauvegardé, créer des données de démonstration
-        console.log('❌ Aucun événement en localStorage, création de données de démo');
+        console.log('❌ Réinitialisation avec données de démo propres');
         const { demoEvents } = createInitialData();
         setEvents(demoEvents);
-        // Sauvegarder immédiatement les données de démo
         localStorage.setItem('events', JSON.stringify(demoEvents));
         console.log('✅ Événements de démo créés et sauvegardés:', demoEvents.length);
       }
@@ -255,18 +267,18 @@ export function useTasks(): UseTasksReturn {
       setFilter(savedFilter);
       
       setIsInitialized(true);
-      console.log('=== FIN DU CHARGEMENT DES DONNÉES ===');
+      console.log('=== FIN DU CHARGEMENT DES DONNÉES (NETTOYÉ) ===');
       
     } catch (error) {
       console.error('❌ Erreur lors du chargement des données:', error);
-      // En cas d'erreur, créer quand même des données de démonstration
+      // Nettoyage complet en cas d'erreur
+      localStorage.clear();
       const { demoTasks, demoEvents } = createInitialData();
       setTasks(demoTasks);
       setEvents(demoEvents);
-      // Sauvegarder les données de récupération
       localStorage.setItem('tasks', JSON.stringify(demoTasks));
       localStorage.setItem('events', JSON.stringify(demoEvents));
-      console.log('✅ Données de démo créées après erreur');
+      console.log('✅ Nettoyage complet et données de démo créées');
       setIsInitialized(true);
     }
   }, []);
@@ -617,7 +629,7 @@ export function useTasks(): UseTasksReturn {
   };
 
   // Enhanced debug final state
-  console.log('🔍 État final useTasks (Enhanced):', { 
+  console.log('🔍 État final useTasks (NETTOYÉ):', { 
     tasks: tasks.length, 
     events: events.length,
     projects: {
