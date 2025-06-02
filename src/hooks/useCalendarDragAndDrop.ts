@@ -11,10 +11,17 @@ export function useCalendarDragAndDrop(
     onUpdateEvent,
   });
 
-  console.log('CalendarDragAndDrop: Hook initialized', {
-    dragState,
-    onUpdateTask: !!onUpdateTask,
-    onUpdateEvent: !!onUpdateEvent
+  console.log('📅 CalendarDragAndDrop: Hook initialized', {
+    dragState: {
+      isDragging: dragState.isDragging,
+      isResizing: dragState.isResizing,
+      itemId: dragState.itemId,
+      action: dragState.action
+    },
+    hasCallbacks: { 
+      onUpdateTask: !!onUpdateTask, 
+      onUpdateEvent: !!onUpdateEvent 
+    }
   });
 
   const startTaskDrag = (
@@ -24,7 +31,19 @@ export function useCalendarDragAndDrop(
     resizeHandle?: 'top' | 'bottom',
     onTaskClick?: () => void
   ) => {
-    console.log('Starting task drag:', { taskId: task.id, action, resizeHandle });
+    console.log('📋 Starting task drag:', { 
+      taskId: task.id, 
+      title: task.title,
+      action, 
+      resizeHandle,
+      hasScheduledStart: !!task.scheduledStart
+    });
+    
+    if (!task.scheduledStart) {
+      console.warn('⚠️ Cannot drag task without scheduled start time');
+      return;
+    }
+    
     startDrag(e, task, 'task', action, resizeHandle, onTaskClick);
   };
 
@@ -35,7 +54,19 @@ export function useCalendarDragAndDrop(
     resizeHandle?: 'top' | 'bottom',
     onEventClick?: () => void
   ) => {
-    console.log('Starting event drag:', { eventId: event.id, action, resizeHandle });
+    console.log('📅 Starting event drag:', { 
+      eventId: event.id, 
+      title: event.title,
+      action, 
+      resizeHandle,
+      isAllDay: event.allDay
+    });
+    
+    if (event.allDay) {
+      console.warn('⚠️ Cannot drag all-day event');
+      return;
+    }
+    
     startDrag(e, event, 'event', action, resizeHandle, onEventClick);
   };
 

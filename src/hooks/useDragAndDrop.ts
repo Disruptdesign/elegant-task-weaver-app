@@ -11,7 +11,6 @@ interface DragState {
   startTime: Date | null;
   originalDuration: number;
   resizeHandle: 'top' | 'bottom' | null;
-  isPendingDrag: boolean;
   action: 'move' | 'resize';
 }
 
@@ -20,8 +19,7 @@ interface DragCallbacks {
   onUpdateEvent?: (id: string, updates: any) => void;
 }
 
-const DRAG_THRESHOLD = 5; // pixels
-const DRAG_DELAY = 150; // milliseconds
+const DRAG_THRESHOLD = 3; // pixels - seuil réduit pour une réactivité améliorée
 
 export function useDragAndDrop(callbacks: DragCallbacks) {
   const [dragState, setDragState] = useState<DragState>({
@@ -34,20 +32,15 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     startTime: null,
     originalDuration: 0,
     resizeHandle: null,
-    isPendingDrag: false,
     action: 'move',
   });
 
   const dragStateRef = useRef(dragState);
   const callbacksRef = useRef(callbacks);
-  const dragTimeoutRef = useRef<number | null>(null);
-  const pendingClickRef = useRef<{
-    item: any;
-    itemType: 'task' | 'event';
-    onClick: () => void;
-  } | null>(null);
+  const pendingClickRef = useRef<(() => void) | null>(null);
+  const hasDragStartedRef = useRef(false);
 
-  // Garder les refs à jour
+  // Maintenir les refs à jour
   useEffect(() => {
     dragStateRef.current = dragState;
   }, [dragState]);
@@ -57,18 +50,12 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
   }, [callbacks]);
 
   const snapToQuarterHour = useCallback((duration: number): number => {
-    return Math.round(duration / 15) * 15;
+    return Math.max(15, Math.round(duration / 15) * 15);
   }, []);
 
   const cleanupDrag = useCallback(() => {
-    console.log('Cleaning up drag state');
+    console.log('🧹 Cleaning up drag state');
     
-    // Nettoyer le timeout
-    if (dragTimeoutRef.current) {
-      clearTimeout(dragTimeoutRef.current);
-      dragTimeoutRef.current = null;
-    }
-
     setDragState({
       isDragging: false,
       isResizing: false,
@@ -79,28 +66,12 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       startTime: null,
       originalDuration: 0,
       resizeHandle: null,
-      isPendingDrag: false,
       action: 'move',
     });
 
+    hasDragStartedRef.current = false;
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
-  }, []);
-
-  const startActualDrag = useCallback(() => {
-    console.log('Starting actual drag operation for action:', dragStateRef.current.action);
-    
-    const action = dragStateRef.current.action;
-    
-    setDragState(prev => ({
-      ...prev,
-      isDragging: action === 'move',
-      isResizing: action === 'resize',
-      isPendingDrag: false,
-    }));
-
-    document.body.style.userSelect = 'none';
-    document.body.style.cursor = action === 'move' ? 'grabbing' : (dragStateRef.current.resizeHandle === 'top' ? 'n-resize' : 's-resize');
   }, []);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -115,28 +86,33 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     const deltaX = e.clientX - currentState.startX;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    // Si on est en attente et qu'on a bougé assez, démarrer l'action appropriée
-    if (currentState.isPendingDrag && distance > DRAG_THRESHOLD) {
-      console.log('Distance threshold reached, starting action:', currentState.action);
-      startActualDrag();
+    // Démarrer le drag si on dépasse le seuil et qu'on n'a pas encore commencé
+    if (!hasDragStartedRef.current && distance > DRAG_THRESHOLD) {
+      console.log('🎯 Starting drag operation:', currentState.action);
+      hasDragStartedRef.current = true;
       
       // Annuler le clic en attente
       pendingClickRef.current = null;
       
-      // Nettoyer le timeout
-      if (dragTimeoutRef.current) {
-        clearTimeout(dragTimeoutRef.current);
-        dragTimeoutRef.current = null;
-      }
+      // Mettre à jour l'état pour refléter le début du drag
+      setDragState(prev => ({
+        ...prev,
+        isDragging: prev.action === 'move',
+        isResizing: prev.action === 'resize',
+      }));
+
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = currentState.action === 'move' ? 'grabbing' : 
+        (currentState.resizeHandle === 'top' ? 'n-resize' : 's-resize');
     }
 
-    // Ne continuer que si on est vraiment en train de draguer ou redimensionner
-    if (!currentState.isDragging && !currentState.isResizing) {
+    // Ne continuer que si le drag a vraiment commencé
+    if (!hasDragStartedRef.current) {
       return;
     }
     
-    if (currentState.isDragging) {
-      // Déplacement
+    if (currentState.action === 'move') {
+      // Logique de déplacement
       const minutesDelta = Math.round((deltaY / 64) * 60);
       const daysDelta = Math.round(deltaX / 150);
 
@@ -146,6 +122,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
         newStartTime = new Date(newStartTime.getTime() + daysDelta * 24 * 60 * 60 * 1000);
       }
       
+      // Snap aux quarts d'heure
       const minute = newStartTime.getMinutes();
       const roundedMinutes = Math.round(minute / 15) * 15;
       newStartTime.setMinutes(roundedMinutes, 0, 0);
@@ -163,71 +140,65 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
         });
       }
       
-    } else if (currentState.isResizing) {
-      // Redimensionnement
+    } else if (currentState.action === 'resize') {
+      // Logique de redimensionnement
       const minutesDelta = Math.round((deltaY / 64) * 60);
       let newDuration = currentState.originalDuration;
       
       if (currentState.resizeHandle === 'bottom') {
-        const rawDuration = currentState.originalDuration + minutesDelta;
-        newDuration = Math.max(15, snapToQuarterHour(rawDuration));
+        newDuration = snapToQuarterHour(currentState.originalDuration + minutesDelta);
       } else if (currentState.resizeHandle === 'top') {
-        const rawDuration = currentState.originalDuration - minutesDelta;
-        newDuration = Math.max(15, snapToQuarterHour(rawDuration));
+        newDuration = snapToQuarterHour(currentState.originalDuration - minutesDelta);
         
-        if (newDuration !== currentState.originalDuration) {
-          const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
-          
-          if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
-            currentCallbacks.onUpdateTask(currentState.itemId, {
-              scheduledStart: newStartTime,
-              scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
-              estimatedDuration: newDuration,
-            });
-          } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
-            const newEndTime = new Date(newStartTime.getTime() + newDuration * 60000);
-            currentCallbacks.onUpdateEvent(currentState.itemId, {
-              startDate: newStartTime,
-              endDate: newEndTime,
-            });
-          }
-          return;
-        }
-      }
-
-      if (newDuration !== currentState.originalDuration) {
+        // Ajuster le temps de début pour le redimensionnement par le haut
+        const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
+        
         if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
           currentCallbacks.onUpdateTask(currentState.itemId, {
+            scheduledStart: newStartTime,
+            scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
             estimatedDuration: newDuration,
-            scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
           });
         } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
-          const newEndTime = new Date(currentState.startTime.getTime() + newDuration * 60000);
           currentCallbacks.onUpdateEvent(currentState.itemId, {
-            endDate: newEndTime,
+            startDate: newStartTime,
+            endDate: new Date(newStartTime.getTime() + newDuration * 60000),
           });
         }
+        return;
+      }
+
+      // Mise à jour pour le redimensionnement par le bas
+      if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
+        currentCallbacks.onUpdateTask(currentState.itemId, {
+          estimatedDuration: newDuration,
+          scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
+        });
+      } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
+        currentCallbacks.onUpdateEvent(currentState.itemId, {
+          endDate: new Date(currentState.startTime.getTime() + newDuration * 60000),
+        });
       }
     }
-  }, [snapToQuarterHour, startActualDrag]);
+  }, [snapToQuarterHour]);
 
   const handleMouseUp = useCallback(() => {
-    console.log('Mouse up - cleaning up');
+    console.log('🖱️ Mouse up - finalizing drag operation');
     
-    // Si on avait un clic en attente et qu'on n'a pas commencé à draguer, exécuter le clic
-    if (pendingClickRef.current && !dragStateRef.current.isDragging && !dragStateRef.current.isResizing) {
-      console.log('Executing pending click');
-      setTimeout(() => {
-        if (pendingClickRef.current) {
-          pendingClickRef.current.onClick();
-          pendingClickRef.current = null;
-        }
-      }, 0);
+    // Exécuter le clic en attente seulement si aucun drag n'a eu lieu
+    if (pendingClickRef.current && !hasDragStartedRef.current) {
+      console.log('👆 Executing pending click');
+      const clickHandler = pendingClickRef.current;
+      pendingClickRef.current = null;
+      
+      // Exécuter le clic après le nettoyage pour éviter les conflits
+      setTimeout(() => clickHandler(), 0);
     }
     
+    // Nettoyer l'état
     cleanupDrag();
     
-    // Nettoyer les event listeners
+    // Supprimer les event listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   }, [cleanupDrag, handleMouseMove]);
@@ -243,16 +214,16 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('Starting drag preparation:', { action, itemType, itemId: item.id, resizeHandle });
+    console.log('🚀 Initializing drag:', { action, itemType, itemId: item.id, resizeHandle });
 
-    // Vérifications
+    // Vérifications de base
     if (itemType === 'task' && !item.scheduledStart) {
-      console.log('Task has no scheduled start time, aborting');
+      console.log('❌ Task has no scheduled start time');
       return;
     }
 
     if (itemType === 'event' && item.allDay) {
-      console.log('All-day event cannot be dragged, aborting');
+      console.log('❌ All-day event cannot be dragged');
       return;
     }
 
@@ -261,18 +232,18 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       ? item.estimatedDuration 
       : (new Date(item.endDate).getTime() - new Date(item.startDate).getTime()) / (1000 * 60);
 
-    // Stocker le clic en attente seulement pour les actions de déplacement
+    // Stocker le gestionnaire de clic seulement pour les déplacements
     if (onItemClick && action === 'move') {
-      pendingClickRef.current = {
-        item,
-        itemType,
-        onClick: onItemClick,
-      };
+      pendingClickRef.current = onItemClick;
     }
 
-    const newDragState = {
-      isDragging: false,
-      isResizing: false,
+    // Réinitialiser l'état
+    hasDragStartedRef.current = false;
+    
+    // Configurer l'état de drag
+    setDragState({
+      isDragging: false, // Sera activé quand le seuil sera dépassé
+      isResizing: false, // Sera activé quand le seuil sera dépassé
       itemId: item.id,
       itemType,
       startY: e.clientY,
@@ -280,36 +251,19 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       startTime,
       originalDuration: duration,
       resizeHandle: resizeHandle || null,
-      isPendingDrag: true,
       action,
-    };
+    });
 
-    console.log('Setting pending drag state:', newDragState);
-    setDragState(newDragState);
-
-    // Nettoyer les anciens event listeners
+    // Nettoyer les anciens listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
     
-    // Ajouter les nouveaux event listeners
+    // Ajouter les nouveaux listeners
     document.addEventListener('mousemove', handleMouseMove, { passive: false });
     document.addEventListener('mouseup', handleMouseUp, { passive: false });
     
-    // Pour le resize, démarrer immédiatement si on bouge la souris
-    if (action === 'resize') {
-      console.log('Resize action: starting immediately on mouse move');
-    } else {
-      // Pour le move, démarrer le drag après un délai si pas de mouvement
-      dragTimeoutRef.current = window.setTimeout(() => {
-        console.log('Drag timeout reached, starting drag');
-        startActualDrag();
-        // Annuler le clic en attente
-        pendingClickRef.current = null;
-      }, DRAG_DELAY);
-    }
-    
-    console.log('Event listeners added, timeout set for action:', action);
-  }, [handleMouseMove, handleMouseUp, startActualDrag]);
+    console.log('✅ Drag initialization complete');
+  }, [handleMouseMove, handleMouseUp]);
 
   // Nettoyage lors du démontage
   useEffect(() => {
@@ -318,9 +272,6 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
-      if (dragTimeoutRef.current) {
-        clearTimeout(dragTimeoutRef.current);
-      }
     };
   }, [handleMouseMove, handleMouseUp]);
 
