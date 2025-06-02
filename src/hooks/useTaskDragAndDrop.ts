@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Task } from '../types/task';
 
 interface DragState {
@@ -25,89 +25,100 @@ export function useTaskDragAndDrop(
     resizeHandle: null,
   });
 
+  // Utiliser useRef pour éviter la recréation des fonctions
+  const dragStateRef = useRef(dragState);
+  const onUpdateTaskRef = useRef(onUpdateTask);
+
+  // Mettre à jour les refs à chaque render
+  dragStateRef.current = dragState;
+  onUpdateTaskRef.current = onUpdateTask;
+
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    // Accéder directement au state le plus récent via une closure
-    setDragState(currentState => {
-      if (!currentState.taskId || !currentState.startTime || !onUpdateTask) {
-        console.log('Mouse move: missing required data, skipping');
-        return currentState;
+    const currentState = dragStateRef.current;
+    const updateTask = onUpdateTaskRef.current;
+    
+    console.log('Mouse move event triggered', { 
+      taskId: currentState.taskId, 
+      isDragging: currentState.isDragging,
+      isResizing: currentState.isResizing 
+    });
+
+    if (!currentState.taskId || !currentState.startTime || !updateTask) {
+      console.log('Mouse move: missing required data, skipping');
+      return;
+    }
+
+    const deltaY = e.clientY - currentState.startY;
+    const minutesDelta = Math.round((deltaY / 64) * 60); // 64px = 1 heure
+    
+    console.log('Mouse move calculation:', { deltaY, minutesDelta });
+
+    if (currentState.isDragging) {
+      // Déplacer la tâche
+      const newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
+      
+      // Contraindre aux heures de travail (9h-18h)
+      const hour = newStartTime.getHours();
+      
+      if (hour < 9) {
+        newStartTime.setHours(9, 0, 0, 0);
+      } else if (hour >= 18) {
+        newStartTime.setHours(17, 30, 0, 0);
       }
 
-      const deltaY = e.clientY - currentState.startY;
-      const minutesDelta = Math.round((deltaY / 64) * 60); // 64px = 1 heure
+      // Arrondir aux créneaux de 30 minutes
+      const minute = newStartTime.getMinutes();
+      const roundedMinutes = Math.round(minute / 30) * 30;
+      newStartTime.setMinutes(roundedMinutes, 0, 0);
+
+      console.log('Updating task position:', { 
+        taskId: currentState.taskId, 
+        newStartTime: newStartTime.toISOString() 
+      });
+
+      updateTask(currentState.taskId, {
+        scheduledStart: newStartTime,
+        scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
+      });
+    } else if (currentState.isResizing) {
+      // Redimensionner la tâche
+      let newDuration = currentState.originalDuration;
       
-      console.log('Mouse move:', { deltaY, minutesDelta, taskId: currentState.taskId });
-
-      if (currentState.isDragging) {
-        // Déplacer la tâche
-        const newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
-        
-        // Contraindre aux heures de travail (9h-18h)
-        const hour = newStartTime.getHours();
-        
-        if (hour < 9) {
-          newStartTime.setHours(9, 0, 0, 0);
-        } else if (hour >= 18) {
-          newStartTime.setHours(17, 30, 0, 0);
-        }
-
-        // Arrondir aux créneaux de 30 minutes
-        const minute = newStartTime.getMinutes();
-        const roundedMinutes = Math.round(minute / 30) * 30;
-        newStartTime.setMinutes(roundedMinutes, 0, 0);
-
-        console.log('Updating task position:', { 
-          taskId: currentState.taskId, 
-          newStartTime: newStartTime.toISOString(),
-          duration: currentState.originalDuration 
-        });
-
-        onUpdateTask(currentState.taskId, {
-          scheduledStart: newStartTime,
-          scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
-        });
-      } else if (currentState.isResizing) {
-        // Redimensionner la tâche
-        let newDuration = currentState.originalDuration;
-        
-        if (currentState.resizeHandle === 'bottom') {
-          newDuration = Math.max(15, currentState.originalDuration + minutesDelta);
-        } else if (currentState.resizeHandle === 'top') {
-          newDuration = Math.max(15, currentState.originalDuration - minutesDelta);
-          if (newDuration !== currentState.originalDuration) {
-            const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
-            
-            console.log('Updating task resize (top):', { 
-              taskId: currentState.taskId, 
-              newStartTime: newStartTime.toISOString(),
-              newDuration 
-            });
-            
-            onUpdateTask(currentState.taskId, {
-              scheduledStart: newStartTime,
-              scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
-              estimatedDuration: newDuration,
-            });
-            return currentState;
-          }
-        }
-
+      if (currentState.resizeHandle === 'bottom') {
+        newDuration = Math.max(15, currentState.originalDuration + minutesDelta);
+      } else if (currentState.resizeHandle === 'top') {
+        newDuration = Math.max(15, currentState.originalDuration - minutesDelta);
         if (newDuration !== currentState.originalDuration) {
-          console.log('Updating task resize (bottom):', { 
+          const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
+          
+          console.log('Updating task resize (top):', { 
             taskId: currentState.taskId, 
+            newStartTime: newStartTime.toISOString(),
             newDuration 
           });
           
-          onUpdateTask(currentState.taskId, {
+          updateTask(currentState.taskId, {
+            scheduledStart: newStartTime,
+            scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
             estimatedDuration: newDuration,
-            scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
           });
+          return;
         }
       }
 
-      return currentState;
-    });
-  }, [onUpdateTask]);
+      if (newDuration !== currentState.originalDuration) {
+        console.log('Updating task resize (bottom):', { 
+          taskId: currentState.taskId, 
+          newDuration 
+        });
+        
+        updateTask(currentState.taskId, {
+          estimatedDuration: newDuration,
+          scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
+        });
+      }
+    }
+  }, []); // Pas de dépendances pour éviter la recréation
 
   const handleMouseUp = useCallback(() => {
     console.log('Mouse up: cleaning up drag state');
@@ -127,7 +138,7 @@ export function useTaskDragAndDrop(
     document.removeEventListener('mouseup', handleMouseUp);
     
     console.log('Event listeners removed');
-  }, [handleMouseMove]);
+  }, [handleMouseMove]); // Dépendance stable
 
   const startDrag = useCallback((
     e: React.MouseEvent,
@@ -151,7 +162,7 @@ export function useTaskDragAndDrop(
       return;
     }
 
-    if (!onUpdateTask) {
+    if (!onUpdateTaskRef.current) {
       console.log('No update function provided, aborting drag');
       return;
     }
@@ -174,7 +185,7 @@ export function useTaskDragAndDrop(
     document.addEventListener('mouseup', handleMouseUp);
     
     console.log('Event listeners added');
-  }, [handleMouseMove, handleMouseUp, onUpdateTask]);
+  }, [handleMouseMove, handleMouseUp]);
 
   return {
     dragState,
