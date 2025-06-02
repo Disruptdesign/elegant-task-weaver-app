@@ -32,7 +32,6 @@ export function CalendarView({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [testDataAdded, setTestDataAdded] = useState(false);
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   
   // Gestion des clics avec délai pour éviter l'ouverture pendant le drag
   const clickTimerRef = useRef<number | null>(null);
@@ -439,8 +438,8 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements - design simple */}
-                  <div className="absolute inset-0 p-1 pointer-events-none">
+                  {/* Événements - Style Google Calendar */}
+                  <div className="absolute inset-0 p-0.5 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
                       .map(event => {
@@ -452,56 +451,55 @@ export function CalendarView({
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded-lg bg-purple-100 border border-purple-300 transition-all duration-200 cursor-pointer pointer-events-auto select-none ${
+                            className={`absolute rounded border-l-4 transition-all duration-100 cursor-pointer pointer-events-auto select-none ${
                               isBeingDragged 
-                                ? 'opacity-80 shadow-xl ring-2 ring-purple-400 z-50' 
-                                : 'hover:shadow-md hover:bg-purple-200'
+                                ? 'opacity-80 shadow-lg z-50' 
+                                : 'hover:shadow-md'
                             }`}
                             style={{
                               top: `${position.top}px`,
                               height: `${position.height}px`,
-                              left: '4px',
-                              right: '4px',
+                              left: '2px',
+                              right: '2px',
+                              backgroundColor: '#e3f2fd',
+                              borderLeftColor: '#1976d2',
                             }}
                             onClick={() => handleEventClick(event)}
                             onMouseDown={(e) => {
-                              // Zone de resize du haut (premiers 6px)
                               const rect = e.currentTarget.getBoundingClientRect();
                               const relativeY = e.clientY - rect.top;
                               
-                              if (relativeY <= 6 && onUpdateEvent) {
+                              if (relativeY <= 4 && onUpdateEvent) {
                                 handleEventMouseDown(e, event, 'resize', 'top');
-                              } else if (relativeY >= rect.height - 6 && onUpdateEvent) {
-                                // Zone de resize du bas (derniers 6px)
+                              } else if (relativeY >= rect.height - 4 && onUpdateEvent) {
                                 handleEventMouseDown(e, event, 'resize', 'bottom');
                               } else if (onUpdateEvent) {
-                                // Zone de déplacement (milieu)
                                 handleEventMouseDown(e, event, 'move');
                               }
                             }}
                           >
-                            <div className="h-full p-2 flex flex-col justify-center">
-                              <div className="flex items-center gap-2">
-                                <Users size={12} className="text-purple-600 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-semibold text-purple-900 text-sm leading-tight truncate">
-                                    {event.title}
-                                  </h4>
-                                  {position.height > 50 && (
-                                    <p className="text-xs text-purple-700 mt-1 leading-tight">
-                                      {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
-                                    </p>
-                                  )}
-                                </div>
+                            <div className="h-full p-1 flex flex-col justify-start">
+                              <div className="text-xs font-medium text-blue-900 leading-tight truncate">
+                                {event.title}
                               </div>
+                              {position.height > 30 && (
+                                <div className="text-xs text-blue-700 leading-tight mt-0.5">
+                                  {format(new Date(event.startDate), 'HH:mm')}
+                                </div>
+                              )}
+                              {position.height > 45 && event.location && (
+                                <div className="text-xs text-blue-600 leading-tight opacity-75 truncate">
+                                  {event.location}
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
                       })}
                   </div>
 
-                  {/* Tâches - design simple */}
-                  <div className="absolute inset-0 p-1 pointer-events-none">
+                  {/* Tâches - Style Google Calendar */}
+                  <div className="absolute inset-0 p-0.5 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
                       if (!position) {
@@ -509,72 +507,70 @@ export function CalendarView({
                         return null;
                       }
 
-                      const taskStatus = getTaskStatus(task);
-                      const statusColors = getTaskStatusColors(taskStatus);
                       const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
+                      const isCompleted = task.completed;
 
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute rounded-lg border transition-all duration-200 cursor-pointer pointer-events-auto select-none ${
-                            statusColors.bg
-                          } ${statusColors.border} ${
+                          className={`absolute rounded border-l-4 transition-all duration-100 cursor-pointer pointer-events-auto select-none ${
                             isBeingDragged 
-                              ? 'opacity-80 shadow-xl ring-2 ring-blue-400 z-50' 
+                              ? 'opacity-80 shadow-lg z-50' 
                               : 'hover:shadow-md'
-                          } ${task.completed ? 'opacity-60' : ''}`}
+                          } ${isCompleted ? 'opacity-60' : ''}`}
                           style={{
                             top: `${position.top}px`,
                             height: `${position.height}px`,
-                            left: '4px',
-                            right: '4px',
+                            left: '2px',
+                            right: '2px',
+                            backgroundColor: isCompleted ? '#f5f5f5' : '#fff3e0',
+                            borderLeftColor: isCompleted ? '#9e9e9e' : '#ff9800',
                           }}
                           onClick={() => handleTaskClick(task)}
                           onMouseDown={(e) => {
-                            // Zone de resize du haut (premiers 6px)
                             const rect = e.currentTarget.getBoundingClientRect();
                             const relativeY = e.clientY - rect.top;
                             
-                            if (relativeY <= 6 && onUpdateTask) {
+                            if (relativeY <= 4 && onUpdateTask) {
                               handleTaskMouseDown(e, task, 'resize', 'top');
-                            } else if (relativeY >= rect.height - 6 && onUpdateTask) {
-                              // Zone de resize du bas (derniers 6px)
+                            } else if (relativeY >= rect.height - 4 && onUpdateTask) {
                               handleTaskMouseDown(e, task, 'resize', 'bottom');
                             } else if (onUpdateTask) {
-                              // Zone de déplacement (milieu)
                               handleTaskMouseDown(e, task, 'move');
                             }
                           }}
                         >
-                          <div className="h-full p-2 flex items-center gap-2">
-                            {/* Checkbox */}
+                          <div className="h-full p-1 flex items-start gap-1">
+                            {/* Checkbox minimaliste */}
                             {onUpdateTask && (
                               <button
-                                className="flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center bg-white hover:bg-gray-50 transition-colors"
+                                className={`flex-shrink-0 w-3 h-3 mt-0.5 rounded-sm border transition-colors ${
+                                  isCompleted 
+                                    ? 'bg-gray-500 border-gray-500' 
+                                    : 'bg-white border-orange-400 hover:bg-orange-50'
+                                }`}
                                 onClick={(e) => handleTaskCompletion(task, e)}
-                                style={{ 
-                                  borderColor: task.completed ? '#10b981' : '#d1d5db',
-                                  backgroundColor: task.completed ? '#10b981' : '#ffffff'
-                                }}
                               >
-                                {task.completed && <Check size={10} className="text-white" />}
+                                {isCompleted && (
+                                  <Check size={8} className="text-white m-auto" />
+                                )}
                               </button>
                             )}
                             
-                            {/* Contenu de la tâche */}
+                            {/* Contenu */}
                             <div className="flex-1 min-w-0">
-                              <h4 className={`font-semibold text-gray-900 text-sm leading-tight truncate ${
-                                task.completed ? 'line-through opacity-70' : ''
+                              <div className={`text-xs font-medium leading-tight truncate ${
+                                isCompleted 
+                                  ? 'text-gray-600 line-through' 
+                                  : 'text-orange-900'
                               }`}>
                                 {task.title}
-                              </h4>
-                              {position.height > 50 && (
-                                <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
-                                  <Clock size={10} className="flex-shrink-0" />
-                                  <span className="truncate leading-tight">
-                                    {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
-                                    {' '}({task.estimatedDuration}min)
-                                  </span>
+                              </div>
+                              {position.height > 30 && (
+                                <div className={`text-xs leading-tight mt-0.5 ${
+                                  isCompleted ? 'text-gray-500' : 'text-orange-700'
+                                }`}>
+                                  {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
                                 </div>
                               )}
                             </div>
@@ -616,48 +612,57 @@ export function CalendarView({
                     {format(day, 'd')}
                   </div>
                   <div className="space-y-1">
+                    {/* Événements avec style Google Calendar */}
                     {dayEvents.slice(0, 2).map(event => (
                       <div
                         key={`month-event-${event.id}`}
-                        className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate font-medium flex items-center gap-1 group"
+                        className="text-xs p-1 rounded cursor-pointer hover:opacity-80 truncate font-medium border-l-2"
                         onClick={() => handleEventClick(event)}
+                        style={{
+                          backgroundColor: '#e3f2fd',
+                          borderLeftColor: '#1976d2',
+                          color: '#1976d2'
+                        }}
                         title={`${event.title}\n${event.allDay ? 'Toute la journée' : format(new Date(event.startDate), 'HH:mm') + ' - ' + format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                       >
-                        {event.allDay ? '🗓️' : '📅'} <span className="truncate flex-1">{event.title}</span>
-                        {onUpdateEvent && (
-                          <Edit size={8} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                        )}
+                        {event.title}
                       </div>
                     ))}
                     
+                    {/* Tâches avec style Google Calendar */}
                     {dayTasks.slice(0, dayEvents.length > 0 ? 1 : 3).map(task => {
-                      const taskStatus = getTaskStatus(task);
-                      const statusColors = getTaskStatusColors(taskStatus);
+                      const isCompleted = task.completed;
                       
                       return (
                         <div
                           key={`month-task-${task.id}`}
-                          className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 ${statusColors.bg} ${statusColors.text} truncate flex items-center gap-1 group ${task.completed ? 'opacity-60' : ''}`}
+                          className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 truncate flex items-center gap-1 border-l-2 ${
+                            isCompleted ? 'opacity-60' : ''
+                          }`}
                           onClick={() => handleTaskClick(task)}
+                          style={{
+                            backgroundColor: isCompleted ? '#f5f5f5' : '#fff3e0',
+                            borderLeftColor: isCompleted ? '#9e9e9e' : '#ff9800',
+                            color: isCompleted ? '#757575' : '#f57c00'
+                          }}
                           title={`${task.title}\n${task.estimatedDuration}min\n${task.description || ''}`}
                         >
                           {onUpdateTask && (
                             <button
                               onClick={(e) => handleTaskCompletion(task, e)}
-                              className="p-0.5 hover:bg-gray-200 rounded flex-shrink-0 bg-white bg-opacity-70"
+                              className={`w-2.5 h-2.5 rounded-sm border flex-shrink-0 ${
+                                isCompleted 
+                                  ? 'bg-gray-500 border-gray-500' 
+                                  : 'bg-white border-orange-400'
+                              }`}
                               title={task.completed ? "Marquer comme non terminé" : "Marquer comme terminé"}
                             >
-                              {task.completed ? (
-                                <Check size={8} className="text-green-600" />
-                              ) : (
-                                <Square size={8} className="text-gray-500" />
-                              )}
+                              {isCompleted && <Check size={6} className="text-white m-auto" />}
                             </button>
                           )}
-                          <span className={`truncate flex-1 ${task.completed ? 'line-through' : ''}`}>{task.title}</span>
-                          {onUpdateTask && (
-                            <Edit size={8} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
+                          <span className={`truncate flex-1 ${isCompleted ? 'line-through' : ''}`}>
+                            {task.title}
+                          </span>
                         </div>
                       );
                     })}
@@ -676,35 +681,32 @@ export function CalendarView({
       )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-sm font-medium text-gray-900 mb-4">Interface simplifiée</h3>
+        <h3 className="text-sm font-medium text-gray-900 mb-4">Style Google Calendar</h3>
         <div className="space-y-4">
           <div className="flex flex-wrap gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border bg-purple-100 border-purple-300" />
+              <div className="w-4 h-2 rounded-sm border-l-4" style={{ backgroundColor: '#e3f2fd', borderLeftColor: '#1976d2' }} />
               <span className="text-sm text-gray-600">Événements</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border bg-green-50 border-green-200" />
-              <span className="text-sm text-gray-600">Tâches dans les temps</span>
+              <div className="w-4 h-2 rounded-sm border-l-4" style={{ backgroundColor: '#fff3e0', borderLeftColor: '#ff9800' }} />
+              <span className="text-sm text-gray-600">Tâches</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border bg-orange-50 border-orange-200" />
-              <span className="text-sm text-gray-600">Échéance proche</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border bg-red-50 border-red-200" />
-              <span className="text-sm text-gray-600">En retard</span>
+              <div className="w-4 h-2 rounded-sm border-l-4" style={{ backgroundColor: '#f5f5f5', borderLeftColor: '#9e9e9e' }} />
+              <span className="text-sm text-gray-600">Tâches terminées</span>
             </div>
           </div>
           
           {(onUpdateTask || onUpdateEvent) && (
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Interactions naturelles :</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Design Google Calendar :</h4>
               <div className="text-xs text-gray-600 space-y-1">
-                <div>• Clic simple : éditer l'élément</div>
-                <div>• Glisser depuis le centre : déplacer</div>
-                <div>• Glisser depuis les bords : redimensionner</div>
-                <div>• Les interactions se découvrent naturellement</div>
+                <div>• Bordure gauche colorée pour identification rapide</div>
+                <div>• Coins arrondis et espacement minimal</div>
+                <div>• Checkbox intégré pour les tâches</div>
+                <div>• Glisser-déposer fluide et redimensionnement</div>
+                <div>• Style épuré et professionnel</div>
               </div>
             </div>
           )}
