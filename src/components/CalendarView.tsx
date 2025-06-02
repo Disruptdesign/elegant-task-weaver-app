@@ -403,7 +403,7 @@ export function CalendarView({
                 <div 
                   key={dayIndex} 
                   className="relative border-l border-gray-200 overflow-hidden"
-                  style={{ minWidth: '150px' }}
+                  style={{ minWidth: '140px' }}
                 >
                   {workingHours.map(hour => (
                     <div
@@ -433,6 +433,7 @@ export function CalendarView({
                               height: `${position.height}px`,
                               left: '2px',
                               right: '2px',
+                              width: 'calc(100% - 4px)',
                               pointerEvents: isBeingDragged ? 'none' : 'auto',
                             }}
                             onClick={(e) => !isBeingDragged && handleEventClick(event, e)}
@@ -524,7 +525,7 @@ export function CalendarView({
                             height: `${position.height}px`,
                             left: '2px',
                             right: '2px',
-                            maxWidth: 'calc(100% - 4px)',
+                            width: 'calc(100% - 4px)',
                             pointerEvents: isBeingDragged ? 'none' : 'auto',
                           }}
                           onClick={(e) => !isBeingDragged && handleTaskClick(task, e)}
@@ -543,7 +544,7 @@ export function CalendarView({
                             className={`p-2 h-full flex flex-col justify-between overflow-hidden ${onUpdateTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                             onMouseDown={onUpdateTask ? (e) => handleTaskMouseDown(e, task, 'move') : undefined}
                           >
-                            <div className="flex items-start gap-1.5 overflow-hidden">
+                            <div className="flex items-start gap-1.5 overflow-hidden min-w-0">
                               {onUpdateTask && (
                                 <button
                                   onClick={(e) => handleTaskCompletion(task, e)}
@@ -564,7 +565,7 @@ export function CalendarView({
                                   className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
                                 />
                               )}
-                              <div className={`text-xs font-medium text-gray-900 flex-1 overflow-hidden min-w-0 ${task.completed ? 'line-through' : ''}`}>
+                              <div className={`text-xs font-medium text-gray-900 flex-1 min-w-0 overflow-hidden ${task.completed ? 'line-through' : ''}`}>
                                 <div className="truncate">{task.title}</div>
                               </div>
                                 
@@ -583,7 +584,7 @@ export function CalendarView({
                               )}
                             </div>
                             {position.height > 40 && (
-                              <div className="flex items-center gap-1 text-xs text-gray-600 mt-1 overflow-hidden">
+                              <div className="flex items-center gap-1 text-xs text-gray-600 mt-1 overflow-hidden min-w-0">
                                 <Clock size={8} className="flex-shrink-0" />
                                 <span className="truncate">
                                   {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
