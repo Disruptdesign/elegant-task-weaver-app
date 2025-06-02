@@ -425,7 +425,7 @@ export function CalendarView({
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded-lg border transition-all z-30 group select-none overflow-hidden bg-purple-100 border-purple-300 ${
+                            className={`absolute rounded-lg border transition-all z-30 group select-none bg-purple-100 border-purple-300 ${
                               isBeingDragged ? 'opacity-80 shadow-lg ring-2 ring-purple-400 z-50' : 'hover:bg-purple-200 hover:shadow-md'
                             }`}
                             style={{
@@ -433,8 +433,6 @@ export function CalendarView({
                               height: `${position.height}px`,
                               left: '2px',
                               right: '2px',
-                              width: 'auto',
-                              maxWidth: '134px',
                               pointerEvents: isBeingDragged ? 'none' : 'auto',
                             }}
                             onClick={(e) => !isBeingDragged && handleEventClick(event, e)}
@@ -450,23 +448,23 @@ export function CalendarView({
                             )}
 
                             <div
-                              className={`p-1 h-full w-full max-w-full overflow-hidden ${onUpdateEvent ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                              className={`p-1 h-full overflow-hidden ${onUpdateEvent ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                               onMouseDown={onUpdateEvent ? (e) => handleEventMouseDown(e, event, 'move') : undefined}
                             >
-                              <div className="flex items-start gap-1 w-full max-w-full overflow-hidden">
+                              <div className="flex items-start gap-1 h-full overflow-hidden">
                                 {onUpdateEvent && (
                                   <GripVertical 
                                     size={10} 
                                     className="text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
                                   />
                                 )}
-                                <div className="text-xs font-bold text-purple-900 flex-1 w-0 overflow-hidden">
-                                  <div className="flex items-center gap-1 w-full max-w-full overflow-hidden">
+                                <div className="text-xs font-bold text-purple-900 flex-1 min-w-0 overflow-hidden">
+                                  <div className="flex items-center gap-1 overflow-hidden">
                                     <Users size={8} className="flex-shrink-0" />
-                                    <span className="truncate w-0 flex-1 break-all text-xs leading-tight">{event.title}</span>
+                                    <span className="truncate text-xs leading-tight">{event.title}</span>
                                   </div>
                                   {position.height > 40 && (
-                                    <div className="text-xs text-purple-700 opacity-75 truncate w-full max-w-full">
+                                    <div className="text-xs text-purple-700 opacity-75 truncate">
                                       {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
                                     </div>
                                   )}
@@ -516,7 +514,7 @@ export function CalendarView({
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute rounded-lg border transition-all z-20 group select-none overflow-hidden ${
+                          className={`absolute rounded-lg border transition-all z-20 group select-none ${
                             statusColors.bg
                           } ${statusColors.border} ${
                             isBeingDragged ? 'opacity-80 shadow-lg ring-2 ring-blue-400 z-50' : 'hover:shadow-md'
@@ -526,8 +524,6 @@ export function CalendarView({
                             height: `${position.height}px`,
                             left: '2px',
                             right: '2px',
-                            width: 'auto',
-                            maxWidth: '134px',
                             pointerEvents: isBeingDragged ? 'none' : 'auto',
                           }}
                           onClick={(e) => !isBeingDragged && handleTaskClick(task, e)}
@@ -543,10 +539,10 @@ export function CalendarView({
                           )}
 
                           <div
-                            className={`p-0.5 h-full w-full max-w-full overflow-hidden ${onUpdateTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                            className={`p-0.5 h-full overflow-hidden ${onUpdateTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                             onMouseDown={onUpdateTask ? (e) => handleTaskMouseDown(e, task, 'move') : undefined}
                           >
-                            <div className="flex items-start gap-1 w-full max-w-full overflow-hidden">
+                            <div className="flex items-start gap-1 h-full overflow-hidden">
                               {onUpdateTask && (
                                 <button
                                   onClick={(e) => handleTaskCompletion(task, e)}
@@ -567,8 +563,8 @@ export function CalendarView({
                                   className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
                                 />
                               )}
-                              <div className={`text-xs font-medium text-gray-900 flex-1 w-0 overflow-hidden ${task.completed ? 'line-through' : ''}`}>
-                                <div className="truncate w-full break-all text-xs leading-tight max-w-full">{task.title}</div>
+                              <div className={`text-xs font-medium text-gray-900 flex-1 min-w-0 overflow-hidden ${task.completed ? 'line-through' : ''}`}>
+                                <div className="truncate text-xs leading-tight">{task.title}</div>
                               </div>
                                 
                               {onUpdateTask && (
@@ -586,9 +582,9 @@ export function CalendarView({
                               )}
                             </div>
                             {position.height > 40 && (
-                              <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5 w-full max-w-full overflow-hidden">
+                              <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5 overflow-hidden">
                                 <Clock size={6} className="flex-shrink-0" />
-                                <span className="truncate w-0 flex-1 break-all text-xs leading-tight max-w-full">
+                                <span className="truncate text-xs leading-tight">
                                   {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
                                   {' '}({task.estimatedDuration}min)
                                 </span>
