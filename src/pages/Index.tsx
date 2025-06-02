@@ -130,6 +130,8 @@ const Index = () => {
         onSubmitTask={handleTaskSubmit}
         onSubmitEvent={addEvent}
         initialData={taskFormData}
+        projects={projects}
+        taskTypes={taskTypes}
       />
     </>
   );

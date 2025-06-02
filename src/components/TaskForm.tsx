@@ -117,12 +117,16 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
     { value: 'urgent', label: 'Urgente', color: 'text-red-600' },
   ] as const;
 
-  // Obtenir les tâches du même projet pour les dépendances
-  const getProjectTasks = () => {
-    if (!projectId) return [];
-    // Cette fonction devrait recevoir toutes les tâches en props, mais pour l'instant on retourne un tableau vide
-    return [];
+  const formatDuration = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
   };
+
+  const durationPresets = [30, 60, 90, 120, 180, 240, 360, 480];
 
   if (!isOpen) return null;
 
@@ -205,6 +209,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                 <option value="">Choisir un type</option>
                 {taskTypes.map(taskType => (
                   <option key={taskType.id} value={taskType.id}>
+                    <span style={{ backgroundColor: taskType.color }} className="inline-block w-3 h-3 rounded-full mr-2" />
                     {taskType.name}
                   </option>
                 ))}
@@ -236,20 +241,57 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                   <Clock size={16} className="inline mr-2" />
                   Durée estimée
                 </label>
-                <select
-                  value={estimatedDuration}
-                  onChange={(e) => setEstimatedDuration(Number(e.target.value))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value={15}>15 min</option>
-                  <option value={30}>30 min</option>
-                  <option value={60}>1 heure</option>
-                  <option value={90}>1h 30</option>
-                  <option value={120}>2 heures</option>
-                  <option value={180}>3 heures</option>
-                  <option value={240}>4 heures</option>
-                  <option value={480}>8 heures</option>
-                </select>
+                <div className="space-y-3">
+                  {/* Préréglages rapides */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {durationPresets.map(duration => (
+                      <button
+                        key={duration}
+                        type="button"
+                        onClick={() => setEstimatedDuration(duration)}
+                        className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                          estimatedDuration === duration
+                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {formatDuration(duration)}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Contrôle précis */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEstimatedDuration(Math.max(15, estimatedDuration - 15))}
+                      className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
+                    >
+                      -15min
+                    </button>
+                    <div className="flex-1 text-center py-2 px-3 border border-gray-200 rounded-lg bg-gray-50">
+                      <span className="font-medium">{formatDuration(estimatedDuration)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEstimatedDuration(estimatedDuration + 15)}
+                      className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
+                    >
+                      +15min
+                    </button>
+                  </div>
+                  
+                  {/* Input manuel pour les valeurs personnalisées */}
+                  <input
+                    type="range"
+                    min="15"
+                    max="480"
+                    step="15"
+                    value={estimatedDuration}
+                    onChange={(e) => setEstimatedDuration(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
 

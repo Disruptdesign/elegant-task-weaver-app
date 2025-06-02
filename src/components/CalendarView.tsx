@@ -45,9 +45,12 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
   };
 
   const getEventsForDay = (date: Date) => {
-    return events.filter(event => 
-      isSameDay(new Date(event.startDate), date)
-    );
+    return events.filter(event => {
+      const eventStart = new Date(event.startDate);
+      const eventEnd = new Date(event.endDate);
+      return isSameDay(eventStart, date) || isSameDay(eventEnd, date) || 
+             (eventStart <= date && eventEnd >= date);
+    });
   };
 
   const getTaskPosition = (task: Task) => {
@@ -57,13 +60,11 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
-    // Appliquer le buffer avant pour ajuster la position
-    const bufferBeforeMinutes = task.bufferBefore || 0;
-    const adjustedTop = ((startHour - 9) + (startMinute - bufferBeforeMinutes) / 60) * 64;
+    // Position sans buffer (le buffer est géré par le planificateur)
+    const adjustedTop = ((startHour - 9) + startMinute / 60) * 64;
     
-    // Calculer la hauteur avec les buffers
-    const totalDuration = task.estimatedDuration + (task.bufferBefore || 0) + (task.bufferAfter || 0);
-    const height = Math.max((totalDuration / 60) * 64, 32);
+    // Hauteur uniquement de la tâche (sans buffers)
+    const height = Math.max((task.estimatedDuration / 60) * 64, 32);
     
     return { top: Math.max(0, adjustedTop), height };
   };
@@ -243,7 +244,7 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
                     />
                   ))}
 
-                  {/* Événements */}
+                  {/* Événements - affichés avec z-index plus élevé */}
                   <div className="absolute inset-0 p-1">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -253,20 +254,26 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
 
                         return (
                           <div
-                            key={event.id}
-                            className="absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-md transition-all z-20 bg-purple-100 border-purple-300"
+                            key={`event-${event.id}`}
+                            className="absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-md transition-all z-30 bg-purple-100 border-purple-300"
                             style={{
                               top: `${position.top}px`,
                               height: `${position.height}px`,
                             }}
+                            title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}`}
                           >
                             <div className="flex items-center gap-1 text-xs font-medium text-purple-800 mb-1">
                               <Users size={10} />
-                              {event.title}
+                              <span className="truncate">{event.title}</span>
                             </div>
                             {position.height > 40 && (
                               <div className="text-xs text-purple-600">
                                 {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
+                              </div>
+                            )}
+                            {event.location && position.height > 60 && (
+                              <div className="text-xs text-purple-500 truncate">
+                                📍 {event.location}
                               </div>
                             )}
                           </div>
@@ -274,7 +281,22 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
                       })}
                   </div>
 
-                  {/* Tâches avec buffers */}
+                  {/* Événements toute la journée */}
+                  <div className="absolute top-0 left-1 right-1">
+                    {getEventsForDay(day)
+                      .filter(event => event.allDay)
+                      .map((event, index) => (
+                        <div
+                          key={`allday-${event.id}`}
+                          className="mb-1 p-1 bg-purple-200 text-purple-800 text-xs rounded border border-purple-300"
+                          style={{ top: `${index * 20}px` }}
+                        >
+                          <span className="truncate block">🗓️ {event.title}</span>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Tâches sans affichage des buffers */}
                   <div className="absolute inset-0 p-1">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -285,8 +307,8 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
 
                       return (
                         <div
-                          key={task.id}
-                          className={`absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-md transition-all z-10 ${
+                          key={`task-${task.id}`}
+                          className={`absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-md transition-all z-20 ${
                             statusColors.bg
                           } ${statusColors.border} hover:scale-105`}
                           style={{
@@ -294,28 +316,18 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
                             height: `${position.height}px`,
                           }}
                           onClick={() => handleTaskClick(task)}
+                          title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}`}
                         >
-                          {/* Affichage du buffer avant */}
-                          {task.bufferBefore && (
-                            <div className="text-xs text-gray-500 border-b border-gray-300 pb-1 mb-1">
-                              Pause {task.bufferBefore}min
-                            </div>
-                          )}
-                          
-                          <div className="text-xs font-medium line-clamp-2 text-gray-900">
+                          <div className="text-xs font-medium line-clamp-2 text-gray-900 mb-1">
                             {task.title}
                           </div>
-                          {position.height > 60 && (
-                            <div className="flex items-center gap-1 mt-1 text-xs text-gray-600">
+                          {position.height > 40 && (
+                            <div className="flex items-center gap-1 text-xs text-gray-600">
                               <Clock size={10} />
-                              {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
-                            </div>
-                          )}
-                          
-                          {/* Affichage du buffer après */}
-                          {task.bufferAfter && position.height > 80 && (
-                            <div className="text-xs text-gray-500 border-t border-gray-300 pt-1 mt-1">
-                              Pause {task.bufferAfter}min
+                              <span>
+                                {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
+                                {' '}({task.estimatedDuration}min)
+                              </span>
                             </div>
                           )}
                         </div>
@@ -359,10 +371,11 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
                     {/* Événements */}
                     {dayEvents.slice(0, 2).map(event => (
                       <div
-                        key={event.id}
+                        key={`month-event-${event.id}`}
                         className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate"
+                        title={`${event.title}\n${event.allDay ? 'Toute la journée' : format(new Date(event.startDate), 'HH:mm') + ' - ' + format(new Date(event.endDate), 'HH:mm')}`}
                       >
-                        📅 {event.title}
+                        {event.allDay ? '🗓️' : '📅'} {event.title}
                       </div>
                     ))}
                     
@@ -373,11 +386,12 @@ export function CalendarView({ tasks, events = [], onUpdateTask }: CalendarViewP
                       
                       return (
                         <div
-                          key={task.id}
+                          key={`month-task-${task.id}`}
                           className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 ${statusColors.bg} ${statusColors.text} truncate`}
                           onClick={() => handleTaskClick(task)}
+                          title={`${task.title}\n${task.estimatedDuration}min\n${task.description || ''}`}
                         >
-                          {task.title}
+                          ✓ {task.title}
                         </div>
                       );
                     })}

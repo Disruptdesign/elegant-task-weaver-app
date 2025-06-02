@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Flag, Plus, CalendarIcon, MapPin, Video, Repeat } from 'lucide-react';
-import { Task, Event, Priority, ItemType } from '../types/task';
+import { Task, Event, Priority, ItemType, Project, TaskType } from '../types/task';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from './ui/button';
@@ -17,6 +17,8 @@ interface AddItemFormProps {
   editingTask?: Task;
   editingEvent?: Event;
   initialData?: { title: string; description?: string };
+  projects?: Project[];
+  taskTypes?: TaskType[];
 }
 
 export function AddItemForm({ 
@@ -26,7 +28,9 @@ export function AddItemForm({
   onSubmitEvent, 
   editingTask, 
   editingEvent, 
-  initialData 
+  initialData,
+  projects = [],
+  taskTypes = []
 }: AddItemFormProps) {
   const [itemType, setItemType] = useState<ItemType>('task');
   
@@ -40,7 +44,8 @@ export function AddItemForm({
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [estimatedDuration, setEstimatedDuration] = useState(60);
-  const [category, setCategory] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [taskTypeId, setTaskTypeId] = useState('');
   const [canStartFrom, setCanStartFrom] = useState<Date | undefined>();
   const [allowSplitting, setAllowSplitting] = useState(false);
   const [splitDuration, setSplitDuration] = useState(60);
@@ -62,7 +67,8 @@ export function AddItemForm({
       setDeadline(editingTask.deadline.toISOString().slice(0, 16));
       setPriority(editingTask.priority);
       setEstimatedDuration(editingTask.estimatedDuration);
-      setCategory(editingTask.category || '');
+      setProjectId(editingTask.projectId || '');
+      setTaskTypeId(editingTask.taskTypeId || '');
       setCanStartFrom(editingTask.canStartFrom);
       setBufferBefore(editingTask.bufferBefore || 0);
       setBufferAfter(editingTask.bufferAfter || 0);
@@ -97,7 +103,8 @@ export function AddItemForm({
     setDeadline('');
     setPriority('medium');
     setEstimatedDuration(60);
-    setCategory('');
+    setProjectId('');
+    setTaskTypeId('');
     setCanStartFrom(undefined);
     setBufferBefore(0);
     setBufferAfter(0);
@@ -125,7 +132,8 @@ export function AddItemForm({
         deadline: new Date(deadline),
         priority,
         estimatedDuration,
-        category: category.trim() || undefined,
+        projectId: projectId || undefined,
+        taskTypeId: taskTypeId || undefined,
         canStartFrom,
         bufferBefore: bufferBefore > 0 ? bufferBefore : undefined,
         bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
@@ -175,6 +183,17 @@ export function AddItemForm({
     { value: 'monthly', label: 'Mensuelle' },
     { value: 'yearly', label: 'Annuelle' },
   ] as const;
+
+  const formatDuration = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+  };
+
+  const durationPresets = [30, 60, 90, 120, 180, 240, 360, 480];
 
   if (!isOpen) return null;
 
@@ -260,6 +279,45 @@ export function AddItemForm({
           {/* Propriétés spécifiques aux tâches */}
           {itemType === 'task' && (
             <>
+              {/* Projet et type */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Projet (optionnel)
+                  </label>
+                  <select
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Aucun projet</option>
+                    {projects.map(project => (
+                      <option key={project.id} value={project.id}>
+                        {project.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Type de tâche
+                  </label>
+                  <select
+                    value={taskTypeId}
+                    onChange={(e) => setTaskTypeId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Choisir un type</option>
+                    {taskTypes.map(taskType => (
+                      <option key={taskType.id} value={taskType.id}>
+                        {taskType.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">Planification</h3>
                 
@@ -281,31 +339,58 @@ export function AddItemForm({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       <Clock size={16} className="inline mr-2" />
-                      Durée estimée (minutes)
+                      Durée estimée
                     </label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setEstimatedDuration(Math.max(30, estimatedDuration - 30))}
-                        className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                      >
-                        -30
-                      </button>
+                    <div className="space-y-3">
+                      {/* Préréglages rapides */}
+                      <div className="grid grid-cols-4 gap-2">
+                        {durationPresets.map(duration => (
+                          <button
+                            key={duration}
+                            type="button"
+                            onClick={() => setEstimatedDuration(duration)}
+                            className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                              estimatedDuration === duration
+                                ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {formatDuration(duration)}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      {/* Contrôle précis */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEstimatedDuration(Math.max(15, estimatedDuration - 15))}
+                          className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
+                        >
+                          -15min
+                        </button>
+                        <div className="flex-1 text-center py-2 px-3 border border-gray-200 rounded-lg bg-gray-50">
+                          <span className="font-medium">{formatDuration(estimatedDuration)}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEstimatedDuration(estimatedDuration + 15)}
+                          className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
+                        >
+                          +15min
+                        </button>
+                      </div>
+                      
+                      {/* Slider pour les valeurs personnalisées */}
                       <input
-                        type="number"
+                        type="range"
+                        min="15"
+                        max="480"
+                        step="15"
                         value={estimatedDuration}
-                        onChange={(e) => setEstimatedDuration(Math.max(30, Number(e.target.value)))}
-                        min="30"
-                        step="30"
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center"
+                        onChange={(e) => setEstimatedDuration(Number(e.target.value))}
+                        className="w-full"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setEstimatedDuration(estimatedDuration + 30)}
-                        className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                      >
-                        +30
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -406,41 +491,26 @@ export function AddItemForm({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Flag size={16} className="inline mr-2" />
-                    Priorité
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {priorityOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setPriority(option.value)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          priority === option.value
-                            ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
-                            : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Catégorie (optionnel)
-                  </label>
-                  <input
-                    type="text"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder="Travail, Personnel, Santé..."
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Flag size={16} className="inline mr-2" />
+                  Priorité
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {priorityOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setPriority(option.value)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        priority === option.value
+                          ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
+                          : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </>
