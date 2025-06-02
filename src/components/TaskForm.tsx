@@ -7,6 +7,7 @@ import { fr } from 'date-fns/locale';
 import { Button } from './ui/button';
 import { Calendar as CalendarComponent } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { cn } from '../lib/utils';
 
 interface TaskFormProps {
@@ -33,6 +34,9 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
   const [bufferAfter, setBufferAfter] = useState(0);
   const [allowSplitting, setAllowSplitting] = useState(false);
   const [splitDuration, setSplitDuration] = useState(60);
+
+  // Debug pour vérifier les types de tâches reçus
+  console.log('TaskForm: Task types received:', taskTypes);
 
   useEffect(() => {
     if (editingTask) {
@@ -112,6 +116,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       }),
     };
 
+    console.log('TaskForm: Submitting task with taskTypeId:', taskTypeId);
     onSubmit(taskData);
     onClose();
   };
@@ -280,18 +285,19 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                 <FolderOpen size={16} className="inline mr-2" />
                 Projet
               </label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">Aucun projet</option>
-                {projects.map(project => (
-                  <option key={project.id} value={project.id}>
-                    {project.title}
-                  </option>
-                ))}
-              </select>
+              <Select value={projectId} onValueChange={setProjectId}>
+                <SelectTrigger className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white">
+                  <SelectValue placeholder="Aucun projet" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+                  <SelectItem value="">Aucun projet</SelectItem>
+                  {projects.map(project => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -299,18 +305,30 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                 <Tag size={16} className="inline mr-2" />
                 Type de tâche
               </label>
-              <select
-                value={taskTypeId}
-                onChange={(e) => setTaskTypeId(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">Choisir un type</option>
-                {taskTypes.map(taskType => (
-                  <option key={taskType.id} value={taskType.id}>
-                    {taskType.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={taskTypeId} onValueChange={setTaskTypeId}>
+                <SelectTrigger className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white">
+                  <SelectValue placeholder="Choisir un type" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-lg z-50">
+                  <SelectItem value="">Aucun type</SelectItem>
+                  {taskTypes.map(taskType => (
+                    <SelectItem key={taskType.id} value={taskType.id}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: taskType.color }}
+                        />
+                        {taskType.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {taskTypes.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Aucun type de tâche disponible. Créez-en un dans les paramètres.
+                </p>
+              )}
             </div>
           </div>
 
