@@ -159,17 +159,30 @@ export function CalendarView({
       const eventStart = event.startDate instanceof Date ? event.startDate : new Date(event.startDate);
       const eventEnd = event.endDate instanceof Date ? event.endDate : new Date(event.endDate);
       
+      // Normaliser les dates pour la comparaison (début de journée)
+      const targetDayStart = startOfDay(date);
+      const eventDayStart = startOfDay(eventStart);
+      const eventDayEnd = startOfDay(eventEnd);
+      
       console.log(`   - Événement "${event.title}":`, {
         eventStart: eventStart.toISOString(),
         eventEnd: eventEnd.toISOString(),
         targetDate: date.toISOString(),
-        isSameStart: isSameDay(eventStart, date),
-        isSameEnd: isSameDay(eventEnd, date),
-        isInRange: eventStart <= date && eventEnd >= date
+        targetDayStart: targetDayStart.toISOString(),
+        eventDayStart: eventDayStart.toISOString(),
+        eventDayEnd: eventDayEnd.toISOString(),
+        isSameStart: eventDayStart.getTime() === targetDayStart.getTime(),
+        isSameEnd: eventDayEnd.getTime() === targetDayStart.getTime(),
+        isInRange: targetDayStart >= eventDayStart && targetDayStart <= eventDayEnd
       });
       
-      const matches = isSameDay(eventStart, date) || isSameDay(eventEnd, date) || 
-             (eventStart <= date && eventEnd >= date);
+      // Un événement est affiché dans un jour si :
+      // 1. Il commence ce jour-là
+      // 2. Il finit ce jour-là  
+      // 3. Il est en cours ce jour-là (pour les événements multi-jours)
+      const matches = eventDayStart.getTime() === targetDayStart.getTime() || 
+                     eventDayEnd.getTime() === targetDayStart.getTime() ||
+                     (targetDayStart >= eventDayStart && targetDayStart <= eventDayEnd);
       
       if (matches) {
         console.log(`   ✅ Événement "${event.title}" correspond au jour ${format(date, 'yyyy-MM-dd')}`);
