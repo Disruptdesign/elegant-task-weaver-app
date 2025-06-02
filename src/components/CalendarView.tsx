@@ -192,7 +192,8 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
       taskTitle: task.title, 
       hasUpdateFunction: !!onUpdateTask,
       mouseButton: e.button,
-      taskId: task.id
+      taskId: task.id,
+      position: { x: e.clientX, y: e.clientY }
     });
     
     // Seulement le bouton gauche de la souris
@@ -202,6 +203,10 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
       console.log('Cannot start drag: no update function provided');
       return;
     }
+    
+    // Empêcher la propagation pour éviter que le clic déclenche d'autres événements
+    e.preventDefault();
+    e.stopPropagation();
     
     console.log('Calling startDrag...');
     startDrag(e, task, action, resizeHandle);
@@ -267,7 +272,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
         </div>
       </div>
 
-      {/* Messages d'état sans le message de déplacement */}
+      {/* Messages d'état */}
       {!onUpdateTask && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p className="text-sm text-blue-800">
@@ -280,7 +285,16 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
       {onUpdateTask && hasAddedTestTask && tasksWithTest.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
           <p className="text-sm text-green-800">
-            ✅ Tâche de test ajoutée ! Vous pouvez maintenant tester le drag & drop entre les jours.
+            ✅ Tâche de test ajoutée ! Glissez-la horizontalement pour la déplacer vers un autre jour.
+          </p>
+        </div>
+      )}
+
+      {/* Debug drag state */}
+      {dragState.isDragging && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <p className="text-sm text-yellow-800">
+            🔄 Déplacement en cours... Déplacez horizontalement pour changer de jour.
           </p>
         </div>
       )}
@@ -343,7 +357,11 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
 
               {/* Colonnes des jours */}
               {getWeekDays().map((day, dayIndex) => (
-                <div key={dayIndex} className="relative border-l border-gray-200">
+                <div 
+                  key={dayIndex} 
+                  className="relative border-l border-gray-200"
+                  style={{ minWidth: '200px' }} // Assurer une largeur minimum pour le calcul du drag
+                >
                   {/* Lignes horaires */}
                   {workingHours.map(hour => (
                     <div
@@ -395,13 +413,14 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                           className={`absolute left-1 right-1 rounded-lg border transition-all z-20 group select-none ${
                             statusColors.bg
                           } ${statusColors.border} ${
-                            isBeingDragged ? 'opacity-80 shadow-lg scale-105 ring-2 ring-blue-400' : 'hover:shadow-md hover:scale-105'
+                            isBeingDragged ? 'opacity-80 shadow-lg scale-105 ring-2 ring-blue-400 z-50' : 'hover:shadow-md hover:scale-105'
                           }`}
                           style={{
                             top: `${position.top}px`,
                             height: `${position.height}px`,
+                            pointerEvents: isBeingDragged ? 'none' : 'auto',
                           }}
-                          onClick={(e) => handleTaskClick(task, e)}
+                          onClick={(e) => !isBeingDragged && handleTaskClick(task, e)}
                           title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}\n${onUpdateTask ? 'Glisser pour déplacer, redimensionner par les bords' : 'Mode lecture seule'}`}
                         >
                           {/* Handle de redimensionnement haut */}
@@ -416,7 +435,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
 
                           {/* Contenu de la tâche avec handle de déplacement */}
                           <div
-                            className={`p-2 h-full flex flex-col justify-between ${onUpdateTask ? 'cursor-move' : 'cursor-pointer'}`}
+                            className={`p-2 h-full flex flex-col justify-between ${onUpdateTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                             onMouseDown={onUpdateTask ? (e) => handleTaskMouseDown(e, task, 'move') : undefined}
                           >
                             <div className="flex items-start gap-1">
@@ -559,14 +578,14 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
               <div className="text-xs text-gray-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <GripVertical size={12} className="text-gray-400" />
-                  <span>Glisser le contenu pour déplacer la tâche librement (même jour ou vers d'autres jours)</span>
+                  <span>Glisser pour déplacer la tâche (verticalement pour l'heure, horizontalement pour le jour)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ArrowUpDown size={12} className="text-gray-400" />
                   <span>Glisser les bords gris haut/bas pour ajuster la durée</span>
                 </div>
                 <div>• Cliquer pour éditer les détails de la tâche</div>
-                <div>• Aucune contrainte horaire lors du déplacement entre jours</div>
+                <div>• Déplacement libre entre les jours - pas de contrainte horaire</div>
               </div>
             </div>
           )}

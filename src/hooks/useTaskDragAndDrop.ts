@@ -7,9 +7,11 @@ interface DragState {
   isResizing: boolean;
   taskId: string | null;
   startY: number;
+  startX: number;
   startTime: Date | null;
   originalDuration: number;
   resizeHandle: 'top' | 'bottom' | null;
+  originalDay: Date | null;
 }
 
 export function useTaskDragAndDrop(
@@ -20,9 +22,11 @@ export function useTaskDragAndDrop(
     isResizing: false,
     taskId: null,
     startY: 0,
+    startX: 0,
     startTime: null,
     originalDuration: 0,
     resizeHandle: null,
+    originalDay: null,
   });
 
   // Utiliser useRef pour éviter la recréation des fonctions
@@ -40,7 +44,9 @@ export function useTaskDragAndDrop(
     console.log('Mouse move event triggered', { 
       taskId: currentState.taskId, 
       isDragging: currentState.isDragging,
-      isResizing: currentState.isResizing 
+      isResizing: currentState.isResizing,
+      clientX: e.clientX,
+      clientY: e.clientY
     });
 
     if (!currentState.taskId || !currentState.startTime || !updateTask) {
@@ -48,34 +54,48 @@ export function useTaskDragAndDrop(
       return;
     }
 
-    const deltaY = e.clientY - currentState.startY;
-    const minutesDelta = Math.round((deltaY / 64) * 60); // 64px = 1 heure
-    
-    console.log('Mouse move calculation:', { deltaY, minutesDelta });
-
     if (currentState.isDragging) {
-      // Déplacer la tâche - permettre le déplacement libre entre les jours
-      const newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
+      // Déplacer la tâche - calcul basé sur la position de la souris
+      const deltaY = e.clientY - currentState.startY;
+      const deltaX = e.clientX - currentState.startX;
+      
+      // Calculer le changement de temps basé sur deltaY (64px = 1 heure)
+      const minutesDelta = Math.round((deltaY / 64) * 60);
+      
+      // Calculer le changement de jour basé sur deltaX (environ 200px = 1 jour)
+      const daysDelta = Math.round(deltaX / 200);
+      
+      console.log('Drag calculation:', { deltaY, deltaX, minutesDelta, daysDelta });
+
+      // Calculer la nouvelle heure de début
+      let newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
+      
+      // Ajouter le changement de jour
+      if (daysDelta !== 0) {
+        newStartTime = new Date(newStartTime.getTime() + daysDelta * 24 * 60 * 60 * 1000);
+      }
       
       // Arrondir aux créneaux de 15 minutes
       const minute = newStartTime.getMinutes();
       const roundedMinutes = Math.round(minute / 15) * 15;
       newStartTime.setMinutes(roundedMinutes, 0, 0);
 
-      // NE PAS contraindre aux heures de travail lors du drag entre jours
-      // Permettre un déplacement libre
-
       console.log('Updating task position:', { 
         taskId: currentState.taskId, 
-        newStartTime: newStartTime.toISOString() 
+        newStartTime: newStartTime.toISOString(),
+        daysDelta
       });
 
       updateTask(currentState.taskId, {
         scheduledStart: newStartTime,
         scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
       });
+      
     } else if (currentState.isResizing) {
       // Redimensionner la tâche
+      const deltaY = e.clientY - currentState.startY;
+      const minutesDelta = Math.round((deltaY / 64) * 60);
+      
       let newDuration = currentState.originalDuration;
       
       if (currentState.resizeHandle === 'bottom') {
@@ -122,9 +142,11 @@ export function useTaskDragAndDrop(
       isResizing: false,
       taskId: null,
       startY: 0,
+      startX: 0,
       startTime: null,
       originalDuration: 0,
       resizeHandle: null,
+      originalDay: null,
     });
 
     // Supprimer les event listeners
@@ -148,7 +170,8 @@ export function useTaskDragAndDrop(
       taskId: task.id, 
       taskTitle: task.title,
       resizeHandle,
-      hasScheduledStart: !!task.scheduledStart 
+      hasScheduledStart: !!task.scheduledStart,
+      mousePosition: { x: e.clientX, y: e.clientY }
     });
 
     if (!task.scheduledStart) {
@@ -162,24 +185,52 @@ export function useTaskDragAndDrop(
     }
 
     const newDragState = {
-      isDragging: action === 'move', // Seulement true pour le déplacement
-      isResizing: action === 'resize', // Seulement true pour le redimensionnement
+      isDragging: action === 'move',
+      isResizing: action === 'resize',
       taskId: task.id,
       startY: e.clientY,
+      startX: e.clientX,
       startTime: new Date(task.scheduledStart),
       originalDuration: task.estimatedDuration,
       resizeHandle: resizeHandle || null,
+      originalDay: new Date(task.scheduledStart),
     };
 
     console.log('Setting drag state:', newDragState);
     setDragState(newDragState);
 
-    // Ajouter les event listeners
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    // Ajouter les event listeners sur le document pour capturer les mouvements partout
+    document.addEventListener('mousemove', handleMouseMove, { passive: false });
+    document.addEventListener('mouseup', handleMouseUp, { passive: false });
+    
+    // Empêcher la sélection de texte pendant le drag
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = action === 'move' ? 'grabbing' : (resizeHandle === 'top' ? 'n-resize' : 's-resize');
     
     console.log('Event listeners added');
   }, [handleMouseMove, handleMouseUp]);
+
+  // Nettoyer le style quand le drag se termine
+  const cleanupDragStyle = useCallback(() => {
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+  }, []);
+
+  // Nettoyer quand le composant se démonte
+  React.useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      cleanupDragStyle();
+    };
+  }, [handleMouseMove, handleMouseUp, cleanupDragStyle]);
+
+  // Nettoyer le style quand le drag se termine
+  React.useEffect(() => {
+    if (!dragState.isDragging && !dragState.isResizing) {
+      cleanupDragStyle();
+    }
+  }, [dragState.isDragging, dragState.isResizing, cleanupDragStyle]);
 
   return {
     dragState,
