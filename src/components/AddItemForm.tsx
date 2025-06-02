@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Flag, Plus, CalendarIcon, MapPin, Video, Repeat } from 'lucide-react';
+import { X, Calendar, Clock, Flag, Plus, CalendarIcon, MapPin, Video, Repeat, FolderOpen, Tag } from 'lucide-react';
 import { Task, Event, Priority, ItemType, Project, TaskType } from '../types/task';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from './ui/button';
 import { Calendar as CalendarComponent } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { cn } from '../lib/utils';
 
 interface AddItemFormProps {
@@ -58,29 +59,12 @@ export function AddItemForm({
   const [location, setLocation] = useState('');
   const [repeat, setRepeat] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
 
-  // État pour forcer le re-rendu des dropdowns
-  const [forceUpdate, setForceUpdate] = useState(0);
-
-  // Surveillance des changements de props pour forcer la mise à jour
-  useEffect(() => {
-    console.log('AddItemForm: Props changed, forcing update', {
-      projects: projects.length,
-      taskTypes: taskTypes.length,
-      isOpen
-    });
-    setForceUpdate(prev => prev + 1);
-  }, [projects, taskTypes, isOpen]);
-
-  // Debug logging amélioré
-  console.log('AddItemForm: Current state:', {
+  console.log('AddItemForm: Rendering with', { 
+    projectsCount: projects.length, 
+    taskTypesCount: taskTypes.length,
     isOpen,
-    projects: projects.length,
-    taskTypes: taskTypes.length,
-    projectId,
-    taskTypeId,
-    forceUpdate,
-    validProjects: projects.filter(p => p && p.id && p.title),
-    validTaskTypes: taskTypes.filter(t => t && t.id && t.name)
+    projects: projects.map(p => ({ id: p.id, title: p.title })),
+    taskTypes: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
 
   useEffect(() => {
@@ -169,11 +153,7 @@ export function AddItemForm({
         }),
       };
 
-      console.log('AddItemForm: Submitting task with data:', {
-        projectId,
-        taskTypeId,
-        taskData
-      });
+      console.log('AddItemForm: Submitting task with data:', taskData);
       onSubmitTask(taskData);
     } else {
       if (!startDate || !endDate) return;
@@ -225,19 +205,6 @@ export function AddItemForm({
   const durationPresets = [30, 60, 90, 120, 180, 240, 360, 480];
 
   if (!isOpen) return null;
-
-  // Validation des données avec logs détaillés
-  const validProjects = projects.filter(p => p && p.id && p.title);
-  const validTaskTypes = taskTypes.filter(t => t && t.id && t.name);
-
-  console.log('AddItemForm: Validated data for rendering:', {
-    originalProjects: projects.length,
-    validProjects: validProjects.length,
-    originalTaskTypes: taskTypes.length,
-    validTaskTypes: validTaskTypes.length,
-    projectsList: validProjects.map(p => ({ id: p.id, title: p.title })),
-    taskTypesList: validTaskTypes.map(t => ({ id: t.id, name: t.name }))
-  });
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -321,65 +288,65 @@ export function AddItemForm({
           {/* Propriétés spécifiques aux tâches */}
           {itemType === 'task' && (
             <>
-              {/* Projet et type avec keys pour forcer le re-rendu */}
+              {/* Projet et type de tâche */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Projet (optionnel) - {validProjects.length} disponible{validProjects.length > 1 ? 's' : ''}
+                    <FolderOpen size={16} className="inline mr-2" />
+                    Projet
                   </label>
-                  <select
-                    key={`project-select-${forceUpdate}-${validProjects.length}`}
-                    value={projectId}
-                    onChange={(e) => {
-                      console.log('Project selected:', e.target.value);
-                      setProjectId(e.target.value);
-                    }}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  >
-                    <option value="">Aucun projet</option>
-                    {validProjects.map(project => (
-                      <option key={`${project.id}-${forceUpdate}`} value={project.id}>
-                        {project.title}
-                      </option>
-                    ))}
-                  </select>
-                  {validProjects.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Aucun projet disponible. Créez-en un dans l'onglet Projets.
-                    </p>
-                  )}
-                  <p className="text-xs text-blue-500 mt-1">
-                    Debug: {validProjects.length} projets valides trouvés
+                  <Select value={projectId} onValueChange={setProjectId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choisir un projet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Aucun projet</SelectItem>
+                      {projects.map(project => (
+                        <SelectItem key={project.id} value={project.id}>
+                          <div className="flex items-center gap-2">
+                            {project.color && (
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: project.color }}
+                              />
+                            )}
+                            {project.title}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {projects.length} projet{projects.length > 1 ? 's' : ''} disponible{projects.length > 1 ? 's' : ''}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Type de tâche - {validTaskTypes.length} disponible{validTaskTypes.length > 1 ? 's' : ''}
+                    <Tag size={16} className="inline mr-2" />
+                    Type de tâche
                   </label>
-                  <select
-                    key={`tasktype-select-${forceUpdate}-${validTaskTypes.length}`}
-                    value={taskTypeId}
-                    onChange={(e) => {
-                      console.log('TaskType selected:', e.target.value);
-                      setTaskTypeId(e.target.value);
-                    }}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  >
-                    <option value="">Choisir un type</option>
-                    {validTaskTypes.map(taskType => (
-                      <option key={`${taskType.id}-${forceUpdate}`} value={taskType.id}>
-                        {taskType.name}
-                      </option>
-                    ))}
-                  </select>
-                  {validTaskTypes.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Aucun type de tâche disponible. Créez-en un dans les paramètres.
-                    </p>
-                  )}
-                  <p className="text-xs text-blue-500 mt-1">
-                    Debug: {validTaskTypes.length} types de tâches valides trouvés
+                  <Select value={taskTypeId} onValueChange={setTaskTypeId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choisir un type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Aucun type</SelectItem>
+                      {taskTypes.map(taskType => (
+                        <SelectItem key={taskType.id} value={taskType.id}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: taskType.color }}
+                            />
+                            {taskType.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {taskTypes.length} type{taskTypes.length > 1 ? 's' : ''} disponible{taskTypes.length > 1 ? 's' : ''}
                   </p>
                 </div>
               </div>

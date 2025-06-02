@@ -34,12 +34,11 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
   const [allowSplitting, setAllowSplitting] = useState(false);
   const [splitDuration, setSplitDuration] = useState(60);
 
-  // Debug pour vérifier les données reçues
-  console.log('TaskForm: Received data:', {
+  console.log('TaskForm: Rendering with', {
     projects: projects.length,
     taskTypes: taskTypes.length,
-    projectsData: projects,
-    taskTypesData: taskTypes
+    projectsData: projects.map(p => ({ id: p.id, title: p.title })),
+    taskTypesData: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
 
   useEffect(() => {
@@ -291,7 +290,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <FolderOpen size={16} className="inline mr-2" />
-                Projet ({projects.length} disponible{projects.length > 1 ? 's' : ''})
+                Projet
               </label>
               <Select value={projectId} onValueChange={setProjectId}>
                 <SelectTrigger className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white">
@@ -314,17 +313,15 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                   ))}
                 </SelectContent>
               </Select>
-              {projects.length === 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Aucun projet disponible. Créez-en un dans l'onglet Projets.
-                </p>
-              )}
+              <p className="text-xs text-gray-500 mt-1">
+                {projects.length} projet{projects.length > 1 ? 's' : ''} disponible{projects.length > 1 ? 's' : ''}
+              </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Tag size={16} className="inline mr-2" />
-                Type de tâche ({taskTypes.length} disponible{taskTypes.length > 1 ? 's' : ''})
+                Type de tâche
               </label>
               <Select value={taskTypeId} onValueChange={setTaskTypeId}>
                 <SelectTrigger className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white">
@@ -345,11 +342,9 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                   ))}
                 </SelectContent>
               </Select>
-              {taskTypes.length === 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Aucun type de tâche disponible. Créez-en un dans les paramètres.
-                </p>
-              )}
+              <p className="text-xs text-gray-500 mt-1">
+                {taskTypes.length} type{taskTypes.length > 1 ? 's' : ''} disponible{taskTypes.length > 1 ? 's' : ''}
+              </p>
             </div>
           </div>
 

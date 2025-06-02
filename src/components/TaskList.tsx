@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Task } from '../types/task';
+import { Task, Project, TaskType } from '../types/task';
 import { TaskCard } from './TaskCard';
 import { AddItemForm } from './AddItemForm';
 import { Plus, Search, Filter, RefreshCw, ListTodo, CheckCircle } from 'lucide-react';
@@ -11,6 +11,8 @@ interface TaskListProps {
   onCompleteTask: (id: string) => void;
   onAddTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
   onReschedule: () => void;
+  projects?: Project[];
+  taskTypes?: TaskType[];
 }
 
 export function TaskList({
@@ -20,12 +22,19 @@ export function TaskList({
   onCompleteTask,
   onAddTask,
   onReschedule,
+  projects = [],
+  taskTypes = [],
 }: TaskListProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('pending');
   const [filterPriority, setFilterPriority] = useState<'all' | 'urgent' | 'high' | 'medium' | 'low'>('all');
+
+  console.log('TaskList: Rendering with props:', {
+    projects: projects.length,
+    taskTypes: taskTypes.length
+  });
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -273,6 +282,8 @@ export function TaskList({
         onSubmitTask={handleFormSubmit}
         onSubmitEvent={() => {}}
         editingTask={editingTask}
+        projects={projects}
+        taskTypes={taskTypes}
       />
     </div>
   );

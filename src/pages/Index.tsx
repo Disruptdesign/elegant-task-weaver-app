@@ -38,7 +38,6 @@ const Index = () => {
     deleteTaskType,
   } = useTasks();
 
-  // Debug logs to check data loading
   console.log('Index: Current data state:', {
     tasks: tasks.length,
     events: events.length,
@@ -117,6 +116,8 @@ const Index = () => {
             onDeleteTask={deleteTask}
             onCompleteTask={handleCompleteTask}
             onReschedule={handleRescheduleAllTasks}
+            projects={projects}
+            taskTypes={taskTypes}
           />
         );
       case 'calendar':
