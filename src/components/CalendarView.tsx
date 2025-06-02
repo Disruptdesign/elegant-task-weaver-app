@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
@@ -31,6 +32,7 @@ export function CalendarView({
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const [testDataAdded, setTestDataAdded] = useState(false);
   
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i);
 
