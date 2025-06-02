@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Flag, Plus, CalendarIcon, FolderOpen, Tag } from 'lucide-react';
 import { Task, Priority, Project, TaskType } from '../types/task';
@@ -31,13 +32,16 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
   const [bufferAfter, setBufferAfter] = useState(0);
   const [allowSplitting, setAllowSplitting] = useState(false);
   const [splitDuration, setSplitDuration] = useState(60);
-  const [dependencies, setDependencies] = useState<string[]>([]);
 
   useEffect(() => {
     if (editingTask) {
       setTitle(editingTask.title);
       setDescription(editingTask.description || '');
-      setDeadline(editingTask.deadline.toISOString().slice(0, 16));
+      // Fix: Ensure proper date formatting
+      const deadlineStr = editingTask.deadline instanceof Date 
+        ? editingTask.deadline.toISOString().slice(0, 16)
+        : new Date(editingTask.deadline).toISOString().slice(0, 16);
+      setDeadline(deadlineStr);
       setPriority(editingTask.priority);
       setEstimatedDuration(editingTask.estimatedDuration);
       setProjectId(editingTask.projectId || '');
@@ -47,11 +51,14 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       setBufferAfter(editingTask.bufferAfter || 0);
       setAllowSplitting(editingTask.allowSplitting || false);
       setSplitDuration(editingTask.splitDuration || 60);
-      setDependencies(editingTask.dependencies || []);
     } else if (initialData) {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
-      setDeadline('');
+      // Set default deadline to tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(17, 0, 0, 0);
+      setDeadline(tomorrow.toISOString().slice(0, 16));
       setPriority('medium');
       setEstimatedDuration(60);
       setProjectId('');
@@ -61,12 +68,14 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       setBufferAfter(0);
       setAllowSplitting(false);
       setSplitDuration(60);
-      setDependencies([]);
     } else {
-      // Réinitialiser le formulaire pour une nouvelle tâche
+      // Reset form for new task
       setTitle('');
       setDescription('');
-      setDeadline('');
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(17, 0, 0, 0);
+      setDeadline(tomorrow.toISOString().slice(0, 16));
       setPriority('medium');
       setEstimatedDuration(60);
       setProjectId('');
@@ -76,7 +85,6 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       setBufferAfter(0);
       setAllowSplitting(false);
       setSplitDuration(60);
-      setDependencies([]);
     }
   }, [editingTask, initialData, isOpen]);
 
@@ -97,8 +105,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
       allowSplitting,
       splitDuration: allowSplitting && splitDuration > 0 ? splitDuration : undefined,
-      dependencies: dependencies.length > 0 ? dependencies : undefined,
-      // Préserver les dates de planification existantes
+      // Preserve scheduled times for edited tasks
       ...(editingTask && {
         scheduledStart: editingTask.scheduledStart,
         scheduledEnd: editingTask.scheduledEnd,
@@ -110,10 +117,10 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
   };
 
   const priorityOptions = [
-    { value: 'low', label: 'Faible', color: 'text-green-600' },
-    { value: 'medium', label: 'Moyenne', color: 'text-yellow-600' },
-    { value: 'high', label: 'Haute', color: 'text-orange-600' },
-    { value: 'urgent', label: 'Urgente', color: 'text-red-600' },
+    { value: 'low', label: 'Faible', color: 'text-green-600', bg: 'bg-green-50 border-green-200' },
+    { value: 'medium', label: 'Moyenne', color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200' },
+    { value: 'high', label: 'Haute', color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200' },
+    { value: 'urgent', label: 'Urgente', color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
   ] as const;
 
   const formatDuration = (minutes: number) => {
@@ -125,14 +132,14 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
     return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
   };
 
-  const durationPresets = [30, 60, 90, 120, 180, 240, 360, 480];
+  const durationPresets = [15, 30, 60, 90, 120, 180, 240, 360, 480];
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
+        <div className="sticky top-0 bg-white flex items-center justify-between p-6 border-b border-gray-100 rounded-t-2xl">
           <h2 className="text-xl font-semibold text-gray-900">
             {editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'}
           </h2>
@@ -145,19 +152,20 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Informations de base */}
+          {/* Informations essentielles */}
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Titre de la tâche
+                Titre de la tâche *
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Que devez-vous faire ?"
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 required
+                autoFocus
               />
             </div>
 
@@ -169,255 +177,92 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Ajoutez des détails..."
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows={2}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all"
               />
             </div>
           </div>
 
-          {/* Projet et type */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Planification essentielle */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <FolderOpen size={16} className="inline mr-2" />
-                Projet (optionnel)
+                <Calendar size={16} className="inline mr-2" />
+                Date limite *
               </label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Aucun projet</option>
-                {projects.map(project => (
-                  <option key={project.id} value={project.id}>
-                    {project.title}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="datetime-local"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                required
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Tag size={16} className="inline mr-2" />
-                Type de tâche
+                <Clock size={16} className="inline mr-2" />
+                Durée estimée
               </label>
-              <select
-                value={taskTypeId}
-                onChange={(e) => setTaskTypeId(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Choisir un type</option>
-                {taskTypes.map(taskType => (
-                  <option key={taskType.id} value={taskType.id}>
-                    {taskType.name}
-                  </option>
-                ))}
-              </select>
-              {taskTypeId && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div
-                    className="w-4 h-4 rounded-full border border-gray-300"
-                    style={{ backgroundColor: taskTypes.find(t => t.id === taskTypeId)?.color }}
-                  />
-                  <span className="text-sm text-gray-600">
-                    {taskTypes.find(t => t.id === taskTypeId)?.name}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Planification */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Planification</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Calendar size={16} className="inline mr-2" />
-                  Date limite
-                </label>
-                <input
-                  type="datetime-local"
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Clock size={16} className="inline mr-2" />
-                  Durée estimée
-                </label>
-                <div className="space-y-3">
-                  {/* Préréglages rapides */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {durationPresets.map(duration => (
-                      <button
-                        key={duration}
-                        type="button"
-                        onClick={() => setEstimatedDuration(duration)}
-                        className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                          estimatedDuration === duration
-                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {formatDuration(duration)}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Contrôle précis */}
-                  <div className="flex items-center gap-2">
+              <div className="space-y-3">
+                {/* Presets rapides améliorés */}
+                <div className="grid grid-cols-3 gap-2">
+                  {durationPresets.slice(0, 6).map(duration => (
                     <button
+                      key={duration}
                       type="button"
-                      onClick={() => setEstimatedDuration(Math.max(15, estimatedDuration - 15))}
-                      className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
+                      onClick={() => setEstimatedDuration(duration)}
+                      className={`px-3 py-2 text-sm rounded-md transition-all ${
+                        estimatedDuration === duration
+                          ? 'bg-blue-500 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
                     >
-                      -15min
+                      {formatDuration(duration)}
                     </button>
-                    <div className="flex-1 text-center py-2 px-3 border border-gray-200 rounded-lg bg-gray-50">
-                      <span className="font-medium">{formatDuration(estimatedDuration)}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setEstimatedDuration(estimatedDuration + 15)}
-                      className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
-                    >
-                      +15min
-                    </button>
+                  ))}
+                </div>
+                
+                {/* Contrôle précis amélioré */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEstimatedDuration(Math.max(15, estimatedDuration - 15))}
+                    className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm transition-colors"
+                  >
+                    -15min
+                  </button>
+                  <div className="flex-1 text-center py-2 px-3 border border-gray-200 rounded-lg bg-blue-50">
+                    <span className="font-medium text-blue-900">{formatDuration(estimatedDuration)}</span>
                   </div>
-                  
-                  {/* Input manuel pour les valeurs personnalisées */}
-                  <input
-                    type="range"
-                    min="15"
-                    max="480"
-                    step="15"
-                    value={estimatedDuration}
-                    onChange={(e) => setEstimatedDuration(Number(e.target.value))}
-                    className="w-full"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setEstimatedDuration(estimatedDuration + 15)}
+                    className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm transition-colors"
+                  >
+                    +15min
+                  </button>
                 </div>
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Peut commencer à partir de
-              </label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !canStartFrom && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {canStartFrom ? format(canStartFrom, "PPP", { locale: fr }) : <span>Choisir une date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={canStartFrom}
-                    onSelect={setCanStartFrom}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
           </div>
 
-          {/* Options avancées */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Options avancées</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Temps de pause avant (min)
-                </label>
-                <input
-                  type="number"
-                  value={bufferBefore}
-                  onChange={(e) => setBufferBefore(Number(e.target.value))}
-                  min="0"
-                  max="60"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Temps de pause après (min)
-                </label>
-                <input
-                  type="number"
-                  value={bufferAfter}
-                  onChange={(e) => setBufferAfter(Number(e.target.value))}
-                  min="0"
-                  max="60"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  checked={allowSplitting}
-                  onChange={(e) => setAllowSplitting(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Autoriser le découpage de cette tâche
-                </span>
-              </label>
-
-              {allowSplitting && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Durée minimum pour le découpage (min)
-                  </label>
-                  <select
-                    value={splitDuration}
-                    onChange={(e) => setSplitDuration(Number(e.target.value))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value={30}>30 min</option>
-                    <option value={60}>1 heure</option>
-                    <option value={90}>1h 30</option>
-                    <option value={120}>2 heures</option>
-                  </select>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Priorité */}
+          {/* Priorité améliorée */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
               <Flag size={16} className="inline mr-2" />
               Priorité
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {priorityOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => setPriority(option.value)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-all border-2 ${
                     priority === option.value
-                      ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
-                      : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
+                      ? `${option.bg} ${option.color} border-current shadow-md`
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
                   {option.label}
@@ -426,17 +271,164 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          {/* Options avancées repliables */}
+          <details className="group">
+            <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
+              Options avancées
+              <span className="ml-2 group-open:rotate-90 transition-transform inline-block">▶</span>
+            </summary>
+            
+            <div className="mt-4 space-y-4 pl-4 border-l-2 border-gray-200">
+              {/* Projet et type */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <FolderOpen size={16} className="inline mr-2" />
+                    Projet
+                  </label>
+                  <select
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Aucun projet</option>
+                    {projects.map(project => (
+                      <option key={project.id} value={project.id}>
+                        {project.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Tag size={16} className="inline mr-2" />
+                    Type de tâche
+                  </label>
+                  <select
+                    value={taskTypeId}
+                    onChange={(e) => setTaskTypeId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Choisir un type</option>
+                    {taskTypes.map(taskType => (
+                      <option key={taskType.id} value={taskType.id}>
+                        {taskType.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Date de début */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Peut commencer à partir de
+                </label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !canStartFrom && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {canStartFrom ? format(canStartFrom, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-white" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={canStartFrom}
+                      onSelect={setCanStartFrom}
+                      initialFocus
+                      className="p-3"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Temps de pause */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pause avant (min)
+                  </label>
+                  <input
+                    type="number"
+                    value={bufferBefore}
+                    onChange={(e) => setBufferBefore(Math.max(0, Number(e.target.value)))}
+                    min="0"
+                    max="60"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pause après (min)
+                  </label>
+                  <input
+                    type="number"
+                    value={bufferAfter}
+                    onChange={(e) => setBufferAfter(Math.max(0, Number(e.target.value)))}
+                    min="0"
+                    max="60"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Découpage */}
+              <div className="space-y-3">
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allowSplitting}
+                    onChange={(e) => setAllowSplitting(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Autoriser le découpage de cette tâche
+                  </span>
+                </label>
+
+                {allowSplitting && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Durée minimum pour le découpage
+                    </label>
+                    <select
+                      value={splitDuration}
+                      onChange={(e) => setSplitDuration(Number(e.target.value))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    >
+                      <option value={30}>30 min</option>
+                      <option value={60}>1 heure</option>
+                      <option value={90}>1h 30</option>
+                      <option value={120}>2 heures</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Annuler
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2"
+              disabled={!title.trim() || !deadline}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus size={16} />
               {editingTask ? 'Modifier' : 'Créer'}
