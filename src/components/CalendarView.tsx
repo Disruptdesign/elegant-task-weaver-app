@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Task, Event } from '../types/task';
+import { Task, Event, Project } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, Edit, Check, Square, RefreshCw } from 'lucide-react';
@@ -12,6 +12,7 @@ import { Button } from './ui/button';
 interface CalendarViewProps {
   tasks: Task[];
   events: Event[];
+  projects?: Project[];
   onUpdateTask?: (id: string, updates: Partial<Task>) => void;
   onUpdateEvent?: (id: string, updates: Partial<Event>) => void;
   addTask?: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
@@ -39,6 +40,7 @@ const isSameDayNormalized = (date1: Date | string, date2: Date | string): boolea
 export function CalendarView({ 
   tasks, 
   events, 
+  projects = [],
   onUpdateTask, 
   onUpdateEvent, 
   addTask, 
@@ -986,6 +988,7 @@ export function CalendarView({
           onSubmitEvent={handleEventFormSubmit}
           editingTask={selectedTask}
           editingEvent={selectedEvent}
+          projects={projects}
         />
       )}
     </div>
