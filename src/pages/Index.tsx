@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Dashboard } from '../components/Dashboard';
@@ -41,6 +40,8 @@ const Index = () => {
 
   console.log('Index: Tasks loaded:', tasks.length);
   console.log('Index: Events loaded:', events.length);
+  console.log('Index: Projects loaded:', projects.length);
+  console.log('Index: TaskTypes loaded:', taskTypes.length);
   console.log('Index: Update functions available:', {
     addTask: !!addTask,
     updateTask: !!updateTask,
