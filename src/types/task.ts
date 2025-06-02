@@ -20,6 +20,23 @@ export interface Task {
   splitDuration?: number; // Durée minimum pour le découpage (en minutes)
 }
 
+export interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: Date;
+  endDate: Date;
+  allDay: boolean;
+  markAsBusy: boolean;
+  googleMeetLink?: string;
+  location?: string;
+  bufferBefore?: number;
+  bufferAfter?: number;
+  repeat?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface InboxItem {
   id: string;
   title: string;
@@ -35,3 +52,4 @@ export interface TimeSlot {
 }
 
 export type Priority = Task['priority'];
+export type ItemType = 'task' | 'event';

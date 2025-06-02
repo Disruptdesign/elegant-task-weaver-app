@@ -1,0 +1,614 @@
+
+import React, { useState, useEffect } from 'react';
+import { X, Calendar, Clock, Flag, Plus, CalendarIcon, MapPin, Video, Repeat } from 'lucide-react';
+import { Task, Event, Priority, ItemType } from '../types/task';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { Button } from './ui/button';
+import { Calendar as CalendarComponent } from './ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { cn } from '../lib/utils';
+
+interface AddItemFormProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmitTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
+  onSubmitEvent: (event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  editingTask?: Task;
+  editingEvent?: Event;
+  initialData?: { title: string; description?: string };
+}
+
+export function AddItemForm({ 
+  isOpen, 
+  onClose, 
+  onSubmitTask, 
+  onSubmitEvent, 
+  editingTask, 
+  editingEvent, 
+  initialData 
+}: AddItemFormProps) {
+  const [itemType, setItemType] = useState<ItemType>('task');
+  
+  // États communs
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [bufferBefore, setBufferBefore] = useState(0);
+  const [bufferAfter, setBufferAfter] = useState(0);
+
+  // États spécifiques aux tâches
+  const [deadline, setDeadline] = useState('');
+  const [priority, setPriority] = useState<Priority>('medium');
+  const [estimatedDuration, setEstimatedDuration] = useState(60);
+  const [category, setCategory] = useState('');
+  const [canStartFrom, setCanStartFrom] = useState<Date | undefined>();
+  const [allowSplitting, setAllowSplitting] = useState(false);
+  const [splitDuration, setSplitDuration] = useState(60);
+
+  // États spécifiques aux événements
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [allDay, setAllDay] = useState(false);
+  const [markAsBusy, setMarkAsBusy] = useState(true);
+  const [googleMeetLink, setGoogleMeetLink] = useState('');
+  const [location, setLocation] = useState('');
+  const [repeat, setRepeat] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
+
+  useEffect(() => {
+    if (editingTask) {
+      setItemType('task');
+      setTitle(editingTask.title);
+      setDescription(editingTask.description || '');
+      setDeadline(editingTask.deadline.toISOString().slice(0, 16));
+      setPriority(editingTask.priority);
+      setEstimatedDuration(editingTask.estimatedDuration);
+      setCategory(editingTask.category || '');
+      setCanStartFrom(editingTask.canStartFrom);
+      setBufferBefore(editingTask.bufferBefore || 0);
+      setBufferAfter(editingTask.bufferAfter || 0);
+      setAllowSplitting(editingTask.allowSplitting || false);
+      setSplitDuration(editingTask.splitDuration || 60);
+    } else if (editingEvent) {
+      setItemType('event');
+      setTitle(editingEvent.title);
+      setDescription(editingEvent.description || '');
+      setStartDate(editingEvent.startDate.toISOString().slice(0, 16));
+      setEndDate(editingEvent.endDate.toISOString().slice(0, 16));
+      setAllDay(editingEvent.allDay);
+      setMarkAsBusy(editingEvent.markAsBusy);
+      setGoogleMeetLink(editingEvent.googleMeetLink || '');
+      setLocation(editingEvent.location || '');
+      setBufferBefore(editingEvent.bufferBefore || 0);
+      setBufferAfter(editingEvent.bufferAfter || 0);
+      setRepeat(editingEvent.repeat || 'none');
+    } else if (initialData) {
+      setTitle(initialData.title);
+      setDescription(initialData.description || '');
+      resetForm();
+    } else {
+      resetForm();
+    }
+  }, [editingTask, editingEvent, initialData, isOpen]);
+
+  const resetForm = () => {
+    setItemType('task');
+    setTitle('');
+    setDescription('');
+    setDeadline('');
+    setPriority('medium');
+    setEstimatedDuration(60);
+    setCategory('');
+    setCanStartFrom(undefined);
+    setBufferBefore(0);
+    setBufferAfter(0);
+    setAllowSplitting(false);
+    setSplitDuration(60);
+    setStartDate('');
+    setEndDate('');
+    setAllDay(false);
+    setMarkAsBusy(true);
+    setGoogleMeetLink('');
+    setLocation('');
+    setRepeat('none');
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    if (itemType === 'task') {
+      if (!deadline) return;
+      
+      const taskData = {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        deadline: new Date(deadline),
+        priority,
+        estimatedDuration,
+        category: category.trim() || undefined,
+        canStartFrom,
+        bufferBefore: bufferBefore > 0 ? bufferBefore : undefined,
+        bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
+        allowSplitting,
+        splitDuration: allowSplitting && splitDuration > 0 ? splitDuration : undefined,
+        ...(editingTask && {
+          scheduledStart: editingTask.scheduledStart,
+          scheduledEnd: editingTask.scheduledEnd,
+        }),
+      };
+
+      onSubmitTask(taskData);
+    } else {
+      if (!startDate || !endDate) return;
+
+      const eventData = {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        allDay,
+        markAsBusy,
+        googleMeetLink: googleMeetLink.trim() || undefined,
+        location: location.trim() || undefined,
+        bufferBefore: bufferBefore > 0 ? bufferBefore : undefined,
+        bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
+        repeat,
+      };
+
+      onSubmitEvent(eventData);
+    }
+    
+    onClose();
+  };
+
+  const priorityOptions = [
+    { value: 'low', label: 'Faible', color: 'text-green-600' },
+    { value: 'medium', label: 'Moyenne', color: 'text-yellow-600' },
+    { value: 'high', label: 'Haute', color: 'text-orange-600' },
+    { value: 'urgent', label: 'Urgente', color: 'text-red-600' },
+  ] as const;
+
+  const repeatOptions = [
+    { value: 'none', label: 'Aucune' },
+    { value: 'daily', label: 'Quotidienne' },
+    { value: 'weekly', label: 'Hebdomadaire' },
+    { value: 'monthly', label: 'Mensuelle' },
+    { value: 'yearly', label: 'Annuelle' },
+  ] as const;
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {editingTask || editingEvent ? 'Modifier' : 'Ajouter'} {itemType === 'task' ? 'une tâche' : 'un événement'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Sélection du type */}
+          {!editingTask && !editingEvent && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Type d'élément
+              </label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setItemType('task')}
+                  className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    itemType === 'task'
+                      ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
+                      : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
+                  }`}
+                >
+                  Tâche
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemType('event')}
+                  className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    itemType === 'event'
+                      ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
+                      : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
+                  }`}
+                >
+                  Événement
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Informations de base */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Titre
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={`Que voulez-vous ${itemType === 'task' ? 'faire' : 'planifier'} ?`}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description (optionnel)
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Ajoutez des détails..."
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Propriétés spécifiques aux tâches */}
+          {itemType === 'task' && (
+            <>
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Planification</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Calendar size={16} className="inline mr-2" />
+                      Date limite
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Clock size={16} className="inline mr-2" />
+                      Durée estimée (minutes)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEstimatedDuration(Math.max(30, estimatedDuration - 30))}
+                        className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      >
+                        -30
+                      </button>
+                      <input
+                        type="number"
+                        value={estimatedDuration}
+                        onChange={(e) => setEstimatedDuration(Math.max(30, Number(e.target.value)))}
+                        min="30"
+                        step="30"
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEstimatedDuration(estimatedDuration + 30)}
+                        className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      >
+                        +30
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Peut commencer à partir de
+                  </label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !canStartFrom && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {canStartFrom ? format(canStartFrom, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={canStartFrom}
+                        onSelect={setCanStartFrom}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Options avancées</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Temps de pause avant (min)
+                    </label>
+                    <input
+                      type="number"
+                      value={bufferBefore}
+                      onChange={(e) => setBufferBefore(Number(e.target.value))}
+                      min="0"
+                      max="60"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Temps de pause après (min)
+                    </label>
+                    <input
+                      type="number"
+                      value={bufferAfter}
+                      onChange={(e) => setBufferAfter(Number(e.target.value))}
+                      min="0"
+                      max="60"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={allowSplitting}
+                      onChange={(e) => setAllowSplitting(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Autoriser le découpage de cette tâche
+                    </span>
+                  </label>
+
+                  {allowSplitting && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Durée minimum pour le découpage (min)
+                      </label>
+                      <select
+                        value={splitDuration}
+                        onChange={(e) => setSplitDuration(Number(e.target.value))}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value={30}>30 min</option>
+                        <option value={60}>1 heure</option>
+                        <option value={90}>1h 30</option>
+                        <option value={120}>2 heures</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Flag size={16} className="inline mr-2" />
+                    Priorité
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {priorityOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setPriority(option.value)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          priority === option.value
+                            ? 'bg-blue-100 text-blue-800 border-2 border-blue-300'
+                            : 'bg-gray-50 text-gray-700 border-2 border-transparent hover:bg-gray-100'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Catégorie (optionnel)
+                  </label>
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="Travail, Personnel, Santé..."
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Propriétés spécifiques aux événements */}
+          {itemType === 'event' && (
+            <>
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Planification</h3>
+                
+                <div className="space-y-3">
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={allDay}
+                      onChange={(e) => setAllDay(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Toute la journée
+                    </span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date et heure de début
+                    </label>
+                    <input
+                      type={allDay ? "date" : "datetime-local"}
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date et heure de fin
+                    </label>
+                    <input
+                      type={allDay ? "date" : "datetime-local"}
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Options</h3>
+                
+                <div className="space-y-3">
+                  <label className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={markAsBusy}
+                      onChange={(e) => setMarkAsBusy(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Marquer comme occupé
+                    </span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Temps de pause avant (min)
+                    </label>
+                    <input
+                      type="number"
+                      value={bufferBefore}
+                      onChange={(e) => setBufferBefore(Number(e.target.value))}
+                      min="0"
+                      max="60"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Temps de pause après (min)
+                    </label>
+                    <input
+                      type="number"
+                      value={bufferAfter}
+                      onChange={(e) => setBufferAfter(Number(e.target.value))}
+                      min="0"
+                      max="60"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Repeat size={16} className="inline mr-2" />
+                    Répétition
+                  </label>
+                  <select
+                    value={repeat}
+                    onChange={(e) => setRepeat(e.target.value as any)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    {repeatOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Video size={16} className="inline mr-2" />
+                    Lien Google Meet (optionnel)
+                  </label>
+                  <input
+                    type="url"
+                    value={googleMeetLink}
+                    onChange={(e) => setGoogleMeetLink(e.target.value)}
+                    placeholder="https://meet.google.com/..."
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <MapPin size={16} className="inline mr-2" />
+                    Localisation (optionnel)
+                  </label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Lieu de l'événement..."
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2"
+            >
+              <Plus size={16} />
+              {editingTask || editingEvent ? 'Modifier' : 'Ajouter'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

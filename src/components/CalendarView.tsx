@@ -4,7 +4,7 @@ import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfM
 import { fr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
-import { TaskForm } from './TaskForm';
+import { AddItemForm } from './AddItemForm';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -49,11 +49,15 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
-    // Position en pourcentage depuis 9h - correction du décalage
-    const top = ((startHour - 9) + startMinute / 60) * 64; // 64px par heure pour un meilleur alignement
-    const height = Math.max((task.estimatedDuration / 60) * 64, 32); // Hauteur minimum de 32px
+    // Appliquer le buffer avant pour ajuster la position
+    const bufferBeforeMinutes = task.bufferBefore || 0;
+    const adjustedTop = ((startHour - 9) + (startMinute - bufferBeforeMinutes) / 60) * 64;
     
-    return { top, height };
+    // Calculer la hauteur avec les buffers
+    const totalDuration = task.estimatedDuration + (task.bufferBefore || 0) + (task.bufferAfter || 0);
+    const height = Math.max((totalDuration / 60) * 64, 32);
+    
+    return { top: Math.max(0, adjustedTop), height };
   };
 
   const handleTaskClick = (task: Task) => {
@@ -209,7 +213,7 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
                     />
                   ))}
 
-                  {/* Tâches */}
+                  {/* Tâches avec buffers */}
                   <div className="absolute inset-0 p-1">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -230,13 +234,27 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
                           }}
                           onClick={() => handleTaskClick(task)}
                         >
+                          {/* Affichage du buffer avant */}
+                          {task.bufferBefore && (
+                            <div className="text-xs text-gray-500 border-b border-gray-300 pb-1 mb-1">
+                              Pause {task.bufferBefore}min
+                            </div>
+                          )}
+                          
                           <div className="text-xs font-medium line-clamp-2 text-gray-900">
                             {task.title}
                           </div>
-                          {position.height > 40 && (
+                          {position.height > 60 && (
                             <div className="flex items-center gap-1 mt-1 text-xs text-gray-600">
                               <Clock size={10} />
                               {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
+                            </div>
+                          )}
+                          
+                          {/* Affichage du buffer après */}
+                          {task.bufferAfter && position.height > 80 && (
+                            <div className="text-xs text-gray-500 border-t border-gray-300 pt-1 mt-1">
+                              Pause {task.bufferAfter}min
                             </div>
                           )}
                         </div>
@@ -324,10 +342,11 @@ export function CalendarView({ tasks, onUpdateTask }: CalendarViewProps) {
 
       {/* Formulaire de modification */}
       {onUpdateTask && (
-        <TaskForm
+        <AddItemForm
           isOpen={isFormOpen}
           onClose={handleFormClose}
-          onSubmit={handleFormSubmit}
+          onSubmitTask={handleFormSubmit}
+          onSubmitEvent={() => {}} // Pas utilisé dans CalendarView
           editingTask={selectedTask}
         />
       )}

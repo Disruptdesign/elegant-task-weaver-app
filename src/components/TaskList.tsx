@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Task } from '../types/task';
 import { TaskCard } from './TaskCard';
-import { TaskForm } from './TaskForm';
+import { AddItemForm } from './AddItemForm';
 import { Plus, Search, Filter, RefreshCw } from 'lucide-react';
 
 interface TaskListProps {
@@ -90,7 +89,7 @@ export function TaskList({
             className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
           >
             <Plus size={16} />
-            Nouvelle tâche
+            Ajouter
           </button>
         </div>
       </div>
@@ -213,10 +212,11 @@ export function TaskList({
       )}
 
       {/* Formulaire de tâche */}
-      <TaskForm
+      <AddItemForm
         isOpen={isFormOpen}
         onClose={handleFormClose}
-        onSubmit={handleFormSubmit}
+        onSubmitTask={handleFormSubmit}
+        onSubmitEvent={() => {}} // Pas utilisé dans TaskList
         editingTask={editingTask}
       />
     </div>

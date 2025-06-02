@@ -1,13 +1,15 @@
 
 import { useState, useEffect } from 'react';
-import { Task, InboxItem } from '../types/task';
+import { Task, Event, InboxItem } from '../types/task';
 import { taskScheduler } from '../utils/taskScheduler';
 
 const STORAGE_KEY = 'flowsavvy-tasks';
+const EVENTS_STORAGE_KEY = 'flowsavvy-events';
 const INBOX_STORAGE_KEY = 'flowsavvy-inbox';
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
 
   // Charger les tâches depuis le localStorage
@@ -27,6 +29,21 @@ export function useTasks() {
     }
   }, []);
 
+  // Charger les événements depuis le localStorage
+  useEffect(() => {
+    const savedEvents = localStorage.getItem(EVENTS_STORAGE_KEY);
+    if (savedEvents) {
+      const parsedEvents = JSON.parse(savedEvents).map((event: any) => ({
+        ...event,
+        startDate: new Date(event.startDate),
+        endDate: new Date(event.endDate),
+        createdAt: new Date(event.createdAt),
+        updatedAt: new Date(event.updatedAt),
+      }));
+      setEvents(parsedEvents);
+    }
+  }, []);
+
   // Charger l'inbox depuis le localStorage
   useEffect(() => {
     const savedInbox = localStorage.getItem(INBOX_STORAGE_KEY);
@@ -43,6 +60,11 @@ export function useTasks() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
+
+  // Sauvegarder les événements dans le localStorage
+  useEffect(() => {
+    localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events));
+  }, [events]);
 
   // Sauvegarder l'inbox dans le localStorage
   useEffect(() => {
@@ -88,6 +110,29 @@ export function useTasks() {
     setTasks(rescheduledTasks);
   };
 
+  // Fonctions pour les événements
+  const addEvent = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newEvent: Event = {
+      ...eventData,
+      id: Date.now().toString(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    setEvents([...events, newEvent]);
+  };
+
+  const updateEvent = (id: string, updates: Partial<Event>) => {
+    setEvents(events.map(event =>
+      event.id === id
+        ? { ...event, ...updates, updatedAt: new Date() }
+        : event
+    ));
+  };
+
+  const deleteEvent = (id: string) => {
+    setEvents(events.filter(event => event.id !== id));
+  };
+
   // Fonctions pour l'inbox
   const addInboxItem = (itemData: Omit<InboxItem, 'id' | 'createdAt'>) => {
     const newItem: InboxItem = {
@@ -115,12 +160,16 @@ export function useTasks() {
 
   return {
     tasks,
+    events,
     inboxItems,
     addTask,
     updateTask,
     deleteTask,
     completeTask,
     rescheduleAllTasks,
+    addEvent,
+    updateEvent,
+    deleteEvent,
     addInboxItem,
     deleteInboxItem,
     convertInboxItemToTask,

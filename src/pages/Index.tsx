@@ -5,22 +5,27 @@ import { Dashboard } from '../components/Dashboard';
 import { TaskList } from '../components/TaskList';
 import { CalendarView } from '../components/CalendarView';
 import { Inbox } from '../components/Inbox';
-import { TaskForm } from '../components/TaskForm';
+import { AddItemForm } from '../components/AddItemForm';
+import { QuickInbox } from '../components/QuickInbox';
 import { useTasks } from '../hooks/useTasks';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [taskFormData, setTaskFormData] = useState<{ title: string; description?: string } | undefined>();
   
   const {
     tasks,
+    events,
     inboxItems,
     addTask,
     updateTask,
     deleteTask,
     completeTask,
     rescheduleAllTasks,
+    addEvent,
+    updateEvent,
+    deleteEvent,
     addInboxItem,
     deleteInboxItem,
     convertInboxItemToTask,
@@ -29,11 +34,11 @@ const Index = () => {
   const handleConvertInboxItem = (item: any) => {
     const initialData = convertInboxItemToTask(item);
     setTaskFormData(initialData);
-    setIsTaskFormOpen(true);
+    setIsAddFormOpen(true);
   };
 
-  const handleTaskFormClose = () => {
-    setIsTaskFormOpen(false);
+  const handleAddFormClose = () => {
+    setIsAddFormOpen(false);
     setTaskFormData(undefined);
   };
 
@@ -79,14 +84,19 @@ const Index = () => {
 
   return (
     <>
-      <Layout currentView={currentView} onViewChange={setCurrentView}>
+      <Layout 
+        currentView={currentView} 
+        onViewChange={setCurrentView}
+        sidebarFooter={<QuickInbox onAddInboxItem={addInboxItem} />}
+      >
         {renderContent()}
       </Layout>
       
-      <TaskForm
-        isOpen={isTaskFormOpen}
-        onClose={handleTaskFormClose}
-        onSubmit={addTask}
+      <AddItemForm
+        isOpen={isAddFormOpen}
+        onClose={handleAddFormClose}
+        onSubmitTask={addTask}
+        onSubmitEvent={addEvent}
         initialData={taskFormData}
       />
     </>
