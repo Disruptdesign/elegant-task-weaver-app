@@ -57,19 +57,24 @@ export function useTaskDragAndDrop(
       // Déplacer la tâche
       const newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
       
-      // Contraindre aux heures de travail (9h-18h)
-      const hour = newStartTime.getHours();
-      
-      if (hour < 9) {
-        newStartTime.setHours(9, 0, 0, 0);
-      } else if (hour >= 18) {
-        newStartTime.setHours(17, 30, 0, 0);
-      }
-
-      // Arrondir aux créneaux de 30 minutes
+      // Arrondir aux créneaux de 15 minutes pour un déplacement plus fluide
       const minute = newStartTime.getMinutes();
-      const roundedMinutes = Math.round(minute / 30) * 30;
+      const roundedMinutes = Math.round(minute / 15) * 15;
       newStartTime.setMinutes(roundedMinutes, 0, 0);
+
+      // Contraindre aux heures de travail seulement si on reste dans la même journée
+      const originalDay = currentState.startTime.getDate();
+      const newDay = newStartTime.getDate();
+      
+      if (originalDay === newDay) {
+        // Même jour : contraindre aux heures de travail
+        const hour = newStartTime.getHours();
+        if (hour < 9) {
+          newStartTime.setHours(9, 0, 0, 0);
+        } else if (hour >= 18) {
+          newStartTime.setHours(17, 45, 0, 0);
+        }
+      }
 
       console.log('Updating task position:', { 
         taskId: currentState.taskId, 

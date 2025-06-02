@@ -267,11 +267,11 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
         </div>
       </div>
 
-      {/* Debug: États */}
-      {onUpdateTask && (dragState.isDragging || dragState.isResizing) && (
+      {/* Debug: États - Seulement pour le drag (pas pour le resize) */}
+      {onUpdateTask && dragState.isDragging && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
           <p className="text-sm text-yellow-800">
-            🟡 {dragState.isDragging ? 'Déplacement' : 'Redimensionnement'} en cours pour la tâche {dragState.taskId}
+            🟡 Déplacement en cours pour la tâche {dragState.taskId}
           </p>
         </div>
       )}
@@ -567,7 +567,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
               <div className="text-xs text-gray-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <GripVertical size={12} className="text-gray-400" />
-                  <span>Glisser le contenu pour déplacer la tâche dans le temps</span>
+                  <span>Glisser le contenu pour déplacer la tâche (même jour ou vers d'autres jours)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ArrowUpDown size={12} className="text-gray-400" />
