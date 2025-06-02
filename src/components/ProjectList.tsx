@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Plus, Calendar, Clock, FolderOpen, Users, Edit3, Trash2, BookTemplate, FolderPlus, Link } from 'lucide-react';
-import { Project, Task, ProjectTemplate, TemplateTask } from '../types/task';
+import { Project, Task, ProjectTemplate, TemplateTask, Priority } from '../types/task';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -71,7 +70,7 @@ export function ProjectList({
   const [taskFormData, setTaskFormData] = useState({
     title: '',
     description: '',
-    priority: 'medium' as const,
+    priority: 'medium' as Priority,
     estimatedDuration: 60,
     dayOffset: 0,
     dependencies: [] as string[],
@@ -82,7 +81,7 @@ export function ProjectList({
   const [editTaskFormData, setEditTaskFormData] = useState({
     title: '',
     description: '',
-    priority: 'medium' as const,
+    priority: 'medium' as Priority,
     estimatedDuration: 60,
     dependencies: [] as string[],
   });
@@ -789,7 +788,7 @@ export function ProjectList({
                     
                     <select
                       value={taskFormData.priority}
-                      onChange={(e) => setTaskFormData({ ...taskFormData, priority: e.target.value as any })}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, priority: e.target.value as Priority })}
                       className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
                     >
                       <option value="low">Basse</option>
@@ -1090,7 +1089,7 @@ export function ProjectList({
                   </label>
                   <select
                     value={editTaskFormData.priority}
-                    onChange={(e) => setEditTaskFormData({ ...editTaskFormData, priority: e.target.value as any })}
+                    onChange={(e) => setEditTaskFormData({ ...editTaskFormData, priority: e.target.value as Priority })}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="low">Basse</option>
