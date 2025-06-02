@@ -193,62 +193,24 @@ export function CalendarView({
     return { top: Math.max(0, top), height };
   };
 
-  // Nouvelle logique de clic avec délai
-  const scheduleClick = (item: Task | Event, type: 'task' | 'event') => {
-    console.log('Scheduling click for:', type, item.id);
-    
-    // Annuler le timer précédent s'il existe
-    if (clickTimerRef.current) {
-      clearTimeout(clickTimerRef.current);
-    }
-    
-    pendingClickRef.current = { item, type };
-    
-    // Programmer l'ouverture de la fenêtre dans 250ms
-    clickTimerRef.current = window.setTimeout(() => {
-      const pending = pendingClickRef.current;
-      if (pending && !dragState.isDragging && !dragState.isResizing) {
-        console.log('Executing delayed click for:', pending.type, pending.item.id);
-        
-        if (pending.type === 'task') {
-          setSelectedTask(pending.item as Task);
-          setSelectedEvent(undefined);
-        } else {
-          setSelectedEvent(pending.item as Event);
-          setSelectedTask(undefined);
-        }
-        setIsFormOpen(true);
-      } else {
-        console.log('Cancelled delayed click - drag in progress');
-      }
-      
-      clickTimerRef.current = null;
-      pendingClickRef.current = null;
-    }, 250);
+  // Gestionnaires de clic simplifiés - maintenant séparés du drag
+  const handleTaskClick = (task: Task) => {
+    console.log('Task clicked for editing:', task.id);
+    setSelectedTask(task);
+    setSelectedEvent(undefined);
+    setIsFormOpen(true);
   };
 
-  const handleTaskClick = (task: Task, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    scheduleClick(task, 'task');
-  };
-
-  const handleEventClick = (event: Event, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    scheduleClick(event, 'event');
+  const handleEventClick = (event: Event) => {
+    console.log('Event clicked for editing:', event.id);
+    setSelectedEvent(event);
+    setSelectedTask(undefined);
+    setIsFormOpen(true);
   };
 
   const handleTaskCompletion = (task: Task, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // Annuler le timer de clic s'il y en a un
-    if (clickTimerRef.current) {
-      clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = null;
-      pendingClickRef.current = null;
-    }
     
     console.log('Completing task:', task.id, 'current completed:', task.completed);
     if (onUpdateTask) {
@@ -309,13 +271,6 @@ export function CalendarView({
       return;
     }
     
-    // Annuler tout clic en attente
-    if (clickTimerRef.current) {
-      clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = null;
-      pendingClickRef.current = null;
-    }
-    
     e.preventDefault();
     e.stopPropagation();
     
@@ -337,13 +292,6 @@ export function CalendarView({
     if (!onUpdateEvent) {
       console.log('Cannot start event drag: no update function provided');
       return;
-    }
-    
-    // Annuler tout clic en attente
-    if (clickTimerRef.current) {
-      clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = null;
-      pendingClickRef.current = null;
     }
     
     e.preventDefault();
@@ -418,7 +366,6 @@ export function CalendarView({
           {events.filter(e => !e.allDay).length > 0 && ` - ${events.filter(e => !e.allDay).length} événement(s) avec horaire`}
           {dragState.isDragging && ' - 🎯 DRAGGING'}
           {dragState.isResizing && ' - 📏 RESIZING'}
-          {clickTimerRef.current && ' - ⏱️ CLICK PENDING'}
         </p>
       </div>
 
@@ -491,7 +438,7 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements */}
+                  {/* Événements avec zones d'interaction séparées */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -504,7 +451,7 @@ export function CalendarView({
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded-lg border transition-all z-30 group select-none bg-purple-100 border-purple-300 pointer-events-auto ${
+                            className={`absolute rounded-lg border transition-all z-30 group select-none bg-purple-100 border-purple-300 overflow-hidden ${
                               isBeingDragged ? 'opacity-80 shadow-lg ring-2 ring-purple-400 z-50' : 'hover:bg-purple-200 hover:shadow-md'
                             }`}
                             style={{
@@ -513,11 +460,10 @@ export function CalendarView({
                               left: '4px',
                               right: '4px',
                               minWidth: '0',
-                              overflow: 'hidden',
                             }}
-                            onClick={(e) => handleEventClick(event, e)}
                             title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                           >
+                            {/* Zone de resize du haut */}
                             {onUpdateEvent && position.height > 40 && (
                               <div
                                 className="absolute top-0 left-0 right-0 h-3 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-purple-300 hover:bg-purple-400 rounded-t-lg z-50 pointer-events-auto"
@@ -527,44 +473,44 @@ export function CalendarView({
                               </div>
                             )}
 
-                            <div
-                              className={`flex p-1 h-full overflow-hidden ${onUpdateEvent ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
-                              onMouseDown={onUpdateEvent ? (e) => handleEventMouseDown(e, event, 'move') : undefined}
+                            {/* Contenu principal cliquable */}
+                            <div 
+                              className="flex h-full overflow-hidden pointer-events-auto cursor-pointer"
+                              onClick={() => handleEventClick(event)}
                             >
-                              <div className="flex items-start gap-1 w-full min-w-0">
-                                {onUpdateEvent && (
-                                  <GripVertical 
-                                    size={10} 
-                                    className="text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
-                                  />
-                                )}
-                                <div className="flex-1 min-w-0 overflow-hidden">
-                                  <div className="flex items-center gap-1 text-xs font-bold text-purple-900">
-                                    <Users size={8} className="flex-shrink-0" />
-                                    <span className="truncate leading-tight">{event.title}</span>
-                                  </div>
-                                  {position.height > 40 && (
-                                    <div className="text-xs text-purple-700 opacity-75 truncate mt-0.5">
-                                      {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
-                                    </div>
-                                  )}
+                              {/* Zone de drag (poignée) */}
+                              {onUpdateEvent && (
+                                <div
+                                  className="flex-shrink-0 w-6 cursor-grab active:cursor-grabbing bg-purple-200 hover:bg-purple-300 flex items-center justify-center"
+                                  onMouseDown={(e) => handleEventMouseDown(e, event, 'move')}
+                                  onClick={(e) => e.stopPropagation()} // Empêcher le clic d'édition sur la poignée
+                                >
+                                  <GripVertical size={12} className="text-purple-600" />
                                 </div>
-                                {onUpdateEvent && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleEventClick(event, e);
-                                    }}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-purple-300 rounded z-50 flex-shrink-0"
-                                    title="Modifier l'événement"
-                                  >
-                                    <Edit size={8} className="text-purple-700" />
-                                  </button>
+                              )}
+
+                              {/* Contenu de l'événement */}
+                              <div className="flex-1 p-2 min-w-0 overflow-hidden">
+                                <div className="flex items-center gap-1 text-xs font-bold text-purple-900">
+                                  <Users size={10} className="flex-shrink-0" />
+                                  <span className="truncate leading-tight">{event.title}</span>
+                                </div>
+                                {position.height > 40 && (
+                                  <div className="text-xs text-purple-700 opacity-75 truncate mt-1">
+                                    {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
+                                  </div>
                                 )}
                               </div>
+
+                              {/* Icône d'édition */}
+                              {onUpdateEvent && (
+                                <div className="flex-shrink-0 w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Edit size={10} className="text-purple-700" />
+                                </div>
+                              )}
                             </div>
 
+                            {/* Zone de resize du bas */}
                             {onUpdateEvent && position.height > 40 && (
                               <div
                                 className="absolute bottom-0 left-0 right-0 h-3 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-purple-300 hover:bg-purple-400 rounded-b-lg z-50 pointer-events-auto"
@@ -578,7 +524,7 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches */}
+                  {/* Tâches avec zones d'interaction séparées */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -594,7 +540,7 @@ export function CalendarView({
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute rounded-lg border transition-all z-20 group select-none pointer-events-auto ${
+                          className={`absolute rounded-lg border transition-all z-20 group select-none overflow-hidden ${
                             statusColors.bg
                           } ${statusColors.border} ${
                             isBeingDragged ? 'opacity-80 shadow-lg ring-2 ring-blue-400 z-50' : 'hover:shadow-md'
@@ -605,11 +551,10 @@ export function CalendarView({
                             left: '4px',
                             right: '4px',
                             minWidth: '0',
-                            overflow: 'hidden',
                           }}
-                          onClick={(e) => handleTaskClick(task, e)}
                           title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}`}
                         >
+                          {/* Zone de resize du haut */}
                           {onUpdateTask && position.height > 40 && (
                             <div
                               className="absolute top-0 left-0 right-0 h-3 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-300 hover:bg-gray-400 rounded-t-lg z-50 pointer-events-auto"
@@ -619,63 +564,64 @@ export function CalendarView({
                             </div>
                           )}
 
-                          <div
-                            className={`flex p-0.5 h-full overflow-hidden ${onUpdateTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
-                            onMouseDown={onUpdateTask ? (e) => handleTaskMouseDown(e, task, 'move') : undefined}
+                          {/* Contenu principal cliquable */}
+                          <div 
+                            className="flex h-full overflow-hidden pointer-events-auto cursor-pointer"
+                            onClick={() => handleTaskClick(task)}
                           >
-                            <div className="flex items-start gap-1 w-full min-w-0">
-                              {onUpdateTask && (
-                                <button
-                                  onClick={(e) => handleTaskCompletion(task, e)}
-                                  className="p-0.5 hover:bg-gray-300 rounded flex-shrink-0 bg-white bg-opacity-80 border border-gray-300 z-50"
-                                  title={task.completed ? "Marquer comme non terminé" : "Marquer comme terminé"}
-                                >
-                                  {task.completed ? (
-                                    <Check size={6} className="text-green-600" />
-                                  ) : (
-                                    <Square size={6} className="text-gray-500" />
-                                  )}
-                                </button>
-                              )}
-                              
-                              {onUpdateTask && (
-                                <GripVertical 
-                                  size={6} 
-                                  className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
-                                />
-                              )}
-                              
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <div className={`text-xs font-medium text-gray-900 truncate leading-tight ${task.completed ? 'line-through' : ''}`}>
-                                  {task.title}
-                                </div>
-                                {position.height > 40 && (
-                                  <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
-                                    <Clock size={6} className="flex-shrink-0" />
-                                    <span className="truncate leading-tight">
-                                      {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
-                                      {' '}({task.estimatedDuration}min)
-                                    </span>
-                                  </div>
+                            {/* Checkbox */}
+                            {onUpdateTask && (
+                              <div 
+                                className="flex-shrink-0 w-6 flex items-center justify-center bg-white bg-opacity-80"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Empêcher le clic d'édition
+                                  handleTaskCompletion(task, e);
+                                }}
+                              >
+                                {task.completed ? (
+                                  <Check size={10} className="text-green-600" />
+                                ) : (
+                                  <Square size={10} className="text-gray-500" />
                                 )}
                               </div>
-                                
-                              {onUpdateTask && (
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleTaskClick(task, e);
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-gray-300 rounded z-50 flex-shrink-0"
-                                  title="Modifier la tâche"
-                                >
-                                  <Edit size={6} className="text-gray-700" />
-                                </button>
+                            )}
+
+                            {/* Zone de drag (poignée) */}
+                            {onUpdateTask && (
+                              <div
+                                className="flex-shrink-0 w-6 cursor-grab active:cursor-grabbing bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+                                onMouseDown={(e) => handleTaskMouseDown(e, task, 'move')}
+                                onClick={(e) => e.stopPropagation()} // Empêcher le clic d'édition sur la poignée
+                              >
+                                <GripVertical size={10} className="text-gray-500" />
+                              </div>
+                            )}
+                            
+                            {/* Contenu de la tâche */}
+                            <div className="flex-1 p-2 min-w-0 overflow-hidden">
+                              <div className={`text-xs font-medium text-gray-900 truncate leading-tight ${task.completed ? 'line-through' : ''}`}>
+                                {task.title}
+                              </div>
+                              {position.height > 40 && (
+                                <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+                                  <Clock size={8} className="flex-shrink-0" />
+                                  <span className="truncate leading-tight">
+                                    {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
+                                    {' '}({task.estimatedDuration}min)
+                                  </span>
+                                </div>
                               )}
                             </div>
+
+                            {/* Icône d'édition */}
+                            {onUpdateTask && (
+                              <div className="flex-shrink-0 w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Edit size={10} className="text-gray-700" />
+                              </div>
+                            )}
                           </div>
 
+                          {/* Zone de resize du bas */}
                           {onUpdateTask && position.height > 40 && (
                             <div
                               className="absolute bottom-0 left-0 right-0 h-3 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-300 hover:bg-gray-400 rounded-b-lg z-50 pointer-events-auto"
@@ -725,7 +671,7 @@ export function CalendarView({
                       <div
                         key={`month-event-${event.id}`}
                         className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate font-medium flex items-center gap-1 group"
-                        onClick={(e) => handleEventClick(event, e)}
+                        onClick={() => handleEventClick(event)}
                         title={`${event.title}\n${event.allDay ? 'Toute la journée' : format(new Date(event.startDate), 'HH:mm') + ' - ' + format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                       >
                         {event.allDay ? '🗓️' : '📅'} <span className="truncate flex-1">{event.title}</span>
@@ -743,7 +689,7 @@ export function CalendarView({
                         <div
                           key={`month-task-${task.id}`}
                           className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 ${statusColors.bg} ${statusColors.text} truncate flex items-center gap-1 group ${task.completed ? 'opacity-60' : ''}`}
-                          onClick={(e) => handleTaskClick(task, e)}
+                          onClick={() => handleTaskClick(task)}
                           title={`${task.title}\n${task.estimatedDuration}min\n${task.description || ''}`}
                         >
                           {onUpdateTask && (
@@ -808,22 +754,22 @@ export function CalendarView({
               <div className="text-xs text-gray-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <GripVertical size={12} className="text-gray-400" />
-                  <span>Glisser pour déplacer (verticalement pour l'heure, horizontalement pour le jour)</span>
+                  <span>Zone grise à gauche : glisser pour déplacer</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ArrowUpDown size={12} className="text-gray-400" />
-                  <span>Glisser les bords gris haut/bas pour ajuster la durée</span>
+                  <span>Bords gris haut/bas : glisser pour ajuster la durée</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Check size={12} className="text-green-600" />
-                  <span>Checkbox pour marquer les tâches comme terminées</span>
+                  <span>Checkbox (tâches) : marquer comme terminées</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Edit size={12} className="text-gray-400" />
-                  <span>Clic simple pour ouvrir l'édition (délai de 250ms pour éviter les conflits)</span>
+                  <span>Zone principale : clic pour éditer</span>
                 </div>
-                <div>• Déplacement libre entre les jours - pas de contrainte horaire</div>
-                <div>• Le clic pour éditer ne s'active que si aucun drag n'est détecté</div>
+                <div>• Chaque zone a sa fonction propre - plus de conflit entre clic et drag</div>
+                <div>• Interface claire et prévisible pour l'utilisateur</div>
               </div>
             </div>
           )}
