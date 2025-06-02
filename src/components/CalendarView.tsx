@@ -464,7 +464,7 @@ export function CalendarView({
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm ${
+                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm group ${
                               isBeingDragged 
                                 ? 'opacity-80 shadow-lg z-50' 
                                 : 'hover:shadow-md'
@@ -491,6 +491,9 @@ export function CalendarView({
                               }
                             }}
                           >
+                            {/* Zone de redimensionnement haut */}
+                            <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
+                            
                             <div className="h-full px-2 py-1 flex flex-col justify-center">
                               <div className="text-xs font-medium text-sky-800 leading-tight truncate">
                                 {event.title}
@@ -501,6 +504,9 @@ export function CalendarView({
                                 </div>
                               )}
                             </div>
+                            
+                            {/* Zone de redimensionnement bas */}
+                            <div className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         );
                       })}
@@ -521,7 +527,7 @@ export function CalendarView({
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm ${
+                          className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm group ${
                             isBeingDragged 
                               ? 'opacity-80 shadow-lg z-50' 
                               : 'hover:shadow-md'
@@ -548,6 +554,9 @@ export function CalendarView({
                             }
                           }}
                         >
+                          {/* Zone de redimensionnement haut */}
+                          <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
+                          
                           <div className="h-full px-2 py-1 flex items-center gap-1.5">
                             {/* Checkbox minimaliste style Notion */}
                             {onUpdateTask && (
@@ -583,6 +592,9 @@ export function CalendarView({
                               )}
                             </div>
                           </div>
+                          
+                          {/* Zone de redimensionnement bas */}
+                          <div className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       );
                     })}
