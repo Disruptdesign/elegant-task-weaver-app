@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Flag, Plus, CalendarIcon, FolderOpen, Tag, Zap } from 'lucide-react';
 import { Task, Priority, Project, TaskType } from '../types/task';
@@ -51,8 +52,8 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       setDeadline(deadlineStr);
       setPriority(editingTask.priority);
       setEstimatedDuration(editingTask.estimatedDuration);
-      setProjectId(editingTask.projectId || '');
-      setTaskTypeId(editingTask.taskTypeId || '');
+      setProjectId(editingTask.projectId || 'no-project');
+      setTaskTypeId(editingTask.taskTypeId || 'no-task-type');
       setCanStartFrom(editingTask.canStartFrom);
       setBufferBefore(editingTask.bufferBefore || 0);
       setBufferAfter(editingTask.bufferAfter || 0);
@@ -68,8 +69,8 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       setDeadline(tomorrow.toISOString().slice(0, 16));
       setPriority('medium');
       setEstimatedDuration(60);
-      setProjectId('');
-      setTaskTypeId('');
+      setProjectId('no-project');
+      setTaskTypeId('no-task-type');
       setCanStartFrom(undefined);
       setBufferBefore(0);
       setBufferAfter(0);
@@ -85,8 +86,8 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       setDeadline(tomorrow.toISOString().slice(0, 16));
       setPriority('medium');
       setEstimatedDuration(60);
-      setProjectId('');
-      setTaskTypeId('');
+      setProjectId('no-project');
+      setTaskTypeId('no-task-type');
       setCanStartFrom(undefined);
       setBufferBefore(0);
       setBufferAfter(0);
@@ -106,8 +107,8 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       deadline: new Date(deadline),
       priority,
       estimatedDuration,
-      projectId: projectId || undefined,
-      taskTypeId: taskTypeId || undefined,
+      projectId: projectId === 'no-project' ? undefined : projectId,
+      taskTypeId: taskTypeId === 'no-task-type' ? undefined : taskTypeId,
       canStartFrom,
       bufferBefore: bufferBefore > 0 ? bufferBefore : undefined,
       bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
@@ -285,7 +286,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
             </div>
           </div>
 
-          {/* Projet et Type */}
+          {/* Project and Type - corrected Select components */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -297,7 +298,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                   <SelectValue placeholder="Aucun projet" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-lg z-50">
-                  <SelectItem value="">Aucun projet</SelectItem>
+                  <SelectItem value="no-project">Aucun projet</SelectItem>
                   {projects.map(project => (
                     <SelectItem key={project.id} value={project.id}>
                       <div className="flex items-center gap-2">
@@ -328,7 +329,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                   <SelectValue placeholder="Choisir un type" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-lg z-50">
-                  <SelectItem value="">Aucun type</SelectItem>
+                  <SelectItem value="no-task-type">Aucun type</SelectItem>
                   {taskTypes.map(taskType => (
                     <SelectItem key={taskType.id} value={taskType.id}>
                       <div className="flex items-center gap-2">

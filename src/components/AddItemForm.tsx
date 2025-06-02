@@ -75,8 +75,8 @@ export function AddItemForm({
       setDeadline(editingTask.deadline.toISOString().slice(0, 16));
       setPriority(editingTask.priority);
       setEstimatedDuration(editingTask.estimatedDuration);
-      setProjectId(editingTask.projectId || '');
-      setTaskTypeId(editingTask.taskTypeId || '');
+      setProjectId(editingTask.projectId || 'no-project');
+      setTaskTypeId(editingTask.taskTypeId || 'no-task-type');
       setCanStartFrom(editingTask.canStartFrom);
       setBufferBefore(editingTask.bufferBefore || 0);
       setBufferAfter(editingTask.bufferAfter || 0);
@@ -111,8 +111,8 @@ export function AddItemForm({
     setDeadline('');
     setPriority('medium');
     setEstimatedDuration(60);
-    setProjectId('');
-    setTaskTypeId('');
+    setProjectId('no-project');
+    setTaskTypeId('no-task-type');
     setCanStartFrom(undefined);
     setBufferBefore(0);
     setBufferAfter(0);
@@ -140,8 +140,8 @@ export function AddItemForm({
         deadline: new Date(deadline),
         priority,
         estimatedDuration,
-        projectId: projectId || undefined,
-        taskTypeId: taskTypeId || undefined,
+        projectId: projectId === 'no-project' ? undefined : projectId,
+        taskTypeId: taskTypeId === 'no-task-type' ? undefined : taskTypeId,
         canStartFrom,
         bufferBefore: bufferBefore > 0 ? bufferBefore : undefined,
         bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
@@ -296,11 +296,11 @@ export function AddItemForm({
                     Projet
                   </label>
                   <Select value={projectId} onValueChange={setProjectId}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3">
                       <SelectValue placeholder="Choisir un projet" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Aucun projet</SelectItem>
+                    <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <SelectItem value="no-project">Aucun projet</SelectItem>
                       {projects.map(project => (
                         <SelectItem key={project.id} value={project.id}>
                           <div className="flex items-center gap-2">
@@ -327,11 +327,11 @@ export function AddItemForm({
                     Type de tâche
                   </label>
                   <Select value={taskTypeId} onValueChange={setTaskTypeId}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3">
                       <SelectValue placeholder="Choisir un type" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Aucun type</SelectItem>
+                    <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <SelectItem value="no-task-type">Aucun type</SelectItem>
                       {taskTypes.map(taskType => (
                         <SelectItem key={taskType.id} value={taskType.id}>
                           <div className="flex items-center gap-2">
