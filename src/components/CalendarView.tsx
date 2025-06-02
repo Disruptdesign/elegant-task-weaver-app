@@ -157,7 +157,7 @@ export function CalendarView({
     const startMinute = start.getMinutes();
     
     const adjustedTop = ((startHour - 9) + startMinute / 60) * 64;
-    const height = Math.max((task.estimatedDuration / 60) * 64, 40);
+    const height = Math.max((task.estimatedDuration / 60) * 64, 28);
     
     console.log('Task position:', { 
       title: task.title, 
@@ -180,7 +180,7 @@ export function CalendarView({
     
     const top = ((startHour - 9) + startMinute / 60) * 64;
     const duration = (end.getTime() - start.getTime()) / (1000 * 60);
-    const height = Math.max((duration / 60) * 64, 40);
+    const height = Math.max((duration / 60) * 64, 28);
     
     console.log('Event position:', { 
       title: event.title, 
@@ -370,11 +370,11 @@ export function CalendarView({
       </div>
 
       {viewMode === 'week' ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* En-tête des jours */}
-          <div className="grid grid-cols-8 border-b border-gray-200 bg-gray-50">
-            <div className="w-20 p-4 text-center text-sm font-medium text-gray-600 border-r border-gray-200">
-              Heures
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* En-tête des jours - Style Notion */}
+          <div className="grid grid-cols-8 border-b border-gray-200">
+            <div className="w-16 p-3 text-center text-xs font-medium text-gray-500 border-r border-gray-200">
+              GMT+1
             </div>
             {getWeekDays().map((day, index) => {
               const isToday = isSameDay(day, new Date());
@@ -384,40 +384,31 @@ export function CalendarView({
               return (
                 <div
                   key={index}
-                  className={`p-4 text-center border-r border-gray-200 ${
+                  className={`p-3 text-center border-r border-gray-200 ${
                     isToday ? 'bg-blue-50' : ''
                   }`}
                 >
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {format(day, 'EEE', { locale: fr })}
                   </div>
-                  <div className={`text-lg font-bold mt-1 ${
+                  <div className={`text-lg font-semibold mt-1 ${
                     isToday ? 'text-blue-600' : 'text-gray-900'
                   }`}>
                     {format(day, 'd')}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {dayEvents.length > 0 && (
-                      <span className="text-purple-600">{dayEvents.length} événement{dayEvents.length > 1 ? 's' : ''}</span>
-                    )}
-                    {dayEvents.length > 0 && dayTasks.length > 0 && ' • '}
-                    {dayTasks.length > 0 && (
-                      <span>{dayTasks.length} tâche{dayTasks.length > 1 ? 's' : ''}</span>
-                    )}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Grille horaire */}
+          {/* Grille horaire - Style Notion */}
           <div className="relative">
             <div className="grid grid-cols-8">
               {/* Colonne des heures */}
-              <div className="w-20 bg-gray-50 border-r border-gray-200">
+              <div className="w-16 bg-gray-50/30 border-r border-gray-200">
                 {workingHours.map(hour => (
-                  <div key={hour} className="h-16 border-b border-gray-100 flex items-center justify-center">
-                    <span className="text-sm font-medium text-gray-600">
+                  <div key={hour} className="h-16 border-b border-gray-100 flex items-start justify-center pt-1">
+                    <span className="text-xs font-medium text-gray-400">
                       {hour}:00
                     </span>
                   </div>
@@ -428,7 +419,7 @@ export function CalendarView({
               {getWeekDays().map((day, dayIndex) => (
                 <div 
                   key={dayIndex} 
-                  className="relative border-r border-gray-200"
+                  className="relative border-r border-gray-200 bg-white hover:bg-gray-50/30 transition-colors"
                 >
                   {/* Lignes horaires */}
                   {workingHours.map(hour => (
@@ -438,8 +429,8 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements - Style Google Calendar */}
-                  <div className="absolute inset-0 p-0.5 pointer-events-none">
+                  {/* Événements - Style Notion minimaliste */}
+                  <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
                       .map(event => {
@@ -451,18 +442,18 @@ export function CalendarView({
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded border-l-4 transition-all duration-100 cursor-pointer pointer-events-auto select-none ${
+                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm ${
                               isBeingDragged 
-                                ? 'opacity-80 shadow-lg z-50' 
-                                : 'hover:shadow-md'
+                                ? 'opacity-80 shadow-lg z-50 scale-105' 
+                                : 'hover:shadow-md hover:scale-[1.02]'
                             }`}
                             style={{
                               top: `${position.top}px`,
                               height: `${position.height}px`,
                               left: '2px',
                               right: '2px',
-                              backgroundColor: '#e3f2fd',
-                              borderLeftColor: '#1976d2',
+                              backgroundColor: '#f0f9ff',
+                              border: '1px solid #e0f2fe',
                             }}
                             onClick={() => handleEventClick(event)}
                             onMouseDown={(e) => {
@@ -478,18 +469,13 @@ export function CalendarView({
                               }
                             }}
                           >
-                            <div className="h-full p-1 flex flex-col justify-start">
-                              <div className="text-xs font-medium text-blue-900 leading-tight truncate">
+                            <div className="h-full px-2 py-1 flex flex-col justify-center">
+                              <div className="text-xs font-medium text-sky-800 leading-tight truncate">
                                 {event.title}
                               </div>
-                              {position.height > 30 && (
-                                <div className="text-xs text-blue-700 leading-tight mt-0.5">
+                              {position.height > 35 && (
+                                <div className="text-xs text-sky-600 leading-tight mt-0.5 opacity-75">
                                   {format(new Date(event.startDate), 'HH:mm')}
-                                </div>
-                              )}
-                              {position.height > 45 && event.location && (
-                                <div className="text-xs text-blue-600 leading-tight opacity-75 truncate">
-                                  {event.location}
                                 </div>
                               )}
                             </div>
@@ -498,8 +484,8 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches - Style Google Calendar */}
-                  <div className="absolute inset-0 p-0.5 pointer-events-none">
+                  {/* Tâches - Style Notion minimaliste */}
+                  <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
                       if (!position) {
@@ -513,18 +499,18 @@ export function CalendarView({
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute rounded border-l-4 transition-all duration-100 cursor-pointer pointer-events-auto select-none ${
+                          className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm ${
                             isBeingDragged 
-                              ? 'opacity-80 shadow-lg z-50' 
-                              : 'hover:shadow-md'
+                              ? 'opacity-80 shadow-lg z-50 scale-105' 
+                              : 'hover:shadow-md hover:scale-[1.02]'
                           } ${isCompleted ? 'opacity-60' : ''}`}
                           style={{
                             top: `${position.top}px`,
                             height: `${position.height}px`,
                             left: '2px',
                             right: '2px',
-                            backgroundColor: isCompleted ? '#f5f5f5' : '#fff3e0',
-                            borderLeftColor: isCompleted ? '#9e9e9e' : '#ff9800',
+                            backgroundColor: isCompleted ? '#f8f8f8' : '#fef7ed',
+                            border: isCompleted ? '1px solid #e5e5e5' : '1px solid #fed7aa',
                           }}
                           onClick={() => handleTaskClick(task)}
                           onMouseDown={(e) => {
@@ -540,19 +526,19 @@ export function CalendarView({
                             }
                           }}
                         >
-                          <div className="h-full p-1 flex items-start gap-1">
-                            {/* Checkbox minimaliste */}
+                          <div className="h-full px-2 py-1 flex items-center gap-1.5">
+                            {/* Checkbox minimaliste style Notion */}
                             {onUpdateTask && (
                               <button
-                                className={`flex-shrink-0 w-3 h-3 mt-0.5 rounded-sm border transition-colors ${
+                                className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all ${
                                   isCompleted 
-                                    ? 'bg-gray-500 border-gray-500' 
-                                    : 'bg-white border-orange-400 hover:bg-orange-50'
+                                    ? 'bg-gray-400 border-gray-400' 
+                                    : 'bg-white border-amber-300 hover:border-amber-400'
                                 }`}
                                 onClick={(e) => handleTaskCompletion(task, e)}
                               >
                                 {isCompleted && (
-                                  <Check size={8} className="text-white m-auto" />
+                                  <Check size={10} className="text-white m-auto" />
                                 )}
                               </button>
                             )}
@@ -561,14 +547,14 @@ export function CalendarView({
                             <div className="flex-1 min-w-0">
                               <div className={`text-xs font-medium leading-tight truncate ${
                                 isCompleted 
-                                  ? 'text-gray-600 line-through' 
-                                  : 'text-orange-900'
+                                  ? 'text-gray-500 line-through' 
+                                  : 'text-amber-800'
                               }`}>
                                 {task.title}
                               </div>
-                              {position.height > 30 && (
-                                <div className={`text-xs leading-tight mt-0.5 ${
-                                  isCompleted ? 'text-gray-500' : 'text-orange-700'
+                              {position.height > 35 && (
+                                <div className={`text-xs leading-tight mt-0.5 opacity-75 ${
+                                  isCompleted ? 'text-gray-400' : 'text-amber-600'
                                 }`}>
                                   {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
                                 </div>
@@ -681,32 +667,33 @@ export function CalendarView({
       )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-sm font-medium text-gray-900 mb-4">Style Google Calendar</h3>
+        <h3 className="text-sm font-medium text-gray-900 mb-4">Style Notion Calendar</h3>
         <div className="space-y-4">
           <div className="flex flex-wrap gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-2 rounded-sm border-l-4" style={{ backgroundColor: '#e3f2fd', borderLeftColor: '#1976d2' }} />
+              <div className="w-4 h-2 rounded-lg border" style={{ backgroundColor: '#f0f9ff', borderColor: '#e0f2fe' }} />
               <span className="text-sm text-gray-600">Événements</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-2 rounded-sm border-l-4" style={{ backgroundColor: '#fff3e0', borderLeftColor: '#ff9800' }} />
+              <div className="w-4 h-2 rounded-lg border" style={{ backgroundColor: '#fef7ed', borderColor: '#fed7aa' }} />
               <span className="text-sm text-gray-600">Tâches</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-2 rounded-sm border-l-4" style={{ backgroundColor: '#f5f5f5', borderLeftColor: '#9e9e9e' }} />
+              <div className="w-4 h-2 rounded-lg border" style={{ backgroundColor: '#f8f8f8', borderColor: '#e5e5e5' }} />
               <span className="text-sm text-gray-600">Tâches terminées</span>
             </div>
           </div>
           
           {(onUpdateTask || onUpdateEvent) && (
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Design Google Calendar :</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Design Notion Calendar :</h4>
               <div className="text-xs text-gray-600 space-y-1">
-                <div>• Bordure gauche colorée pour identification rapide</div>
-                <div>• Coins arrondis et espacement minimal</div>
-                <div>• Checkbox intégré pour les tâches</div>
-                <div>• Glisser-déposer fluide et redimensionnement</div>
-                <div>• Style épuré et professionnel</div>
+                <div>• Cartes minimalistes avec bordures subtiles</div>
+                <div>• Coins arrondis et ombres douces</div>
+                <div>• Checkbox circulaire pour les tâches</div>
+                <div>• Animations fluides au survol et lors du drag</div>
+                <div>• Palette de couleurs épurée et moderne</div>
+                <div>• Typographie fine et élégante</div>
               </div>
             </div>
           )}
