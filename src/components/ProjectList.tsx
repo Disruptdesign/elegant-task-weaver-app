@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Plus, Calendar, Clock, CheckCircle2, Edit3, Trash2, FolderOpen } from 'lucide-react';
+import { Plus, Calendar, Clock, CheckCircle2, Edit3, Trash2, FolderOpen, Link, Settings } from 'lucide-react';
 import { Project, Task } from '../types/task';
 import { format, isPast, differenceInDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -18,6 +17,7 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [managingDependencies, setManagingDependencies] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -117,6 +117,17 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
     }
   };
 
+  const handleTaskDependencyChange = (taskId: string, dependencies: string[]) => {
+    if (onEditTask) {
+      onEditTask(taskId, { dependencies });
+    }
+  };
+
+  const getTaskDependencyName = (dependencyId: string): string => {
+    const task = tasks.find(t => t.id === dependencyId);
+    return task ? task.title : 'Tâche inconnue';
+  };
+
   return (
     <div className="space-y-6">
       {/* En-tête */}
@@ -206,6 +217,13 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
                     
                     <div className="flex items-center gap-2">
                       <button
+                        onClick={() => setManagingDependencies(managingDependencies === project.id ? null : project.id)}
+                        className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        title="Gérer les dépendances"
+                      >
+                        <Link size={16} />
+                      </button>
+                      <button
                         onClick={() => toggleProjectExpansion(project.id)}
                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                       >
@@ -240,6 +258,116 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
                     </div>
                   </div>
 
+                  {/* Gestion des dépendances */}
+                  {managingDependencies === project.id && (
+                    <div className="border-t border-gray-200 pt-4 mb-4">
+                      <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                        <Settings size={16} />
+                        Gestion des dépendances du projet
+                      </h4>
+                      <div className="space-y-3">
+                        {projectTasks.map(task => (
+                          <div key={task.id} className="bg-gray-50 p-3 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-gray-900">{task.title}</span>
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                task.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {task.completed ? 'Terminée' : 'En cours'}
+                              </span>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-2">
+                                Dépendances (cette tâche dépend de):
+                              </label>
+                              <div className="space-y-2">
+                                {projectTasks
+                                  .filter(t => t.id !== task.id)
+                                  .map(potentialDep => (
+                                    <label key={potentialDep.id} className="flex items-center space-x-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={task.dependencies?.includes(potentialDep.id) || false}
+                                        onChange={(e) => {
+                                          const currentDeps = task.dependencies || [];
+                                          let newDeps;
+                                          
+                                          if (e.target.checked) {
+                                            newDeps = [...currentDeps, potentialDep.id];
+                                          } else {
+                                            newDeps = currentDeps.filter(id => id !== potentialDep.id);
+                                          }
+                                          
+                                          handleTaskDependencyChange(task.id, newDeps);
+                                        }}
+                                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                      />
+                                      <span className="text-sm text-gray-700">{potentialDep.title}</span>
+                                      {potentialDep.completed && (
+                                        <CheckCircle2 className="text-green-500" size={14} />
+                                      )}
+                                    </label>
+                                  ))}
+                                
+                                {/* Dépendances vers des tâches d'autres projets */}
+                                <div className="border-t pt-2 mt-2">
+                                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                                    Tâches d'autres projets:
+                                  </label>
+                                  {tasks
+                                    .filter(t => t.projectId !== project.id && t.projectId)
+                                    .map(externalTask => (
+                                      <label key={externalTask.id} className="flex items-center space-x-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={task.dependencies?.includes(externalTask.id) || false}
+                                          onChange={(e) => {
+                                            const currentDeps = task.dependencies || [];
+                                            let newDeps;
+                                            
+                                            if (e.target.checked) {
+                                              newDeps = [...currentDeps, externalTask.id];
+                                            } else {
+                                              newDeps = currentDeps.filter(id => id !== externalTask.id);
+                                            }
+                                            
+                                            handleTaskDependencyChange(task.id, newDeps);
+                                          }}
+                                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                          {externalTask.title}
+                                          <span className="text-xs text-gray-500 ml-1">
+                                            ({projects.find(p => p.id === externalTask.projectId)?.title})
+                                          </span>
+                                        </span>
+                                        {externalTask.completed && (
+                                          <CheckCircle2 className="text-green-500" size={14} />
+                                        )}
+                                      </label>
+                                    ))}
+                                </div>
+                              </div>
+                              
+                              {/* Afficher les dépendances actuelles */}
+                              {task.dependencies && task.dependencies.length > 0 && (
+                                <div className="mt-2 p-2 bg-blue-50 rounded">
+                                  <span className="text-xs font-medium text-blue-800">Dépendances actives:</span>
+                                  <ul className="text-xs text-blue-700 mt-1">
+                                    {task.dependencies.map(depId => (
+                                      <li key={depId}>• {getTaskDependencyName(depId)}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tâches du projet (si étendu) */}
                   {isExpanded && (
                     <div className="border-t border-gray-200 pt-4">
@@ -266,9 +394,19 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
                                   onChange={() => onEditTask?.(task.id, { completed: !task.completed })}
                                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                 />
-                                <span className={`${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                                  {task.title}
-                                </span>
+                                <div className="flex flex-col">
+                                  <span className={`${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                    {task.title}
+                                  </span>
+                                  {task.dependencies && task.dependencies.length > 0 && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <Link size={12} className="text-purple-500" />
+                                      <span className="text-xs text-purple-600">
+                                        {task.dependencies.length} dépendance{task.dependencies.length > 1 ? 's' : ''}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                               <div className="text-xs text-gray-500">
                                 {format(task.deadline, 'dd/MM')}

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Dashboard } from '../components/Dashboard';
@@ -168,7 +167,6 @@ const Index = () => {
   console.log('Index: Before rendering AddItemForm with props:', {
     projects: projects.length,
     taskTypes: taskTypes.length,
-    tasks: tasks.length,
     isAddFormOpen
   });
 
@@ -190,7 +188,6 @@ const Index = () => {
         initialData={taskFormData}
         projects={projects}
         taskTypes={taskTypes}
-        tasks={tasks}
       />
     </>
   );
