@@ -236,7 +236,7 @@ export function AddItemForm({
     originalTaskTypes: taskTypes.length,
     validTaskTypes: validTaskTypes.length,
     projectsList: validProjects.map(p => ({ id: p.id, title: p.title })),
-    taskTypesList: validTaskTypes.map(t => ({ id: p.id, name: p.name }))
+    taskTypesList: validTaskTypes.map(t => ({ id: t.id, name: t.name }))
   });
 
   return (
