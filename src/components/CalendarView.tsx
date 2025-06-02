@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
@@ -447,7 +448,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                         <div
                           key={`month-task-${task.id}`}
                           className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 ${statusColors.bg} ${statusColors.text} truncate`}
-                          onClick={() => handleTaskClick(task, e)}
+                          onClick={(e) => handleTaskClick(task, e)}
                           title={`${task.title}\n${task.estimatedDuration}min\n${task.description || ''}`}
                         >
                           ✓ {task.title}
