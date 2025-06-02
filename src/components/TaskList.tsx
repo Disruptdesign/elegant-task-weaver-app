@@ -64,6 +64,15 @@ export function TaskList({
     setEditingTask(undefined);
   };
 
+  // Fonction améliorée pour gérer le basculement de l'état de completion
+  const handleToggleComplete = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      console.log('🔄 Basculement état completion pour tâche:', taskId, 'De:', task.completed, 'Vers:', !task.completed);
+      onUpdateTask(taskId, { completed: !task.completed });
+    }
+  };
+
   const pendingTasks = filteredTasks.filter(task => !task.completed);
   const completedTasks = filteredTasks.filter(task => task.completed);
 
@@ -214,7 +223,7 @@ export function TaskList({
                   <TaskCard
                     key={task.id}
                     task={task}
-                    onComplete={onCompleteTask}
+                    onComplete={handleToggleComplete}
                     onEdit={handleEdit}
                     onDelete={onDeleteTask}
                     onClick={handleCardClick}
@@ -241,7 +250,7 @@ export function TaskList({
                   <TaskCard
                     key={task.id}
                     task={task}
-                    onComplete={onCompleteTask}
+                    onComplete={handleToggleComplete}
                     onEdit={handleEdit}
                     onDelete={onDeleteTask}
                     onClick={handleCardClick}

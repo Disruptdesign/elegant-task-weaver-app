@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, Calendar, Flag, CheckCircle2, Edit3, Trash2, MoreVertical } from 'lucide-react';
+import { Clock, Calendar, Flag, CheckCircle2, Edit3, Trash2, MoreVertical, RotateCcw } from 'lucide-react';
 import { Task } from '../types/task';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -78,7 +77,7 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
   const handleCompleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Complete button clicked for task:', task.id);
+    console.log('Complete/Restore button clicked for task:', task.id, 'Current status:', task.completed);
     onComplete(task.id);
   };
 
@@ -218,22 +217,28 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
             )}
           </div>
           
-          {/* Bouton de completion - amélioré pour mobile */}
+          {/* Bouton de completion/restauration - amélioré pour mobile */}
           <button
             type="button"
             onClick={handleCompleteClick}
-            disabled={task.completed}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm shrink-0 z-10 relative touch-target ${
               task.completed
-                ? 'bg-green-500 text-white cursor-not-allowed'
+                ? 'bg-orange-500 text-white hover:bg-orange-600 border border-orange-500 hover:border-orange-600 hover:shadow-md active:scale-95'
                 : 'bg-white text-gray-700 border border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 hover:shadow-md active:scale-95'
             }`}
             style={{ minHeight: '44px' }}
           >
-            <CheckCircle2 size={14} className={task.completed ? 'text-white' : ''} />
-            <span className="hidden sm:inline whitespace-nowrap">
-              {task.completed ? 'Terminée' : 'Terminer'}
-            </span>
+            {task.completed ? (
+              <>
+                <RotateCcw size={14} className="text-white" />
+                <span className="hidden sm:inline whitespace-nowrap">Rétablir</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={14} />
+                <span className="hidden sm:inline whitespace-nowrap">Terminer</span>
+              </>
+            )}
           </button>
         </div>
       </div>
