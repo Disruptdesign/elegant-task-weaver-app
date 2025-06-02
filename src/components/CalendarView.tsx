@@ -52,7 +52,7 @@ export function CalendarView({
   const [testDataAdded, setTestDataAdded] = useState(false);
   
   // Hook pour la planification algorithmique
-  const { isScheduling, rescheduleAllTasks } = useAlgorithmicScheduler();
+  const { isScheduling, scheduleAllTasks } = useAlgorithmicScheduler();
   
   // Gestion des clics avec délai pour éviter l'ouverture pendant le drag
   const clickTimerRef = useRef<number | null>(null);
@@ -275,40 +275,65 @@ export function CalendarView({
     return { top: Math.max(0, top), height };
   };
 
-  // Nouveau gestionnaire pour la replanification
+  // Gestionnaire amélioré pour la replanification algorithmique
   const handleReschedule = async () => {
     if (!onUpdateTask) {
-      console.log('Cannot reschedule: no task update function provided');
+      console.log('🚫 Impossible de replanifier : aucune fonction de mise à jour des tâches fournie');
       return;
     }
 
-    console.log('🔄 Démarrage de la replanification des tâches...');
+    console.log('🤖 Démarrage de la replanification algorithmique optimisée...');
+    console.log('📊 État initial:', {
+      totalTasks: tasks.length,
+      scheduledTasks: tasks.filter(t => t.scheduledStart && !t.completed).length,
+      unscheduledTasks: tasks.filter(t => !t.scheduledStart && !t.completed).length,
+      completedTasks: tasks.filter(t => t.completed).length,
+      events: events.length
+    });
     
     try {
-      const rescheduledTasks = await rescheduleAllTasks(tasks, events);
+      // Utiliser l'algorithme de planification pour replanifier toutes les tâches
+      const rescheduledTasks = await scheduleAllTasks(tasks, events);
       
-      // Mettre à jour chaque tâche avec sa nouvelle planification
-      rescheduledTasks.forEach(task => {
-        const originalTask = tasks.find(t => t.id === task.id);
-        if (originalTask && (
-          originalTask.scheduledStart !== task.scheduledStart ||
-          originalTask.scheduledEnd !== task.scheduledEnd
-        )) {
-          console.log(`📅 Mise à jour tâche "${task.title}":`, {
-            ancien: originalTask.scheduledStart ? format(new Date(originalTask.scheduledStart), 'dd/MM HH:mm') : 'non planifié',
-            nouveau: task.scheduledStart ? format(new Date(task.scheduledStart), 'dd/MM HH:mm') : 'non planifié'
-          });
+      console.log('📈 Résultats de la replanification:', {
+        tasksProcessed: rescheduledTasks.length,
+        newlyScheduled: rescheduledTasks.filter(t => t.scheduledStart && !tasks.find(orig => orig.id === t.id)?.scheduledStart).length,
+        rescheduled: rescheduledTasks.filter(t => {
+          const original = tasks.find(orig => orig.id === t.id);
+          return original?.scheduledStart && t.scheduledStart && original.scheduledStart !== t.scheduledStart;
+        }).length
+      });
+      
+      // Appliquer les changements pour chaque tâche modifiée
+      let updatedCount = 0;
+      rescheduledTasks.forEach(rescheduledTask => {
+        const originalTask = tasks.find(t => t.id === rescheduledTask.id);
+        if (originalTask) {
+          // Vérifier si la planification a changé
+          const hasScheduleChanged = 
+            originalTask.scheduledStart !== rescheduledTask.scheduledStart ||
+            originalTask.scheduledEnd !== rescheduledTask.scheduledEnd;
           
-          onUpdateTask(task.id, {
-            scheduledStart: task.scheduledStart,
-            scheduledEnd: task.scheduledEnd
-          });
+          if (hasScheduleChanged) {
+            console.log(`📅 Mise à jour tâche "${rescheduledTask.title}":`, {
+              avant: originalTask.scheduledStart ? format(new Date(originalTask.scheduledStart), 'dd/MM HH:mm') : 'non planifiée',
+              après: rescheduledTask.scheduledStart ? format(new Date(rescheduledTask.scheduledStart), 'dd/MM HH:mm') : 'non planifiée',
+              durée: rescheduledTask.estimatedDuration + 'min'
+            });
+            
+            onUpdateTask(rescheduledTask.id, {
+              scheduledStart: rescheduledTask.scheduledStart,
+              scheduledEnd: rescheduledTask.scheduledEnd
+            });
+            updatedCount++;
+          }
         }
       });
       
-      console.log('✅ Replanification terminée avec succès');
+      console.log(`✅ Replanification terminée avec succès ! ${updatedCount} tâche(s) mise(s) à jour.`);
+      
     } catch (error) {
-      console.error('❌ Erreur lors de la replanification:', error);
+      console.error('❌ Erreur lors de la replanification algorithmique:', error);
     }
   };
 
@@ -444,6 +469,10 @@ export function CalendarView({
     startEventDrag(e, event, action, resizeHandle, onEventClick);
   };
 
+  // Calculer le nombre de tâches à replanifier
+  const unscheduledTasksCount = tasks.filter(t => !t.completed && !t.scheduledStart).length;
+  const schedulableTasksCount = tasks.filter(t => !t.completed).length;
+
   return (
     <div className="space-y-6 h-full">
       <div className="flex items-center justify-between">
@@ -458,19 +487,34 @@ export function CalendarView({
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Bouton de replanification */}
+          {/* Bouton de replanification algorithmique amélioré */}
           {onUpdateTask && (
             <Button
               onClick={handleReschedule}
-              disabled={isScheduling || tasks.filter(t => !t.completed && !t.scheduledStart).length === 0}
+              disabled={isScheduling || schedulableTasksCount === 0}
               variant="outline"
-              className="flex items-center gap-2 px-4 py-2"
+              className={`flex items-center gap-2 px-4 py-2 transition-all ${
+                unscheduledTasksCount > 0 
+                  ? 'border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100' 
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <RefreshCw 
                 size={16} 
                 className={isScheduling ? 'animate-spin' : ''} 
               />
-              {isScheduling ? 'Replanification...' : 'Replanifier'}
+              {isScheduling ? (
+                'Replanification...'
+              ) : (
+                <>
+                  Replanifier
+                  {unscheduledTasksCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 bg-orange-200 text-orange-800 rounded-full text-xs font-medium">
+                      {unscheduledTasksCount}
+                    </span>
+                  )}
+                </>
+              )}
             </Button>
           )}
           
@@ -518,15 +562,16 @@ export function CalendarView({
         </div>
       </div>
 
-      {/* Debug info avec statut de replanification */}
+      {/* Debug info amélioré avec informations de planification */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <p className="text-sm text-blue-800">
           📊 Debug: {tasks.length} tâche{tasks.length > 1 ? 's' : ''}, {events.length} événement{events.length > 1 ? 's' : ''}
-          {tasks.filter(t => t.scheduledStart).length > 0 && ` - ${tasks.filter(t => t.scheduledStart).length} tâche(s) programmée(s)`}
+          {tasks.filter(t => t.scheduledStart && !t.completed).length > 0 && ` - ${tasks.filter(t => t.scheduledStart && !t.completed).length} tâche(s) programmée(s)`}
+          {unscheduledTasksCount > 0 && ` - ${unscheduledTasksCount} tâche(s) non programmée(s)`}
           {events.filter(e => !e.allDay).length > 0 && ` - ${events.filter(e => !e.allDay).length} événement(s) avec horaire`}
           {dragState.isDragging && ' - 🎯 DRAGGING'}
           {dragState.isResizing && ' - 📏 RESIZING'}
-          {isScheduling && ' - 🔄 REPLANIFICATION EN COURS'}
+          {isScheduling && ' - 🤖 REPLANIFICATION ALGORITHMIQUE EN COURS'}
         </p>
         {events.length > 0 && (
           <div className="text-xs text-blue-600 mt-2">
@@ -536,9 +581,14 @@ export function CalendarView({
             }).join(', ')}
           </div>
         )}
-        {onUpdateTask && tasks.filter(t => !t.completed && !t.scheduledStart).length > 0 && (
+        {onUpdateTask && unscheduledTasksCount > 0 && (
           <div className="text-xs text-green-600 mt-1">
-            💡 {tasks.filter(t => !t.completed && !t.scheduledStart).length} tâche(s) non programmée(s) peuvent être replanifiées
+            🤖 {unscheduledTasksCount} tâche(s) peuvent être planifiées automatiquement avec l'algorithme optimisé
+          </div>
+        )}
+        {onUpdateTask && schedulableTasksCount > unscheduledTasksCount && (
+          <div className="text-xs text-amber-600 mt-1">
+            🔄 {schedulableTasksCount - unscheduledTasksCount} tâche(s) déjà programmée(s) peuvent être replanifiées pour optimisation
           </div>
         )}
       </div>
@@ -894,7 +944,7 @@ export function CalendarView({
       )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-sm font-medium text-gray-900 mb-4">Style Notion Calendar</h3>
+        <h3 className="text-sm font-medium text-gray-900 mb-4">Planification algorithmique intelligente</h3>
         <div className="space-y-4">
           <div className="flex flex-wrap gap-6">
             <div className="flex items-center gap-2">
@@ -911,18 +961,19 @@ export function CalendarView({
             </div>
           </div>
           
-          {(onUpdateTask || onUpdateEvent) && (
+          {onUpdateTask && (
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Design Notion Calendar :</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Algorithme de planification :</h4>
               <div className="text-xs text-gray-600 space-y-1">
-                <div>• Cartes minimalistes avec bordures subtiles</div>
-                <div>• Contenu aligné en haut avec titres sur plusieurs lignes</div>
-                <div>• Checkbox circulaire pour les tâches</div>
-                <div>• Animations fluides au survol et lors du drag</div>
-                <div>• Palette de couleurs épurée et moderne</div>
-                <div>• Typographie fine et élégante</div>
-                {onUpdateTask && (
-                  <div>• Bouton de replanification intelligente pour optimiser l'organisation</div>
+                <div>• Planification automatique basée sur les priorités et les deadlines</div>
+                <div>• Respect des heures de travail et des événements existants</div>
+                <div>• Optimisation des créneaux pour minimiser les conflits</div>
+                <div>• Replanification intelligente après modification d'événements</div>
+                <div>• Gestion des buffers entre les tâches pour éviter la fatigue</div>
+                {unscheduledTasksCount > 0 && (
+                  <div className="text-orange-600 font-medium">
+                    • {unscheduledTasksCount} tâche(s) en attente de planification automatique
+                  </div>
                 )}
               </div>
             </div>
