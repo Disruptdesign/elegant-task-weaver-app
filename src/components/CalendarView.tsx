@@ -2,22 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, GripVertical, ArrowUpDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, GripVertical, ArrowUpDown, Edit, Check, Square } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
 import { AddItemForm } from './AddItemForm';
 import { useTaskDragAndDrop } from '../hooks/useTaskDragAndDrop';
+import { useEventDragAndDrop } from '../hooks/useEventDragAndDrop';
 
 interface CalendarViewProps {
   tasks: Task[];
   events: Event[];
   onUpdateTask?: (id: string, updates: Partial<Task>) => void;
+  onUpdateEvent?: (id: string, updates: Partial<Event>) => void;
 }
 
 type ViewMode = 'week' | 'month';
 
-export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps) {
+export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
+  const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [hasAddedTestTask, setHasAddedTestTask] = useState(false);
@@ -26,7 +29,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
 
   console.log('CalendarView: Events received:', events);
   console.log('CalendarView: onUpdateTask function provided:', !!onUpdateTask);
-  console.log('CalendarView: Tasks with scheduled times:', tasks.filter(t => t.scheduledStart).length);
+  console.log('CalendarView: onUpdateEvent function provided:', !!onUpdateEvent);
 
   // Ajouter une tâche de test automatiquement si aucune tâche programmée et onUpdateTask disponible
   useEffect(() => {
@@ -77,10 +80,16 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
     return tasks;
   }, [tasks, onUpdateTask, hasAddedTestTask]);
 
-  // Utiliser le hook de drag & drop seulement si onUpdateTask est fourni
-  const { dragState, startDrag } = useTaskDragAndDrop(
+  // Utiliser les hooks de drag & drop
+  const { dragState: taskDragState, startDrag: startTaskDrag } = useTaskDragAndDrop(
     onUpdateTask || (() => {
-      console.log('No update function provided, drag & drop disabled');
+      console.log('No task update function provided, drag & drop disabled');
+    })
+  );
+
+  const { dragState: eventDragState, startDrag: startEventDrag } = useEventDragAndDrop(
+    onUpdateEvent || (() => {
+      console.log('No event update function provided, drag & drop disabled');
     })
   );
 
@@ -147,14 +156,36 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
   };
 
   const handleTaskClick = (task: Task, e: React.MouseEvent) => {
-    if (dragState.isDragging || dragState.isResizing) {
+    if (taskDragState.isDragging || taskDragState.isResizing) {
       console.log('Task click ignored during drag operation');
       return;
     }
     
     console.log('Task clicked:', task.title);
     setSelectedTask(task);
+    setSelectedEvent(undefined);
     setIsFormOpen(true);
+  };
+
+  const handleEventClick = (event: Event, e: React.MouseEvent) => {
+    if (eventDragState.isDragging || eventDragState.isResizing) {
+      console.log('Event click ignored during drag operation');
+      return;
+    }
+    
+    console.log('Event clicked:', event.title);
+    setSelectedEvent(event);
+    setSelectedTask(undefined);
+    setIsFormOpen(true);
+  };
+
+  const handleTaskCompletion = (task: Task, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (onUpdateTask) {
+      onUpdateTask(task.id, { completed: !task.completed });
+    }
   };
 
   const handleFormSubmit = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
@@ -164,9 +195,17 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
     setSelectedTask(undefined);
   };
 
+  const handleEventFormSubmit = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (selectedEvent && onUpdateEvent) {
+      onUpdateEvent(selectedEvent.id, eventData);
+    }
+    setSelectedEvent(undefined);
+  };
+
   const handleFormClose = () => {
     setIsFormOpen(false);
     setSelectedTask(undefined);
+    setSelectedEvent(undefined);
   };
 
   const navigatePeriod = (direction: 'prev' | 'next') => {
@@ -185,7 +224,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
     }
   };
 
-  // Gestionnaires pour le drag & drop
+  // Gestionnaires pour le drag & drop des tâches
   const handleTaskMouseDown = (e: React.MouseEvent, task: Task, action: 'move' | 'resize', resizeHandle?: 'top' | 'bottom') => {
     console.log('Task mouse down:', { 
       action, 
@@ -196,20 +235,43 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
       position: { x: e.clientX, y: e.clientY }
     });
     
-    // Seulement le bouton gauche de la souris
     if (e.button !== 0) return;
     
     if (!onUpdateTask) {
-      console.log('Cannot start drag: no update function provided');
+      console.log('Cannot start task drag: no update function provided');
       return;
     }
     
-    // Empêcher la propagation pour éviter que le clic déclenche d'autres événements
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('Calling startDrag...');
-    startDrag(e, task, action, resizeHandle);
+    console.log('Calling startTaskDrag...');
+    startTaskDrag(e, task, action, resizeHandle);
+  };
+
+  // Gestionnaires pour le drag & drop des événements
+  const handleEventMouseDown = (e: React.MouseEvent, event: Event, action: 'move' | 'resize', resizeHandle?: 'top' | 'bottom') => {
+    console.log('Event mouse down:', { 
+      action, 
+      eventTitle: event.title, 
+      hasUpdateFunction: !!onUpdateEvent,
+      mouseButton: e.button,
+      eventId: event.id,
+      position: { x: e.clientX, y: e.clientY }
+    });
+    
+    if (e.button !== 0) return;
+    
+    if (!onUpdateEvent) {
+      console.log('Cannot start event drag: no update function provided');
+      return;
+    }
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('Calling startEventDrag...');
+    startEventDrag(e, event, action, resizeHandle);
   };
 
   return (
@@ -361,7 +423,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                     />
                   ))}
 
-                  {/* Événements */}
+                  {/* Événements avec drag & drop */}
                   <div className="absolute inset-0 p-1">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -369,22 +431,83 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                         const position = getEventPosition(event);
                         if (!position) return null;
 
+                        const isBeingDragged = eventDragState.eventId === event.id;
+
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className="absolute rounded-lg border p-1 cursor-pointer hover:shadow-lg transition-all z-30 bg-purple-100 border-purple-300 hover:bg-purple-200 overflow-hidden"
+                            className={`absolute rounded-lg border transition-all z-30 group select-none overflow-hidden bg-purple-100 border-purple-300 hover:bg-purple-200 ${
+                              isBeingDragged ? 'opacity-80 shadow-lg scale-105 ring-2 ring-purple-400 z-50' : 'hover:shadow-md hover:scale-105'
+                            }`}
                             style={{
                               top: `${position.top}px`,
                               height: `${position.height}px`,
                               left: '2px',
                               right: '2px',
+                              pointerEvents: isBeingDragged ? 'none' : 'auto',
                             }}
-                            title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
+                            onClick={(e) => !isBeingDragged && handleEventClick(event, e)}
+                            title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}\n${onUpdateEvent ? 'Glisser pour déplacer, redimensionner par les bords' : 'Mode lecture seule'}`}
                           >
-                            <div className="flex items-center gap-1 text-xs font-bold text-purple-900 mb-1">
-                              <Users size={10} />
-                              <span className="truncate">{event.title}</span>
+                            {/* Handle de redimensionnement haut */}
+                            {onUpdateEvent && position.height > 40 && (
+                              <div
+                                className="absolute top-0 left-0 right-0 h-3 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-purple-300 hover:bg-purple-400 rounded-t-lg z-50"
+                                onMouseDown={(e) => handleEventMouseDown(e, event, 'resize', 'top')}
+                              >
+                                <div className="w-8 h-1 bg-purple-600 rounded"></div>
+                              </div>
+                            )}
+
+                            {/* Contenu de l'événement avec handle de déplacement */}
+                            <div
+                              className={`p-2 h-full flex flex-col justify-between relative ${onUpdateEvent ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                              onMouseDown={onUpdateEvent ? (e) => handleEventMouseDown(e, event, 'move') : undefined}
+                            >
+                              <div className="flex items-start gap-1">
+                                {onUpdateEvent && (
+                                  <GripVertical 
+                                    size={12} 
+                                    className="text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
+                                  />
+                                )}
+                                <div className="text-xs font-bold text-purple-900 flex-1 overflow-hidden">
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <Users size={10} />
+                                    <span className="truncate">{event.title}</span>
+                                  </div>
+                                  {position.height > 40 && (
+                                    <div className="text-xs text-purple-700 opacity-75">
+                                      {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Bouton modifier */}
+                                {onUpdateEvent && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleEventClick(event, e);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-purple-300 rounded z-50"
+                                    title="Modifier l'événement"
+                                  >
+                                    <Edit size={10} className="text-purple-700" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
+
+                            {/* Handle de redimensionnement bas */}
+                            {onUpdateEvent && position.height > 40 && (
+                              <div
+                                className="absolute bottom-0 left-0 right-0 h-3 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-purple-300 hover:bg-purple-400 rounded-b-lg z-50"
+                                onMouseDown={(e) => handleEventMouseDown(e, event, 'resize', 'bottom')}
+                              >
+                                <div className="w-8 h-1 bg-purple-600 rounded"></div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -398,7 +521,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
 
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
-                      const isBeingDragged = dragState.taskId === task.id;
+                      const isBeingDragged = taskDragState.taskId === task.id;
 
                       return (
                         <div
@@ -407,7 +530,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                             statusColors.bg
                           } ${statusColors.border} ${
                             isBeingDragged ? 'opacity-80 shadow-lg scale-105 ring-2 ring-blue-400 z-50' : 'hover:shadow-md hover:scale-105'
-                          }`}
+                          } ${task.completed ? 'opacity-60' : ''}`}
                           style={{
                             top: `${position.top}px`,
                             height: `${position.height}px`,
@@ -434,15 +557,44 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                             onMouseDown={onUpdateTask ? (e) => handleTaskMouseDown(e, task, 'move') : undefined}
                           >
                             <div className="flex items-start gap-1">
+                              {/* Checkbox de completion */}
+                              {onUpdateTask && (
+                                <button
+                                  onClick={(e) => handleTaskCompletion(task, e)}
+                                  className="hover:bg-gray-300 rounded p-0.5"
+                                >
+                                  {task.completed ? (
+                                    <Check size={10} className="text-green-600" />
+                                  ) : (
+                                    <Square size={10} className="text-gray-500" />
+                                  )}
+                                </button>
+                              )}
+                              
                               {onUpdateTask && (
                                 <GripVertical 
                                   size={12} 
                                   className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
                                 />
                               )}
-                              <div className="text-xs font-medium line-clamp-2 text-gray-900 flex-1 overflow-hidden">
+                              <div className={`text-xs font-medium line-clamp-2 text-gray-900 flex-1 overflow-hidden ${task.completed ? 'line-through' : ''}`}>
                                 {task.title}
                               </div>
+                                
+                              {/* Bouton modifier */}
+                              {onUpdateTask && (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleTaskClick(task, e);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-300 rounded z-50"
+                                  title="Modifier la tâche"
+                                >
+                                  <Edit size={10} className="text-gray-700" />
+                                </button>
+                              )}
                             </div>
                             {position.height > 40 && (
                               <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
@@ -506,14 +658,18 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                     {dayEvents.slice(0, 2).map(event => (
                       <div
                         key={`month-event-${event.id}`}
-                        className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate font-medium"
+                        className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate font-medium flex items-center gap-1"
+                        onClick={(e) => handleEventClick(event, e)}
                         title={`${event.title}\n${event.allDay ? 'Toute la journée' : format(new Date(event.startDate), 'HH:mm') + ' - ' + format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                       >
-                        {event.allDay ? '🗓️' : '📅'} {event.title}
+                        {event.allDay ? '🗓️' : '📅'} <span className="truncate">{event.title}</span>
+                        {onUpdateEvent && (
+                          <Edit size={8} className="ml-auto opacity-0 group-hover:opacity-100" />
+                        )}
                       </div>
                     ))}
                     
-                    {/* Tâches */}
+                    {/* Tâches avec checkbox */}
                     {dayTasks.slice(0, dayEvents.length > 0 ? 1 : 3).map(task => {
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
@@ -521,11 +677,26 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                       return (
                         <div
                           key={`month-task-${task.id}`}
-                          className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 ${statusColors.bg} ${statusColors.text} truncate`}
+                          className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 ${statusColors.bg} ${statusColors.text} truncate flex items-center gap-1 group ${task.completed ? 'opacity-60' : ''}`}
                           onClick={(e) => handleTaskClick(task, e)}
                           title={`${task.title}\n${task.estimatedDuration}min\n${task.description || ''}`}
                         >
-                          ✓ {task.title}
+                          {onUpdateTask && (
+                            <button
+                              onClick={(e) => handleTaskCompletion(task, e)}
+                              className="hover:bg-gray-300 rounded p-0.5"
+                            >
+                              {task.completed ? (
+                                <Check size={8} className="text-green-600" />
+                              ) : (
+                                <Square size={8} className="text-gray-500" />
+                              )}
+                            </button>
+                          )}
+                          <span className={`truncate ${task.completed ? 'line-through' : ''}`}>{task.title}</span>
+                          {onUpdateTask && (
+                            <Edit size={8} className="ml-auto opacity-0 group-hover:opacity-100" />
+                          )}
                         </div>
                       );
                     })}
@@ -588,13 +759,14 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
       </div>
 
       {/* Formulaire de modification */}
-      {onUpdateTask && (
+      {(onUpdateTask || onUpdateEvent) && (
         <AddItemForm
           isOpen={isFormOpen}
           onClose={handleFormClose}
           onSubmitTask={handleFormSubmit}
-          onSubmitEvent={() => {}} // Pas utilisé dans CalendarView
+          onSubmitEvent={handleEventFormSubmit}
           editingTask={selectedTask}
+          editingEvent={selectedEvent}
         />
       )}
     </div>

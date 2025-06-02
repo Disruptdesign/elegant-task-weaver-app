@@ -147,6 +147,7 @@ export function useTasks() {
         },
       ];
       setTaskTypes(defaultTaskTypes);
+      localStorage.setItem(TASK_TYPES_STORAGE_KEY, JSON.stringify(defaultTaskTypes));
     }
   }, []);
 
@@ -193,6 +194,11 @@ export function useTasks() {
       updatedAt: new Date(),
     };
 
+    console.log('Adding new task with project and type:', { 
+      projectId: newTask.projectId, 
+      taskTypeId: newTask.taskTypeId 
+    });
+
     const updatedTasks = [...tasks, newTask];
     const rescheduledTasks = taskScheduler.rescheduleAllTasks(updatedTasks, events);
     setTasks(rescheduledTasks);
@@ -204,6 +210,17 @@ export function useTasks() {
     const updatedTasks = tasks.map(task => {
       if (task.id === id) {
         const updatedTask = { ...task, ...updates, updatedAt: new Date() };
+        
+        // Log project and type changes
+        if (updates.projectId !== undefined || updates.taskTypeId !== undefined) {
+          console.log('Task project/type updated:', { 
+            taskId: id, 
+            oldProjectId: task.projectId, 
+            newProjectId: updatedTask.projectId,
+            oldTaskTypeId: task.taskTypeId,
+            newTaskTypeId: updatedTask.taskTypeId
+          });
+        }
         
         // Si on met à jour scheduledStart et que la tâche a une contrainte canStartFrom
         if (updates.scheduledStart && task.canStartFrom) {

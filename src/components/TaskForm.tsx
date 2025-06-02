@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Flag, Plus, CalendarIcon, FolderOpen } from 'lucide-react';
+import { X, Calendar, Clock, Flag, Plus, CalendarIcon, FolderOpen, Tag } from 'lucide-react';
 import { Task, Priority, Project, TaskType } from '../types/task';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -199,6 +198,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Tag size={16} className="inline mr-2" />
                 Type de tâche
               </label>
               <select
@@ -209,11 +209,21 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                 <option value="">Choisir un type</option>
                 {taskTypes.map(taskType => (
                   <option key={taskType.id} value={taskType.id}>
-                    <span style={{ backgroundColor: taskType.color }} className="inline-block w-3 h-3 rounded-full mr-2" />
                     {taskType.name}
                   </option>
                 ))}
               </select>
+              {taskTypeId && (
+                <div className="mt-2 flex items-center gap-2">
+                  <div
+                    className="w-4 h-4 rounded-full border border-gray-300"
+                    style={{ backgroundColor: taskTypes.find(t => t.id === taskTypeId)?.color }}
+                  />
+                  <span className="text-sm text-gray-600">
+                    {taskTypes.find(t => t.id === taskTypeId)?.name}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
