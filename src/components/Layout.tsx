@@ -6,15 +6,17 @@ interface LayoutProps {
   children: React.ReactNode;
   currentView: string;
   onViewChange: (view: string) => void;
+  sidebarFooter?: React.ReactNode;
 }
 
-export function Layout({ children, currentView, onViewChange }: LayoutProps) {
+export function Layout({ children, currentView, onViewChange, sidebarFooter }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navigation = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { id: 'tasks', name: 'Tâches', icon: CheckSquare },
     { id: 'calendar', name: 'Calendrier', icon: Calendar },
+    { id: 'inbox', name: 'Inbox', icon: CheckSquare },
     { id: 'settings', name: 'Paramètres', icon: Settings },
   ];
 
@@ -79,6 +81,9 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
               })}
             </ul>
           </nav>
+
+          {/* Sidebar Footer */}
+          {sidebarFooter && sidebarFooter}
 
           {/* Version */}
           <div className="p-4 border-t border-gray-100">
