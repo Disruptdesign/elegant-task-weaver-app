@@ -64,6 +64,9 @@ export interface TaskType {
   name: string;
   color: string;
   timeSlots: TimeSlot[];
+  autoSchedule?: boolean; // Planification automatique activée
+  allowWeekends?: boolean; // Permettre les week-ends
+  bufferBetweenTasks?: number; // Pause entre tâches (en minutes)
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Edit3, Trash2, Clock, Settings } from 'lucide-react';
+import { Plus, Edit3, Trash2, Clock, Settings, Calendar, Coffee } from 'lucide-react';
 import { TaskType } from '../types/task';
 
 interface TaskTypeSettingsProps {
@@ -17,6 +17,9 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
     name: '',
     color: '#3B82F6',
     timeSlots: [] as Array<{ dayOfWeek: number; startTime: string; endTime: string }>,
+    autoSchedule: true,
+    allowWeekends: false,
+    bufferBetweenTasks: 15,
   });
 
   const daysOfWeek = [
@@ -44,6 +47,9 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
         end: new Date(),
         available: true,
       })),
+      autoSchedule: formData.autoSchedule,
+      allowWeekends: formData.allowWeekends,
+      bufferBetweenTasks: formData.bufferBetweenTasks,
     };
 
     if (editingTaskType) {
@@ -62,6 +68,9 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
       name: '',
       color: '#3B82F6',
       timeSlots: [],
+      autoSchedule: true,
+      allowWeekends: false,
+      bufferBetweenTasks: 15,
     });
   };
 
@@ -75,6 +84,9 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
         startTime: slot.startTime || '09:00',
         endTime: slot.endTime || '17:00',
       })),
+      autoSchedule: taskType.autoSchedule ?? true,
+      allowWeekends: taskType.allowWeekends ?? false,
+      bufferBetweenTasks: taskType.bufferBetweenTasks ?? 15,
     });
     setIsFormOpen(true);
   };
@@ -109,7 +121,7 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
             Types de tâches
           </h2>
           <p className="text-gray-600 mt-2">
-            Configurez les types de tâches et leurs créneaux horaires
+            Configurez les types de tâches avec leurs créneaux horaires et paramètres de planification
           </p>
         </div>
         
@@ -139,9 +151,20 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
                   <h3 className="text-lg font-semibold text-gray-900">
                     {taskType.name}
                   </h3>
-                  <p className="text-sm text-gray-600">
-                    {taskType.timeSlots.length} créneau{taskType.timeSlots.length > 1 ? 'x' : ''} défini{taskType.timeSlots.length > 1 ? 's' : ''}
-                  </p>
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                    <span className="flex items-center gap-1">
+                      <Clock size={14} />
+                      {taskType.timeSlots.length} créneau{taskType.timeSlots.length > 1 ? 'x' : ''}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Coffee size={14} />
+                      {taskType.bufferBetweenTasks || 15} min pause
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar size={14} />
+                      {taskType.allowWeekends ? 'Week-ends inclus' : 'Semaine uniquement'}
+                    </span>
+                  </div>
                 </div>
               </div>
               
@@ -184,6 +207,18 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
                 </div>
               </div>
             )}
+
+            {/* Paramètres de planification */}
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${taskType.autoSchedule ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <span className="text-gray-600">
+                    Planification auto: {taskType.autoSchedule ? 'Activée' : 'Désactivée'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -191,7 +226,7 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
       {/* Formulaire de type de tâche */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <h2 className="text-xl font-semibold text-gray-900">
                 {editingTaskType ? 'Modifier le type de tâche' : 'Nouveau type de tâche'}
@@ -205,6 +240,7 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Informations de base */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -233,10 +269,61 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
                 </div>
               </div>
 
+              {/* Paramètres de planification */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                  <Settings size={18} />
+                  Paramètres de planification
+                </h3>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="auto-schedule"
+                      checked={formData.autoSchedule}
+                      onChange={(e) => setFormData({ ...formData, autoSchedule: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="auto-schedule" className="text-sm font-medium text-gray-700">
+                      Planification automatique
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="weekends"
+                      checked={formData.allowWeekends}
+                      onChange={(e) => setFormData({ ...formData, allowWeekends: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="weekends" className="text-sm font-medium text-gray-700">
+                      Inclure les week-ends
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pause entre tâches (min)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="120"
+                      value={formData.bufferBetweenTasks}
+                      onChange={(e) => setFormData({ ...formData, bufferBetweenTasks: parseInt(e.target.value) || 15 })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Créneaux horaires */}
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Clock size={16} />
                     Créneaux horaires disponibles
                   </label>
                   <button
@@ -290,6 +377,13 @@ export function TaskTypeSettings({ taskTypes, onAddTaskType, onUpdateTaskType, o
                     </div>
                   ))}
                 </div>
+
+                {formData.timeSlots.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Clock size={24} className="mx-auto mb-2 opacity-50" />
+                    <p>Aucun créneau défini. Ajoutez au moins un créneau pour ce type de tâche.</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">
