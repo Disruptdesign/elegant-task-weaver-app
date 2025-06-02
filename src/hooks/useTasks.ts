@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Task, Event, InboxItem, Project, TaskType } from '../types/task';
 import { taskScheduler } from '../utils/taskScheduler';
@@ -19,6 +18,7 @@ export function useTasks() {
   // Charger les tâches depuis le localStorage
   useEffect(() => {
     const savedTasks = localStorage.getItem(STORAGE_KEY);
+    console.log('Loading tasks from localStorage:', savedTasks);
     if (savedTasks) {
       const parsedTasks = JSON.parse(savedTasks).map((task: any) => ({
         ...task,
@@ -29,6 +29,7 @@ export function useTasks() {
         scheduledEnd: task.scheduledEnd ? new Date(task.scheduledEnd) : undefined,
         canStartFrom: task.canStartFrom ? new Date(task.canStartFrom) : undefined,
       }));
+      console.log('Parsed tasks:', parsedTasks);
       setTasks(parsedTasks);
     }
   }, []);
@@ -36,15 +37,40 @@ export function useTasks() {
   // Charger les événements depuis le localStorage
   useEffect(() => {
     const savedEvents = localStorage.getItem(EVENTS_STORAGE_KEY);
+    console.log('Loading events from localStorage:', savedEvents);
+    
     if (savedEvents) {
-      const parsedEvents = JSON.parse(savedEvents).map((event: any) => ({
-        ...event,
-        startDate: new Date(event.startDate),
-        endDate: new Date(event.endDate),
-        createdAt: new Date(event.createdAt),
-        updatedAt: new Date(event.updatedAt),
-      }));
-      setEvents(parsedEvents);
+      try {
+        const parsedEvents = JSON.parse(savedEvents).map((event: any) => ({
+          ...event,
+          startDate: new Date(event.startDate),
+          endDate: new Date(event.endDate),
+          createdAt: new Date(event.createdAt),
+          updatedAt: new Date(event.updatedAt),
+        }));
+        console.log('Parsed events:', parsedEvents);
+        setEvents(parsedEvents);
+      } catch (error) {
+        console.error('Error parsing events from localStorage:', error);
+        setEvents([]);
+      }
+    } else {
+      console.log('No events found in localStorage, creating default event for testing');
+      // Créer un événement de test pour vérifier le fonctionnement
+      const testEvent: Event = {
+        id: 'test-event-1',
+        title: 'Réunion test',
+        description: 'Événement de test pour vérifier l\'affichage',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 heures plus tard
+        allDay: false,
+        markAsBusy: true,
+        location: 'Bureau',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      console.log('Created test event:', testEvent);
+      setEvents([testEvent]);
     }
   }, []);
 
@@ -124,26 +150,31 @@ export function useTasks() {
 
   // Sauvegarder les tâches dans le localStorage
   useEffect(() => {
+    console.log('Saving tasks to localStorage:', tasks);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
 
   // Sauvegarder les événements dans le localStorage
   useEffect(() => {
+    console.log('Saving events to localStorage:', events);
     localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events));
   }, [events]);
 
   // Sauvegarder l'inbox dans le localStorage
   useEffect(() => {
+    console.log('Saving inbox to localStorage:', inboxItems);
     localStorage.setItem(INBOX_STORAGE_KEY, JSON.stringify(inboxItems));
   }, [inboxItems]);
 
   // Sauvegarder les projets dans le localStorage
   useEffect(() => {
+    console.log('Saving projects to localStorage:', projects);
     localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
   }, [projects]);
 
   // Sauvegarder les types de tâches dans le localStorage
   useEffect(() => {
+    console.log('Saving task types to localStorage:', taskTypes);
     localStorage.setItem(TASK_TYPES_STORAGE_KEY, JSON.stringify(taskTypes));
   }, [taskTypes]);
 
@@ -194,6 +225,7 @@ export function useTasks() {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    console.log('Adding new event:', newEvent);
     const updatedEvents = [...events, newEvent];
     setEvents(updatedEvents);
     
@@ -203,6 +235,7 @@ export function useTasks() {
   };
 
   const updateEvent = (id: string, updates: Partial<Event>) => {
+    console.log('Updating event:', id, updates);
     const updatedEvents = events.map(event =>
       event.id === id
         ? { ...event, ...updates, updatedAt: new Date() }
@@ -216,6 +249,7 @@ export function useTasks() {
   };
 
   const deleteEvent = (id: string) => {
+    console.log('Deleting event:', id);
     const updatedEvents = events.filter(event => event.id !== id);
     setEvents(updatedEvents);
     
