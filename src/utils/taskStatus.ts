@@ -5,7 +5,8 @@ import { differenceInDays, isPast } from 'date-fns';
 export type TaskStatus = 'on-time' | 'approaching' | 'overdue';
 
 export const getTaskStatus = (task: Task, warningDays: number = 1): TaskStatus => {
-  const now = new Date();
+  // Si la tâche n'a pas de date de planification, utiliser la date actuelle comme référence
+  const referenceDate = task.scheduledStart ? new Date(task.scheduledStart) : new Date();
   const deadline = new Date(task.deadline);
   
   // Si la tâche est terminée, elle n'est jamais en retard
@@ -13,15 +14,15 @@ export const getTaskStatus = (task: Task, warningDays: number = 1): TaskStatus =
     return 'on-time';
   }
   
-  // Si l'échéance est passée par rapport à maintenant
-  if (isPast(deadline)) {
+  // Si l'échéance est passée par rapport à la date de référence (planification)
+  if (isPast(deadline) && referenceDate > deadline) {
     return 'overdue';
   }
   
-  // Calculer les jours entre maintenant et l'échéance
-  const daysUntilDeadline = differenceInDays(deadline, now);
+  // Calculer les jours entre la date de référence (planification) et l'échéance
+  const daysUntilDeadline = differenceInDays(deadline, referenceDate);
   
-  // Si l'échéance est proche (aujourd'hui ou demain)
+  // Si l'échéance est proche de la date de planification
   if (daysUntilDeadline <= warningDays && daysUntilDeadline >= 0) {
     return 'approaching';
   }
