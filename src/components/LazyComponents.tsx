@@ -4,11 +4,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 // Lazy loading des composants principaux
 export const LazyDashboard = lazy(() => import('./Dashboard'));
-export const LazyTaskList = lazy(() => import('./TaskList'));
-export const LazyCalendarView = lazy(() => import('./CalendarView'));
+export const LazyTaskList = lazy(() => import('./TaskList').then(module => ({ default: module.TaskList })));
+export const LazyCalendarView = lazy(() => import('./CalendarView').then(module => ({ default: module.CalendarView })));
 export const LazyInbox = lazy(() => import('./Inbox'));
-export const LazyProjectList = lazy(() => import('./ProjectList'));
-export const LazyTaskTypeSettings = lazy(() => import('./TaskTypeSettings'));
+export const LazyProjectList = lazy(() => import('./ProjectList').then(module => ({ default: module.ProjectList })));
+export const LazyTaskTypeSettings = lazy(() => import('./TaskTypeSettings').then(module => ({ default: module.TaskTypeSettings })));
 
 // Composant de chargement pour les composants lazy
 export const ComponentSkeleton = () => (
