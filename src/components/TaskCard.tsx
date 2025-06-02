@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, Calendar, Flag, CheckCircle2, Edit3, Trash2, MoreVertical, RotateCcw } from 'lucide-react';
-import { Task } from '../types/task';
+import { Clock, Calendar, Flag, CheckCircle2, Edit3, Trash2, MoreVertical, RotateCcw, FolderOpen } from 'lucide-react';
+import { Task, Project } from '../types/task';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
@@ -11,9 +11,10 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onClick?: (task: Task) => void;
+  projects?: Project[];
 }
 
-export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCardProps) {
+export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects = [] }: TaskCardProps) {
   const [showActions, setShowActions] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -27,6 +28,11 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
   const taskStatus = getTaskStatus(task);
   const statusColors = getTaskStatusColors(taskStatus);
   const config = priorityConfig[task.priority];
+
+  // Trouver le projet associé à la tâche
+  const associatedProject = task.projectId 
+    ? projects.find(project => project.id === task.projectId)
+    : null;
 
   // Fermer le menu quand on clique ailleurs
   useEffect(() => {
@@ -134,6 +140,16 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
                 task.completed ? 'text-gray-500' : statusColors.text
               }`}>{task.description}</p>
             )}
+
+            {/* Affichage du projet associé */}
+            {associatedProject && (
+              <div className="flex items-center gap-1 mt-2">
+                <FolderOpen size={14} className="text-blue-600" />
+                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 font-medium">
+                  {associatedProject.title}
+                </span>
+              </div>
+            )}
           </div>
           
           {/* Menu d'actions - amélioré pour l'accessibilité */}
@@ -216,11 +232,6 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
             {isApproaching && !isOverdue && !task.completed && (
               <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-1 rounded-md border border-orange-200 flex items-center gap-1 whitespace-nowrap">
                 ⏰ Échéance proche
-              </span>
-            )}
-            {task.projectId && (
-              <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-md whitespace-nowrap">
-                📁 Projet
               </span>
             )}
           </div>

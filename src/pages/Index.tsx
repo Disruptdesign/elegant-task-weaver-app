@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Dashboard } from '../components/Dashboard';
@@ -111,7 +110,13 @@ const Index = () => {
     switch (currentView) {
       case 'dashboard':
         return (
-          <Dashboard tasks={tasks} events={events} onEditTask={updateTask} onEditEvent={updateEvent} />
+          <Dashboard 
+            tasks={tasks} 
+            events={events} 
+            onEditTask={updateTask} 
+            onEditEvent={updateEvent}
+            projects={projects}
+          />
         );
       case 'tasks':
         return (
@@ -136,6 +141,7 @@ const Index = () => {
             onUpdateEvent={updateEvent}
             addTask={addTask}
             addEvent={addEvent}
+            projects={projects}
           />
         );
       case 'inbox':
@@ -171,7 +177,7 @@ const Index = () => {
           onDeleteTaskType={deleteTaskType}
         />;
       default:
-        return <Dashboard tasks={tasks} events={events} onEditTask={updateTask} onEditEvent={updateEvent} />;
+        return <Dashboard tasks={tasks} events={events} onEditTask={updateTask} onEditEvent={updateEvent} projects={projects} />;
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3, Users, TrendingUp } from 'lucide-react';
-import { Task, Event } from '../types/task';
+import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3, Users, TrendingUp, FolderOpen } from 'lucide-react';
+import { Task, Event, Project } from '../types/task';
 import { format, isToday, isTomorrow, isThisWeek, isPast, isFuture } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { AddItemForm } from './AddItemForm';
@@ -11,9 +11,10 @@ interface DashboardProps {
   events: Event[];
   onEditTask?: (id: string, updates: Partial<Task>) => void;
   onEditEvent?: (id: string, updates: Partial<Event>) => void;
+  projects?: Project[];
 }
 
-export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardProps) {
+export function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: DashboardProps) {
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -66,6 +67,12 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
       subtitle: `${todayEvents.length} événement${todayEvents.length > 1 ? 's' : ''}`,
     },
   ];
+
+  // Fonction pour obtenir le nom du projet
+  const getProjectName = (projectId?: string) => {
+    if (!projectId) return null;
+    return projects.find(project => project.id === projectId)?.title;
+  };
 
   const getUpcomingTasks = () => {
     return pendingTasks
@@ -242,41 +249,54 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
               </div>
             </div>
             <div className="space-y-3">
-              {overdueTasks.slice(0, 3).map(task => (
-                <div key={task.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-red-100 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 flex-1">
+              {overdueTasks.slice(0, 3).map(task => {
+                const projectName = getProjectName(task.projectId);
+                return (
+                  <div key={task.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-red-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 flex-1">
+                      {onEditTask && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleTaskCompletion(task, e)}
+                          className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                          title="Marquer comme terminé"
+                        >
+                          <CheckCircle2 size={18} className="text-gray-400 hover:text-green-600" />
+                        </button>
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-gray-900">{task.title}</span>
+                          {projectName && (
+                            <div className="flex items-center gap-1">
+                              <FolderOpen size={12} className="text-blue-600" />
+                              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                {projectName}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-sm text-red-600 font-medium">
+                          {task.scheduledStart && task.scheduledStart > new Date(task.deadline) 
+                            ? `Planifiée après l'échéance: ${format(task.scheduledStart, 'dd/MM/yyyy à HH:mm')}`
+                            : `Échéance dépassée: ${format(task.deadline, 'dd/MM/yyyy à HH:mm')}`
+                          }
+                        </div>
+                      </div>
+                    </div>
                     {onEditTask && (
                       <button
                         type="button"
-                        onClick={(e) => handleTaskCompletion(task, e)}
-                        className="p-2 hover:bg-green-100 rounded-lg transition-colors"
-                        title="Marquer comme terminé"
+                        onClick={() => handleTaskClick(task)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        title="Modifier la tâche"
                       >
-                        <CheckCircle2 size={18} className="text-gray-400 hover:text-green-600" />
+                        <Edit3 size={16} />
                       </button>
                     )}
-                    <div>
-                      <span className="font-medium text-gray-900">{task.title}</span>
-                      <div className="text-sm text-red-600 font-medium mt-1">
-                        {task.scheduledStart && task.scheduledStart > new Date(task.deadline) 
-                          ? `Planifiée après l'échéance: ${format(task.scheduledStart, 'dd/MM/yyyy à HH:mm')}`
-                          : `Échéance dépassée: ${format(task.deadline, 'dd/MM/yyyy à HH:mm')}`
-                        }
-                      </div>
-                    </div>
                   </div>
-                  {onEditTask && (
-                    <button
-                      type="button"
-                      onClick={() => handleTaskClick(task)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                      title="Modifier la tâche"
-                    >
-                      <Edit3 size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               {overdueTasks.length > 3 && (
                 <p className="text-sm text-red-600 text-center font-medium bg-white p-2 rounded-lg">
                   +{overdueTasks.length - 3} autres tâches en retard
@@ -407,48 +427,61 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
           <div className="p-6">
             {getUpcomingTasks().length > 0 ? (
               <div className="space-y-3">
-                {getUpcomingTasks().map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group cursor-pointer"
-                    onClick={() => handleTaskClick(task)}
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      {onEditTask && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleTaskCompletion(task, e)}
-                          className="p-1 hover:bg-white rounded"
-                          title="Marquer comme terminé"
-                        >
-                          <CheckCircle2 size={16} className="text-gray-400 hover:text-green-600" />
-                        </button>
-                      )}
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900 mb-1">{task.title}</h3>
-                        <p className="text-sm text-gray-600">{formatTaskTime(task)}</p>
+                {getUpcomingTasks().map((task) => {
+                  const projectName = getProjectName(task.projectId);
+                  return (
+                    <div
+                      key={task.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group cursor-pointer"
+                      onClick={() => handleTaskClick(task)}
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        {onEditTask && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleTaskCompletion(task, e)}
+                            className="p-1 hover:bg-white rounded"
+                            title="Marquer comme terminé"
+                          >
+                            <CheckCircle2 size={16} className="text-gray-400 hover:text-green-600" />
+                          </button>
+                        )}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium text-gray-900">{task.title}</h3>
+                            {projectName && (
+                              <div className="flex items-center gap-1">
+                                <FolderOpen size={12} className="text-blue-600" />
+                                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                  {projectName}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600">{formatTaskTime(task)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                          task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {task.priority === 'urgent' ? 'Urgente' :
+                           task.priority === 'high' ? 'Haute' :
+                           task.priority === 'medium' ? 'Moyenne' : 'Faible'}
+                        </span>
+                        <span className="text-sm text-gray-500 font-medium">
+                          {Math.floor(task.estimatedDuration / 60)}h{task.estimatedDuration % 60 > 0 ? ` ${task.estimatedDuration % 60}min` : ''}
+                        </span>
+                        {onEditTask && (
+                          <Edit3 className="text-gray-400 group-hover:text-blue-600 transition-colors" size={16} />
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                        task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                        task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {task.priority === 'urgent' ? 'Urgente' :
-                         task.priority === 'high' ? 'Haute' :
-                         task.priority === 'medium' ? 'Moyenne' : 'Faible'}
-                      </span>
-                      <span className="text-sm text-gray-500 font-medium">
-                        {Math.floor(task.estimatedDuration / 60)}h{task.estimatedDuration % 60 > 0 ? ` ${task.estimatedDuration % 60}min` : ''}
-                      </span>
-                      {onEditTask && (
-                        <Edit3 className="text-gray-400 group-hover:text-blue-600 transition-colors" size={16} />
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
@@ -474,6 +507,7 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
           onSubmitEvent={handleEventFormSubmit}
           editingTask={selectedTask}
           editingEvent={selectedEvent}
+          projects={projects}
         />
       )}
     </div>

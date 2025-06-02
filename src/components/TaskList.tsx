@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { Task, Project, TaskType } from '../types/task';
 import { TaskCard } from './TaskCard';
 import { AddItemForm } from './AddItemForm';
-import { Plus, Search, Filter, RefreshCw, ListTodo, CheckCircle } from 'lucide-react';
+import { Plus, Search, Filter, RefreshCw, ListTodo, CheckCircle, ArrowUpDown } from 'lucide-react';
 import { getTaskStatus } from '../utils/taskStatus';
 
 interface TaskListProps {
@@ -15,6 +16,8 @@ interface TaskListProps {
   projects?: Project[];
   taskTypes?: TaskType[];
 }
+
+type SortOption = 'deadline' | 'priority' | 'title' | 'created' | 'project';
 
 export function TaskList({
   tasks,
@@ -31,6 +34,8 @@ export function TaskList({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('pending');
   const [filterPriority, setFilterPriority] = useState<'all' | 'urgent' | 'high' | 'medium' | 'low'>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('deadline');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   console.log('TaskList: Rendering with props:', {
     projects: projects.length,
@@ -48,6 +53,35 @@ export function TaskList({
     const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
     
     return matchesSearch && matchesStatus && matchesPriority;
+  });
+
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    let comparison = 0;
+    
+    switch (sortBy) {
+      case 'deadline':
+        comparison = new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        break;
+      case 'priority':
+        const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+        comparison = priorityOrder[b.priority] - priorityOrder[a.priority];
+        break;
+      case 'title':
+        comparison = a.title.localeCompare(b.title);
+        break;
+      case 'created':
+        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        break;
+      case 'project':
+        const projectA = a.projectId ? projects.find(p => p.id === a.projectId)?.title || '' : '';
+        const projectB = b.projectId ? projects.find(p => p.id === b.projectId)?.title || '' : '';
+        comparison = projectA.localeCompare(projectB);
+        break;
+      default:
+        comparison = 0;
+    }
+    
+    return sortOrder === 'asc' ? comparison : -comparison;
   });
 
   const handleEdit = (task: Task) => {
@@ -82,8 +116,17 @@ export function TaskList({
     }
   };
 
-  const pendingTasks = filteredTasks.filter(task => !task.completed);
-  const completedTasks = filteredTasks.filter(task => task.completed);
+  const handleSortChange = (newSortBy: SortOption) => {
+    if (sortBy === newSortBy) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(newSortBy);
+      setSortOrder('asc');
+    }
+  };
+
+  const pendingTasks = sortedTasks.filter(task => !task.completed);
+  const completedTasks = sortedTasks.filter(task => task.completed);
 
   // Calculer les compteurs sur la base de TOUTES les tâches, pas seulement les filtrées
   const totalPendingTasks = tasks.filter(task => !task.completed).length;
@@ -94,6 +137,14 @@ export function TaskList({
     { value: 'all', label: 'Toutes', count: totalTasks },
     { value: 'pending', label: 'En cours', count: totalPendingTasks },
     { value: 'completed', label: 'Terminées', count: totalCompletedTasks },
+  ];
+
+  const sortOptions = [
+    { value: 'deadline', label: 'Échéance' },
+    { value: 'priority', label: 'Priorité' },
+    { value: 'title', label: 'Titre' },
+    { value: 'created', label: 'Date de création' },
+    { value: 'project', label: 'Projet' },
   ];
 
   return (
@@ -150,7 +201,7 @@ export function TaskList({
             />
           </div>
 
-          {/* Filtres - améliorés pour mobile */}
+          {/* Filtres et tri - améliorés pour mobile */}
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Filtres de statut */}
             <div className="flex items-center gap-2 flex-wrap">
@@ -184,12 +235,35 @@ export function TaskList({
               <option value="medium">🟡 Moyenne</option>
               <option value="low">🟢 Faible</option>
             </select>
+
+            {/* Options de tri */}
+            <div className="flex items-center gap-2">
+              <ArrowUpDown size={16} className="text-gray-400 flex-shrink-0" />
+              <select
+                value={sortBy}
+                onChange={(e) => handleSortChange(e.target.value as SortOption)}
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm touch-target flex-1 sm:flex-none"
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                title={sortOrder === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'}
+              >
+                {sortOrder === 'asc' ? '↑' : '↓'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Liste des tâches - améliorée pour mobile */}
-      {filteredTasks.length === 0 ? (
+      {sortedTasks.length === 0 ? (
         <div className="text-center py-12 sm:py-16 bg-white rounded-2xl border border-gray-100">
           <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full flex items-center justify-center mb-6">
             {searchTerm || filterStatus !== 'all' || filterPriority !== 'all' ? (
@@ -241,6 +315,7 @@ export function TaskList({
                     onEdit={handleEdit}
                     onDelete={onDeleteTask}
                     onClick={handleCardClick}
+                    projects={projects}
                   />
                 ))}
               </div>
@@ -268,6 +343,7 @@ export function TaskList({
                     onEdit={handleEdit}
                     onDelete={onDeleteTask}
                     onClick={handleCardClick}
+                    projects={projects}
                   />
                 ))}
               </div>
