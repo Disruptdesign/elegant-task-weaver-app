@@ -350,8 +350,9 @@ export function CalendarView({
 
       {viewMode === 'week' ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* En-tête des jours */}
           <div className="grid grid-cols-8 border-b border-gray-200 bg-gray-50">
-            <div className="p-4 text-center text-sm font-medium text-gray-600">
+            <div className="w-20 p-4 text-center text-sm font-medium text-gray-600 border-r border-gray-200">
               Heures
             </div>
             {getWeekDays().map((day, index) => {
@@ -362,7 +363,7 @@ export function CalendarView({
               return (
                 <div
                   key={index}
-                  className={`p-4 text-center border-l border-gray-200 ${
+                  className={`p-4 text-center border-r border-gray-200 ${
                     isToday ? 'bg-blue-50' : ''
                   }`}
                 >
@@ -388,11 +389,13 @@ export function CalendarView({
             })}
           </div>
 
-          <div className="relative overflow-x-auto">
-            <div className="grid grid-cols-8 min-w-full">
-              <div className="bg-gray-50 min-w-[80px]">
+          {/* Grille horaire */}
+          <div className="relative">
+            <div className="grid grid-cols-8">
+              {/* Colonne des heures */}
+              <div className="w-20 bg-gray-50 border-r border-gray-200">
                 {workingHours.map(hour => (
-                  <div key={hour} className="h-16 border-b border-gray-200 flex items-center justify-center">
+                  <div key={hour} className="h-16 border-b border-gray-100 flex items-center justify-center">
                     <span className="text-sm font-medium text-gray-600">
                       {hour}:00
                     </span>
@@ -400,11 +403,13 @@ export function CalendarView({
                 ))}
               </div>
 
+              {/* Colonnes des jours */}
               {getWeekDays().map((day, dayIndex) => (
                 <div 
                   key={dayIndex} 
-                  className="relative border-l border-gray-200 min-w-[140px] flex-1"
+                  className="relative border-r border-gray-200"
                 >
+                  {/* Lignes horaires */}
                   {workingHours.map(hour => (
                     <div
                       key={hour}
@@ -412,7 +417,7 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements avec contraintes flex */}
+                  {/* Événements */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -431,8 +436,9 @@ export function CalendarView({
                             style={{
                               top: `${position.top}px`,
                               height: `${position.height}px`,
-                              left: '2px',
-                              right: '2px',
+                              left: '4px',
+                              right: '4px',
+                              minWidth: '0',
                               overflow: 'hidden',
                             }}
                             onClick={(e) => !isBeingDragged && handleEventClick(event, e)}
@@ -498,7 +504,7 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches avec contraintes flex améliorées */}
+                  {/* Tâches */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -522,8 +528,9 @@ export function CalendarView({
                           style={{
                             top: `${position.top}px`,
                             height: `${position.height}px`,
-                            left: '2px',
-                            right: '2px',
+                            left: '4px',
+                            right: '4px',
+                            minWidth: '0',
                             overflow: 'hidden',
                           }}
                           onClick={(e) => !isBeingDragged && handleTaskClick(task, e)}
