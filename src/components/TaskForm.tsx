@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Flag, Plus, CalendarIcon, FolderOpen, Tag, Zap } from 'lucide-react';
 import { Task, Priority, Project, TaskType } from '../types/task';
@@ -35,8 +34,13 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
   const [allowSplitting, setAllowSplitting] = useState(false);
   const [splitDuration, setSplitDuration] = useState(60);
 
-  // Debug pour vérifier les types de tâches reçus
-  console.log('TaskForm: Task types received:', taskTypes);
+  // Debug pour vérifier les données reçues
+  console.log('TaskForm: Received data:', {
+    projects: projects.length,
+    taskTypes: taskTypes.length,
+    projectsData: projects,
+    taskTypesData: taskTypes
+  });
 
   useEffect(() => {
     if (editingTask) {
@@ -116,7 +120,11 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       }),
     };
 
-    console.log('TaskForm: Submitting task with taskTypeId:', taskTypeId);
+    console.log('TaskForm: Submitting task with data:', {
+      projectId,
+      taskTypeId,
+      taskData
+    });
     onSubmit(taskData);
     onClose();
   };
@@ -283,7 +291,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <FolderOpen size={16} className="inline mr-2" />
-                Projet
+                Projet ({projects.length} disponible{projects.length > 1 ? 's' : ''})
               </label>
               <Select value={projectId} onValueChange={setProjectId}>
                 <SelectTrigger className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white">
@@ -293,17 +301,30 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                   <SelectItem value="">Aucun projet</SelectItem>
                   {projects.map(project => (
                     <SelectItem key={project.id} value={project.id}>
-                      {project.title}
+                      <div className="flex items-center gap-2">
+                        {project.color && (
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: project.color }}
+                          />
+                        )}
+                        {project.title}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {projects.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Aucun projet disponible. Créez-en un dans l'onglet Projets.
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Tag size={16} className="inline mr-2" />
-                Type de tâche
+                Type de tâche ({taskTypes.length} disponible{taskTypes.length > 1 ? 's' : ''})
               </label>
               <Select value={taskTypeId} onValueChange={setTaskTypeId}>
                 <SelectTrigger className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white">
