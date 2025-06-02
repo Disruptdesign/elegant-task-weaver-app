@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
@@ -33,6 +32,7 @@ export function CalendarView({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [testDataAdded, setTestDataAdded] = useState(false);
+  const [isDragInProgress, setIsDragInProgress] = useState(false);
   
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i);
 
@@ -52,6 +52,11 @@ export function CalendarView({
     onUpdateTask || (() => console.log('No task update function provided')),
     onUpdateEvent || (() => console.log('No event update function provided'))
   );
+
+  // Suivre l'état du drag pour empêcher les clics indésirables
+  useEffect(() => {
+    setIsDragInProgress(dragState.isDragging || dragState.isResizing);
+  }, [dragState.isDragging, dragState.isResizing]);
 
   // Ajouter des données de test si nécessaire et si les fonctions sont disponibles
   useEffect(() => {
@@ -170,24 +175,30 @@ export function CalendarView({
   };
 
   const handleTaskClick = (task: Task, e: React.MouseEvent) => {
-    if (dragState.isDragging || dragState.isResizing) {
-      console.log('Task click ignored during drag operation');
+    // Empêcher l'ouverture si on est en train de faire du drag & drop ou du redimensionnement
+    if (isDragInProgress) {
+      console.log('Task click ignored: drag operation in progress');
+      e.preventDefault();
+      e.stopPropagation();
       return;
     }
     
-    console.log('Task clicked:', task.title);
+    console.log('Task clicked for editing:', task.title);
     setSelectedTask(task);
     setSelectedEvent(undefined);
     setIsFormOpen(true);
   };
 
   const handleEventClick = (event: Event, e: React.MouseEvent) => {
-    if (dragState.isDragging || dragState.isResizing) {
-      console.log('Event click ignored during drag operation');
+    // Empêcher l'ouverture si on est en train de faire du drag & drop ou du redimensionnement
+    if (isDragInProgress) {
+      console.log('Event click ignored: drag operation in progress');
+      e.preventDefault();
+      e.stopPropagation();
       return;
     }
     
-    console.log('Event clicked:', event.title);
+    console.log('Event clicked for editing:', event.title);
     setSelectedEvent(event);
     setSelectedTask(undefined);
     setIsFormOpen(true);
@@ -256,6 +267,10 @@ export function CalendarView({
       return;
     }
     
+    // Empêcher la propagation du clic pour éviter l'ouverture de la fenêtre
+    e.preventDefault();
+    e.stopPropagation();
+    
     startTaskDrag(e, task, action, resizeHandle);
   };
 
@@ -275,6 +290,10 @@ export function CalendarView({
       console.log('Cannot start event drag: no update function provided');
       return;
     }
+    
+    // Empêcher la propagation du clic pour éviter l'ouverture de la fenêtre
+    e.preventDefault();
+    e.stopPropagation();
     
     startEventDrag(e, event, action, resizeHandle);
   };
@@ -345,6 +364,7 @@ export function CalendarView({
           {events.filter(e => !e.allDay).length > 0 && ` - ${events.filter(e => !e.allDay).length} événement(s) avec horaire`}
           {dragState.isDragging && ' - 🎯 DRAGGING'}
           {dragState.isResizing && ' - 📏 RESIZING'}
+          {isDragInProgress && ' - ⛔ CLICK DISABLED'}
         </p>
       </div>
 
@@ -441,7 +461,7 @@ export function CalendarView({
                               minWidth: '0',
                               overflow: 'hidden',
                             }}
-                            onClick={(e) => !isBeingDragged && handleEventClick(event, e)}
+                            onClick={(e) => handleEventClick(event, e)}
                             title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                           >
                             {onUpdateEvent && position.height > 40 && (
@@ -533,7 +553,7 @@ export function CalendarView({
                             minWidth: '0',
                             overflow: 'hidden',
                           }}
-                          onClick={(e) => !isBeingDragged && handleTaskClick(task, e)}
+                          onClick={(e) => handleTaskClick(task, e)}
                           title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}`}
                         >
                           {onUpdateTask && position.height > 40 && (
