@@ -44,6 +44,7 @@ export class AlgorithmicScheduler {
     console.log('🤖 Début de la planification algorithmique pour', tasks.length, 'tâches');
     
     const now = new Date();
+    console.log('⏰ Heure actuelle de référence:', format(now, 'dd/MM/yyyy HH:mm:ss'));
     
     // Séparer les tâches selon leur statut
     let completedTasks: Task[] = [];
@@ -59,17 +60,32 @@ export class AlgorithmicScheduler {
       
       incompleteTasks.forEach(task => {
         if (task.scheduledStart && task.scheduledEnd) {
-          // Si la tâche est planifiée dans le passé, on la garde planifiée
-          if (task.scheduledStart < now) {
-            scheduledTasks.push(task);
-            console.log('📌 Tâche conservée (planifiée dans le passé):', task.title);
-          } else {
-            // Sinon, on la remet à planifier
+          const taskStart = new Date(task.scheduledStart);
+          
+          // RÈGLE 1: Si la tâche est planifiée avant maintenant, la replanifier
+          if (taskStart < now) {
+            console.log('⏰ Tâche dépassée - replanification nécessaire:', task.title, 'était à', format(taskStart, 'dd/MM HH:mm'));
             unscheduledTasks.push({
               ...task,
               scheduledStart: undefined,
               scheduledEnd: undefined
             });
+          } else {
+            // RÈGLE 2: Vérifier les conflits avec les événements
+            const hasConflictWithEvents = this.checkEventConflict(task, this.events);
+            
+            if (hasConflictWithEvents) {
+              console.log('⚠️ Tâche en conflit avec un événement - replanification nécessaire:', task.title);
+              unscheduledTasks.push({
+                ...task,
+                scheduledStart: undefined,
+                scheduledEnd: undefined
+              });
+            } else {
+              // Pas de conflit, on garde la planification
+              scheduledTasks.push(task);
+              console.log('📌 Tâche conservée (pas de conflit):', task.title);
+            }
           }
         } else {
           unscheduledTasks.push(task);
@@ -77,15 +93,47 @@ export class AlgorithmicScheduler {
       });
       
       console.log('🔒 Tâches figées (terminées):', completedTasks.length);
-      console.log('📌 Tâches conservées (passé):', scheduledTasks.filter(t => !t.completed).length);
+      console.log('📌 Tâches conservées (sans conflit):', scheduledTasks.filter(t => !t.completed).length);
       console.log('🔄 Tâches à replanifier:', unscheduledTasks.length);
     } else {
       // Mode planification normale
       unscheduledTasks = tasks.filter(task => !task.scheduledStart && !task.completed);
-      scheduledTasks = tasks.filter(task => task.scheduledStart || task.completed);
+      
+      // Vérifier les tâches déjà programmées pour les conflits
+      const alreadyScheduled = tasks.filter(task => task.scheduledStart && !task.completed);
+      alreadyScheduled.forEach(task => {
+        const taskStart = new Date(task.scheduledStart!);
+        
+        // RÈGLE 1: Vérifier si la tâche est dans le passé
+        if (taskStart < now) {
+          console.log('⏰ Tâche dépassée détectée:', task.title, 'était à', format(taskStart, 'dd/MM HH:mm'));
+          unscheduledTasks.push({
+            ...task,
+            scheduledStart: undefined,
+            scheduledEnd: undefined
+          });
+        } else {
+          // RÈGLE 2: Vérifier les conflits avec les événements
+          const hasConflictWithEvents = this.checkEventConflict(task, this.events);
+          
+          if (hasConflictWithEvents) {
+            console.log('⚠️ Tâche programmée en conflit avec un événement:', task.title);
+            unscheduledTasks.push({
+              ...task,
+              scheduledStart: undefined,
+              scheduledEnd: undefined
+            });
+          } else {
+            scheduledTasks.push(task);
+          }
+        }
+      });
+      
+      // Ajouter les tâches déjà terminées
+      completedTasks = tasks.filter(task => task.completed);
       
       console.log('📋 Tâches à programmer:', unscheduledTasks.length);
-      console.log('✅ Tâches déjà programmées/complétées:', scheduledTasks.length);
+      console.log('✅ Tâches déjà programmées/complétées (sans conflit):', scheduledTasks.length + completedTasks.length);
     }
 
     // Trier les tâches par priorité et deadline
@@ -108,6 +156,34 @@ export class AlgorithmicScheduler {
     }
 
     return [...completedTasks, ...scheduledTasks, ...newlyScheduledTasks];
+  }
+
+  /**
+   * Vérifie si une tâche est en conflit avec des événements
+   */
+  private checkEventConflict(task: Task, events: Event[]): boolean {
+    if (!task.scheduledStart || !task.scheduledEnd) return false;
+    
+    const taskStart = new Date(task.scheduledStart);
+    const taskEnd = new Date(task.scheduledEnd);
+    
+    return events.some(event => {
+      if (event.allDay) return false; // Ignorer les événements toute la journée
+      
+      const eventStart = new Date(event.startDate);
+      const eventEnd = new Date(event.endDate);
+      
+      // Vérifier le chevauchement : deux créneaux se chevauchent si l'un commence avant que l'autre se termine
+      const hasOverlap = taskStart < eventEnd && taskEnd > eventStart;
+      
+      if (hasOverlap) {
+        console.log('🚫 Conflit détecté entre tâche', task.title, 'et événement', event.title);
+        console.log('   Tâche:', format(taskStart, 'dd/MM HH:mm'), '-', format(taskEnd, 'HH:mm'));
+        console.log('   Événement:', format(eventStart, 'dd/MM HH:mm'), '-', format(eventEnd, 'HH:mm'));
+      }
+      
+      return hasOverlap;
+    });
   }
 
   /**
@@ -139,16 +215,16 @@ export class AlgorithmicScheduler {
     
     const now = new Date();
     
-    // S'assurer que la tâche ne peut pas commencer avant maintenant
+    // RÈGLE ABSOLUE : S'assurer que la tâche ne peut pas commencer avant maintenant
     let earliestStart = Math.max(
       startDate.getTime(), 
       task.canStartFrom?.getTime() || startDate.getTime(),
-      now.getTime() // ← Contrainte : jamais avant maintenant
+      now.getTime() // ← Contrainte absolue : jamais avant maintenant
     );
     
     let currentDate = new Date(earliestStart);
     
-    console.log('⏰ Recherche à partir de:', format(currentDate, 'dd/MM HH:mm'));
+    console.log('⏰ Recherche à partir de:', format(currentDate, 'dd/MM HH:mm'), '(contraint par l\'heure actuelle)');
     
     // Chercher jour par jour
     while (currentDate <= endDate && currentDate <= task.deadline) {
@@ -163,7 +239,7 @@ export class AlgorithmicScheduler {
       
       // Chercher un créneau assez long
       for (const slot of availableSlots) {
-        // S'assurer que le créneau commence au plus tôt maintenant
+        // RÈGLE ABSOLUE : S'assurer que le créneau commence au plus tôt maintenant
         const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), now.getTime()));
         
         if (adjustedSlotStart >= slot.end) {
@@ -178,7 +254,19 @@ export class AlgorithmicScheduler {
           const scheduledStart = adjustedSlotStart;
           const scheduledEnd = addMinutes(scheduledStart, task.estimatedDuration);
           
-          console.log('✅ Créneau trouvé:', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
+          // VÉRIFICATION FINALE : S'assurer qu'il n'y a pas de conflit avec les événements
+          const testTask: Task = {
+            ...task,
+            scheduledStart,
+            scheduledEnd
+          };
+          
+          if (this.checkEventConflict(testTask, this.events)) {
+            console.log('🚫 Créneau trouvé mais en conflit avec un événement, passage au suivant');
+            continue;
+          }
+          
+          console.log('✅ Créneau validé (sans conflit):', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
           
           return {
             ...task,
@@ -191,7 +279,7 @@ export class AlgorithmicScheduler {
       currentDate = addDays(currentDate, 1);
     }
 
-    console.log('❌ Aucun créneau trouvé pour:', task.title);
+    console.log('❌ Aucun créneau valide trouvé pour:', task.title);
     return null;
   }
 
@@ -314,7 +402,7 @@ export class AlgorithmicScheduler {
    * Replanifie toutes les tâches (utile après ajout/suppression d'événement)
    */
   static rescheduleAll(tasks: Task[], events: Event[], options?: Partial<SchedulingOptions>): Task[] {
-    console.log('🔄 Replanification complète des tâches');
+    console.log('🔄 Replanification complète des tâches avec gestion des conflits');
     const scheduler = new AlgorithmicScheduler(events, options);
     
     // Utiliser le mode replanification pour respecter les contraintes
