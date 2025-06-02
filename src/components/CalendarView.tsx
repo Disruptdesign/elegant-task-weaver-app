@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
@@ -43,10 +42,9 @@ export function CalendarView({
     hasUpdateEvent: !!onUpdateEvent
   });
 
-  // Utiliser le hook combiné de drag & drop
+  // Utiliser le hook unifié de drag & drop
   const {
-    taskDragState,
-    eventDragState,
+    dragState,
     startTaskDrag,
     startEventDrag,
   } = useCalendarDragAndDrop(
@@ -171,7 +169,7 @@ export function CalendarView({
   };
 
   const handleTaskClick = (task: Task, e: React.MouseEvent) => {
-    if (taskDragState.isDragging || taskDragState.isResizing) {
+    if (dragState.isDragging || dragState.isResizing) {
       console.log('Task click ignored during drag operation');
       return;
     }
@@ -183,7 +181,7 @@ export function CalendarView({
   };
 
   const handleEventClick = (event: Event, e: React.MouseEvent) => {
-    if (eventDragState.isDragging || eventDragState.isResizing) {
+    if (dragState.isDragging || dragState.isResizing) {
       console.log('Event click ignored during drag operation');
       return;
     }
@@ -344,6 +342,8 @@ export function CalendarView({
           📊 Debug: {tasks.length} tâche{tasks.length > 1 ? 's' : ''}, {events.length} événement{events.length > 1 ? 's' : ''}
           {tasks.filter(t => t.scheduledStart).length > 0 && ` - ${tasks.filter(t => t.scheduledStart).length} tâche(s) programmée(s)`}
           {events.filter(e => !e.allDay).length > 0 && ` - ${events.filter(e => !e.allDay).length} événement(s) avec horaire`}
+          {dragState.isDragging && ' - 🎯 DRAGGING'}
+          {dragState.isResizing && ' - 📏 RESIZING'}
         </p>
       </div>
 
@@ -420,7 +420,7 @@ export function CalendarView({
                         const position = getEventPosition(event);
                         if (!position) return null;
 
-                        const isBeingDragged = eventDragState.eventId === event.id;
+                        const isBeingDragged = dragState.itemId === event.id && dragState.itemType === 'event';
 
                         return (
                           <div
@@ -509,7 +509,7 @@ export function CalendarView({
 
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
-                      const isBeingDragged = taskDragState.taskId === task.id;
+                      const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
 
                       return (
                         <div
