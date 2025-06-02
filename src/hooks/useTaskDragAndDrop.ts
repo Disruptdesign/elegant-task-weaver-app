@@ -1,5 +1,5 @@
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Task } from '../types/task';
 
 interface DragState {
@@ -25,103 +25,92 @@ export function useTaskDragAndDrop(
     resizeHandle: null,
   });
 
-  const currentDragState = useRef(dragState);
-  
-  // Maintenir une référence à jour du state
-  useEffect(() => {
-    currentDragState.current = dragState;
-  }, [dragState]);
-
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    const state = currentDragState.current;
-    console.log('Mouse move event triggered', state);
-    
-    if (!state.taskId || !state.startTime || !onUpdateTask) {
-      console.log('Early return from mousemove - missing data', { 
-        taskId: state.taskId, 
-        startTime: state.startTime,
-        hasUpdateFunction: !!onUpdateTask 
-      });
-      return;
-    }
-
-    const deltaY = e.clientY - state.startY;
-    const minutesDelta = Math.round((deltaY / 64) * 60); // 64px = 1 heure
-    
-    console.log('Delta calculation:', { deltaY, minutesDelta });
-
-    if (state.isDragging) {
-      console.log('Processing drag movement');
-      // Déplacer la tâche
-      const newStartTime = new Date(state.startTime.getTime() + minutesDelta * 60000);
-      
-      // Contraindre aux heures de travail (9h-18h)
-      const hour = newStartTime.getHours();
-      const minute = newStartTime.getMinutes();
-      
-      if (hour < 9) {
-        newStartTime.setHours(9, 0, 0, 0);
-      } else if (hour >= 18) {
-        newStartTime.setHours(17, 30, 0, 0);
+    // Accéder directement au state le plus récent via une closure
+    setDragState(currentState => {
+      if (!currentState.taskId || !currentState.startTime || !onUpdateTask) {
+        console.log('Mouse move: missing required data, skipping');
+        return currentState;
       }
 
-      // Arrondir aux créneaux de 30 minutes
-      const roundedMinutes = Math.round(minute / 30) * 30;
-      newStartTime.setMinutes(roundedMinutes, 0, 0);
-
-      console.log('Updating task position:', { 
-        taskId: state.taskId, 
-        newStartTime, 
-        originalDuration: state.originalDuration 
-      });
-
-      onUpdateTask(state.taskId, {
-        scheduledStart: newStartTime,
-        scheduledEnd: new Date(newStartTime.getTime() + state.originalDuration * 60000),
-      });
-    } else if (state.isResizing) {
-      console.log('Processing resize');
-      // Redimensionner la tâche
-      let newDuration = state.originalDuration;
+      const deltaY = e.clientY - currentState.startY;
+      const minutesDelta = Math.round((deltaY / 64) * 60); // 64px = 1 heure
       
-      if (state.resizeHandle === 'bottom') {
-        newDuration = Math.max(15, state.originalDuration + minutesDelta);
-      } else if (state.resizeHandle === 'top') {
-        newDuration = Math.max(15, state.originalDuration - minutesDelta);
-        if (newDuration !== state.originalDuration) {
-          const newStartTime = new Date(state.startTime.getTime() + (state.originalDuration - newDuration) * 60000);
-          
-          console.log('Updating task resize (top):', { 
-            taskId: state.taskId, 
-            newStartTime, 
+      console.log('Mouse move:', { deltaY, minutesDelta, taskId: currentState.taskId });
+
+      if (currentState.isDragging) {
+        // Déplacer la tâche
+        const newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
+        
+        // Contraindre aux heures de travail (9h-18h)
+        const hour = newStartTime.getHours();
+        
+        if (hour < 9) {
+          newStartTime.setHours(9, 0, 0, 0);
+        } else if (hour >= 18) {
+          newStartTime.setHours(17, 30, 0, 0);
+        }
+
+        // Arrondir aux créneaux de 30 minutes
+        const minute = newStartTime.getMinutes();
+        const roundedMinutes = Math.round(minute / 30) * 30;
+        newStartTime.setMinutes(roundedMinutes, 0, 0);
+
+        console.log('Updating task position:', { 
+          taskId: currentState.taskId, 
+          newStartTime: newStartTime.toISOString(),
+          duration: currentState.originalDuration 
+        });
+
+        onUpdateTask(currentState.taskId, {
+          scheduledStart: newStartTime,
+          scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
+        });
+      } else if (currentState.isResizing) {
+        // Redimensionner la tâche
+        let newDuration = currentState.originalDuration;
+        
+        if (currentState.resizeHandle === 'bottom') {
+          newDuration = Math.max(15, currentState.originalDuration + minutesDelta);
+        } else if (currentState.resizeHandle === 'top') {
+          newDuration = Math.max(15, currentState.originalDuration - minutesDelta);
+          if (newDuration !== currentState.originalDuration) {
+            const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
+            
+            console.log('Updating task resize (top):', { 
+              taskId: currentState.taskId, 
+              newStartTime: newStartTime.toISOString(),
+              newDuration 
+            });
+            
+            onUpdateTask(currentState.taskId, {
+              scheduledStart: newStartTime,
+              scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
+              estimatedDuration: newDuration,
+            });
+            return currentState;
+          }
+        }
+
+        if (newDuration !== currentState.originalDuration) {
+          console.log('Updating task resize (bottom):', { 
+            taskId: currentState.taskId, 
             newDuration 
           });
           
-          onUpdateTask(state.taskId, {
-            scheduledStart: newStartTime,
-            scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
+          onUpdateTask(currentState.taskId, {
             estimatedDuration: newDuration,
+            scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
           });
-          return;
         }
       }
 
-      if (newDuration !== state.originalDuration) {
-        console.log('Updating task resize (bottom):', { 
-          taskId: state.taskId, 
-          newDuration 
-        });
-        
-        onUpdateTask(state.taskId, {
-          estimatedDuration: newDuration,
-          scheduledEnd: new Date(state.startTime.getTime() + newDuration * 60000),
-        });
-      }
-    }
+      return currentState;
+    });
   }, [onUpdateTask]);
 
   const handleMouseUp = useCallback(() => {
-    console.log('Mouse up event triggered, cleaning up drag state');
+    console.log('Mouse up: cleaning up drag state');
     
     setDragState({
       isDragging: false,
@@ -149,7 +138,13 @@ export function useTaskDragAndDrop(
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('Starting drag operation:', { action, taskId: task.id, resizeHandle });
+    console.log('Starting drag operation:', { 
+      action, 
+      taskId: task.id, 
+      taskTitle: task.title,
+      resizeHandle,
+      hasScheduledStart: !!task.scheduledStart 
+    });
 
     if (!task.scheduledStart) {
       console.log('Task has no scheduled start time, aborting drag');
@@ -174,20 +169,12 @@ export function useTaskDragAndDrop(
     console.log('Setting drag state:', newDragState);
     setDragState(newDragState);
 
-    // Ajouter les event listeners immédiatement
-    document.addEventListener('mousemove', handleMouseMove, { passive: false });
-    document.addEventListener('mouseup', handleMouseUp, { passive: false });
+    // Ajouter les event listeners
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
     
     console.log('Event listeners added');
   }, [handleMouseMove, handleMouseUp, onUpdateTask]);
-
-  // Cleanup automatique sur unmount
-  useEffect(() => {
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [handleMouseMove, handleMouseUp]);
 
   return {
     dragState,

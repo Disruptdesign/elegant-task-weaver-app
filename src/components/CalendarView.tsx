@@ -25,6 +25,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
 
   console.log('CalendarView: Events received:', events);
   console.log('CalendarView: onUpdateTask function provided:', !!onUpdateTask);
+  console.log('CalendarView: Tasks with scheduled times:', tasks.filter(t => t.scheduledStart).length);
 
   // Utiliser le hook de drag & drop seulement si onUpdateTask est fourni
   const { dragState, startDrag } = useTaskDragAndDrop(
@@ -79,10 +80,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
-    // Position sans buffer (le buffer est géré par le planificateur)
     const adjustedTop = ((startHour - 9) + startMinute / 60) * 64;
-    
-    // Hauteur uniquement de la tâche (sans buffers)
     const height = Math.max((task.estimatedDuration / 60) * 64, 32);
     
     return { top: Math.max(0, adjustedTop), height };
@@ -97,7 +95,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
     const startMinute = start.getMinutes();
     
     const top = ((startHour - 9) + startMinute / 60) * 64;
-    const duration = (end.getTime() - start.getTime()) / (1000 * 60); // en minutes
+    const duration = (end.getTime() - start.getTime()) / (1000 * 60);
     const height = Math.max((duration / 60) * 64, 32);
     
     console.log('Event position calculated:', { event: event.title, top, height, start, end });
@@ -106,7 +104,6 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
   };
 
   const handleTaskClick = (task: Task, e: React.MouseEvent) => {
-    // Ne pas ouvrir le formulaire si on est en train de drag & drop
     if (dragState.isDragging || dragState.isResizing) {
       console.log('Task click ignored during drag operation');
       return;
@@ -145,15 +142,24 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
     }
   };
 
-  const handleTaskDragStart = (e: React.MouseEvent, task: Task, action: 'move' | 'resize', resizeHandle?: 'top' | 'bottom') => {
-    console.log('Task drag start requested:', { action, taskTitle: task.title, hasUpdateFunction: !!onUpdateTask });
+  // Gestionnaires simplifiés pour le drag & drop
+  const handleTaskMouseDown = (e: React.MouseEvent, task: Task, action: 'move' | 'resize', resizeHandle?: 'top' | 'bottom') => {
+    console.log('Task mouse down:', { 
+      action, 
+      taskTitle: task.title, 
+      hasUpdateFunction: !!onUpdateTask,
+      mouseButton: e.button 
+    });
+    
+    // Seulement le bouton gauche de la souris
+    if (e.button !== 0) return;
     
     if (!onUpdateTask) {
       console.log('Cannot start drag: no update function provided');
       return;
     }
     
-    console.log('Calling startDrag with:', { taskId: task.id, action, resizeHandle });
+    console.log('Calling startDrag...');
     startDrag(e, task, action, resizeHandle);
   };
 
@@ -217,20 +223,19 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
         </div>
       </div>
 
-      {/* Debug: Afficher le nombre d'événements */}
-      {events.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-sm text-blue-800">
-            Debug: {events.length} événement(s) chargé(s)
+      {/* Debug: États */}
+      {onUpdateTask && (dragState.isDragging || dragState.isResizing) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <p className="text-sm text-yellow-800">
+            🟡 {dragState.isDragging ? 'Déplacement' : 'Redimensionnement'} en cours pour la tâche {dragState.taskId}
           </p>
         </div>
       )}
 
-      {/* Debug: État du drag & drop */}
-      {onUpdateTask && (dragState.isDragging || dragState.isResizing) && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-          <p className="text-sm text-yellow-800">
-            Debug: {dragState.isDragging ? 'Déplacement' : 'Redimensionnement'} en cours pour la tâche {dragState.taskId}
+      {!onUpdateTask && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p className="text-sm text-blue-800">
+            📖 Mode lecture seule - Aucune modification possible
           </p>
         </div>
       )}
@@ -356,7 +361,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                       })}
                   </div>
 
-                  {/* Tâches sans affichage des buffers */}
+                  {/* Tâches avec drag & drop amélioré */}
                   <div className="absolute inset-0 p-1">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -369,10 +374,10 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute left-1 right-1 rounded-lg border cursor-pointer transition-all z-20 group ${
+                          className={`absolute left-1 right-1 rounded-lg border cursor-pointer transition-all z-20 group select-none ${
                             statusColors.bg
                           } ${statusColors.border} ${
-                            isBeingDragged ? 'opacity-80 shadow-lg scale-105' : 'hover:shadow-md hover:scale-105'
+                            isBeingDragged ? 'opacity-80 shadow-lg scale-105 ring-2 ring-blue-400' : 'hover:shadow-md hover:scale-105'
                           }`}
                           style={{
                             top: `${position.top}px`,
@@ -384,23 +389,17 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                           {/* Handle de redimensionnement haut */}
                           {onUpdateTask && position.height > 40 && (
                             <div
-                              className="absolute top-0 left-0 right-0 h-2 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-200 hover:bg-gray-300"
-                              onMouseDown={(e) => {
-                                console.log('Top resize handle clicked');
-                                handleTaskDragStart(e, task, 'resize', 'top');
-                              }}
+                              className="absolute top-0 left-0 right-0 h-3 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-300 hover:bg-gray-400 rounded-t-lg"
+                              onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize', 'top')}
                             >
-                              <div className="w-8 h-0.5 bg-gray-500 rounded"></div>
+                              <div className="w-8 h-1 bg-gray-600 rounded"></div>
                             </div>
                           )}
 
                           {/* Contenu de la tâche avec handle de déplacement */}
                           <div
-                            className="p-2 h-full flex flex-col justify-between cursor-move"
-                            onMouseDown={onUpdateTask ? (e) => {
-                              console.log('Task content clicked for drag');
-                              handleTaskDragStart(e, task, 'move');
-                            } : undefined}
+                            className={`p-2 h-full flex flex-col justify-between ${onUpdateTask ? 'cursor-move' : 'cursor-pointer'}`}
+                            onMouseDown={onUpdateTask ? (e) => handleTaskMouseDown(e, task, 'move') : undefined}
                           >
                             <div className="flex items-start gap-1">
                               {onUpdateTask && (
@@ -427,13 +426,10 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                           {/* Handle de redimensionnement bas */}
                           {onUpdateTask && position.height > 40 && (
                             <div
-                              className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-200 hover:bg-gray-300"
-                              onMouseDown={(e) => {
-                                console.log('Bottom resize handle clicked');
-                                handleTaskDragStart(e, task, 'resize', 'bottom');
-                              }}
+                              className="absolute bottom-0 left-0 right-0 h-3 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-300 hover:bg-gray-400 rounded-b-lg"
+                              onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize', 'bottom')}
                             >
-                              <div className="w-8 h-0.5 bg-gray-500 rounded"></div>
+                              <div className="w-8 h-1 bg-gray-600 rounded"></div>
                             </div>
                           )}
                         </div>
