@@ -107,12 +107,14 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
   };
 
   const handleTaskClick = (task: Task) => {
+    console.log('Task clicked from dashboard:', task.id);
     setSelectedTask(task);
     setSelectedEvent(undefined);
     setIsFormOpen(true);
   };
 
   const handleEventClick = (event: Event) => {
+    console.log('Event clicked from dashboard:', event.id);
     setSelectedEvent(event);
     setSelectedTask(undefined);
     setIsFormOpen(true);
@@ -121,6 +123,7 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
   const handleTaskCompletion = (task: Task, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log('Task completion clicked from dashboard:', task.id);
     
     if (onEditTask) {
       onEditTask(task.id, { completed: !task.completed });
@@ -151,7 +154,7 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
-      {/* En-tête amélioré */}
+      {/* En-tête */}
       <div className="text-center py-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl mx-4">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
           Tableau de bord
@@ -169,7 +172,7 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
         )}
       </div>
 
-      {/* Statistiques améliorées */}
+      {/* Statistiques */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
         {stats.map((stat, index) => {
           const IconComponent = stat.icon;
@@ -219,7 +222,7 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
         })}
       </div>
 
-      {/* Tâches en retard - Section d'alerte améliorée */}
+      {/* Tâches en retard */}
       {overdueTasks.length > 0 && (
         <div className="mx-4">
           <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-2xl p-6 shadow-lg">
@@ -240,14 +243,8 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
                   <div className="flex items-center gap-3 flex-1">
                     {onEditTask && (
                       <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const taskToUpdate = tasks.find(t => t.id === task.id);
-                          if (taskToUpdate) {
-                            onEditTask(task.id, { completed: !taskToUpdate.completed });
-                          }
-                        }}
+                        type="button"
+                        onClick={(e) => handleTaskCompletion(task, e)}
                         className="p-2 hover:bg-green-100 rounded-lg transition-colors"
                         title="Marquer comme terminé"
                       >
@@ -263,11 +260,8 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
                   </div>
                   {onEditTask && (
                     <button
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setSelectedEvent(undefined);
-                        setIsFormOpen(true);
-                      }}
+                      type="button"
+                      onClick={() => handleTaskClick(task)}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                       title="Modifier la tâche"
                     >
@@ -317,6 +311,7 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
                   </div>
                   {onEditEvent && (
                     <button
+                      type="button"
                       onClick={() => handleEventClick(event)}
                       className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
                       title="Modifier l'événement"
@@ -368,11 +363,8 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
                       )}
                       {onEditEvent && (
                         <button
-                          onClick={() => {
-                            setSelectedEvent(event);
-                            setSelectedTask(undefined);
-                            setIsFormOpen(true);
-                          }}
+                          type="button"
+                          onClick={() => handleEventClick(event)}
                           className="p-2 text-gray-400 hover:text-purple-600 hover:bg-white rounded-md transition-colors opacity-0 group-hover:opacity-100"
                           title="Modifier l'événement"
                         >
@@ -412,23 +404,13 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
                   <div
                     key={task.id}
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group cursor-pointer"
-                    onClick={() => {
-                      setSelectedTask(task);
-                      setSelectedEvent(undefined);
-                      setIsFormOpen(true);
-                    }}
+                    onClick={() => handleTaskClick(task)}
                   >
                     <div className="flex items-center gap-3 flex-1">
                       {onEditTask && (
                         <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const taskToUpdate = tasks.find(t => t.id === task.id);
-                            if (taskToUpdate) {
-                              onEditTask(task.id, { completed: !taskToUpdate.completed });
-                            }
-                          }}
+                          type="button"
+                          onClick={(e) => handleTaskCompletion(task, e)}
                           className="p-1 hover:bg-white rounded"
                           title="Marquer comme terminé"
                         >
@@ -480,25 +462,9 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
       {(onEditTask || onEditEvent) && (
         <AddItemForm
           isOpen={isFormOpen}
-          onClose={() => {
-            setIsFormOpen(false);
-            setSelectedTask(undefined);
-            setSelectedEvent(undefined);
-          }}
-          onSubmitTask={(taskData) => {
-            if (selectedTask && onEditTask) {
-              onEditTask(selectedTask.id, taskData);
-            }
-            setSelectedTask(undefined);
-            setIsFormOpen(false);
-          }}
-          onSubmitEvent={(eventData) => {
-            if (selectedEvent && onEditEvent) {
-              onEditEvent(selectedEvent.id, eventData);
-            }
-            setSelectedEvent(undefined);
-            setIsFormOpen(false);
-          }}
+          onClose={handleFormClose}
+          onSubmitTask={handleFormSubmit}
+          onSubmitEvent={handleEventFormSubmit}
           editingTask={selectedTask}
           editingEvent={selectedEvent}
         />

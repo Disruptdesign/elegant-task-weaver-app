@@ -65,16 +65,43 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    if (onClick && !e.defaultPrevented) {
+    // Ne pas déclencher le clic de carte si on clique sur un bouton
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    
+    if (onClick) {
       onClick(task);
     }
   };
 
-  const handleActionClick = (e: React.MouseEvent, action: () => void) => {
+  const handleCompleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log('Complete button clicked for task:', task.id);
+    onComplete(task.id);
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Edit button clicked for task:', task.id);
     setShowActions(false);
-    action();
+    onEdit(task);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Delete button clicked for task:', task.id);
+    setShowActions(false);
+    onDelete(task.id);
+  };
+
+  const handleMenuToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowActions(!showActions);
   };
 
   const isOverdue = taskStatus === 'overdue';
@@ -108,15 +135,12 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
             )}
           </div>
           
-          {/* Menu d'actions amélioré */}
+          {/* Menu d'actions */}
           <div className="relative" ref={menuRef}>
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowActions(!showActions);
-              }}
-              className={`p-2 rounded-lg transition-all ${
+              type="button"
+              onClick={handleMenuToggle}
+              className={`p-2 rounded-lg transition-all z-10 relative ${
                 showActions ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
               }`}
             >
@@ -126,14 +150,16 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
             {showActions && (
               <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 min-w-[140px] animate-fade-in">
                 <button
-                  onClick={(e) => handleActionClick(e, () => onEdit(task))}
+                  type="button"
+                  onClick={handleEditClick}
                   className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
                 >
                   <Edit3 size={14} />
                   Modifier
                 </button>
                 <button
-                  onClick={(e) => handleActionClick(e, () => onDelete(task.id))}
+                  type="button"
+                  onClick={handleDeleteClick}
                   className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors"
                 >
                   <Trash2 size={14} />
@@ -144,7 +170,7 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
           </div>
         </div>
 
-        {/* Informations temporelles améliorées */}
+        {/* Informations temporelles */}
         <div className="space-y-3 mb-4">
           <div className="flex items-center gap-4 text-sm flex-wrap">
             <div className="flex items-center gap-1.5 text-gray-600">
@@ -192,12 +218,13 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
           
           {/* Bouton de completion */}
           <button
-            onClick={(e) => handleActionClick(e, () => onComplete(task.id))}
+            type="button"
+            onClick={handleCompleteClick}
             disabled={task.completed}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm shrink-0 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm shrink-0 z-10 relative ${
               task.completed
                 ? 'bg-green-500 text-white cursor-not-allowed'
-                : 'bg-white text-gray-700 border border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 hover:shadow-md'
+                : 'bg-white text-gray-700 border border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 hover:shadow-md active:scale-95'
             }`}
           >
             <CheckCircle2 size={14} className={task.completed ? 'text-white' : ''} />
