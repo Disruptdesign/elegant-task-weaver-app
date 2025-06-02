@@ -597,15 +597,13 @@ export function CalendarView({
 
       {viewMode === 'week' ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* En-tête des jours - Alignement corrigé */}
+          {/* En-tête des jours */}
           <div className="grid grid-cols-8 border-b border-gray-200">
             <div className="p-3 text-center text-xs font-medium text-gray-500 border-r border-gray-200 bg-gray-50/30">
               GMT+1
             </div>
             {getWeekDays().map((day, index) => {
               const isToday = isSameDayNormalized(day, new Date());
-              const dayTasks = getTasksForDay(day);
-              const dayEvents = getEventsForDay(day);
               
               return (
                 <div
@@ -627,11 +625,11 @@ export function CalendarView({
             })}
           </div>
 
-          {/* Grille horaire - Alignement corrigé */}
-          <div className="relative max-h-[80vh] overflow-y-auto">
-            <div className="grid grid-cols-8">
-              {/* Colonne des heures - Largeur fixe et alignement parfait */}
-              <div className="bg-gray-50/30 border-r border-gray-200">
+          {/* Grille horaire avec scroll natif fonctionnel */}
+          <div className="relative max-h-[80vh] overflow-y-auto overflow-x-hidden">
+            <div className="grid grid-cols-8 min-h-full">
+              {/* Colonne des heures */}
+              <div className="bg-gray-50/30 border-r border-gray-200 sticky left-0 z-10">
                 {allDayHours.map(hour => (
                   <div key={hour} className="h-16 border-b border-gray-100 flex items-start justify-center pt-1">
                     <span className="text-xs font-medium text-gray-400">
@@ -641,22 +639,26 @@ export function CalendarView({
                 ))}
               </div>
 
-              {/* Colonnes des jours - Alignement parfait */}
+              {/* Colonnes des jours */}
               {getWeekDays().map((day, dayIndex) => (
                 <div 
                   key={dayIndex} 
-                  className="relative border-r border-gray-200 last:border-r-0 bg-white hover:bg-gray-50/30 transition-colors"
+                  className="relative border-r border-gray-200 last:border-r-0 bg-white hover:bg-gray-50/30 transition-colors cursor-pointer"
                 >
-                  {/* Lignes horaires */}
+                  {/* Lignes horaires cliquables */}
                   {allDayHours.map(hour => (
                     <div
                       key={hour}
-                      className="h-16 border-b border-gray-100"
+                      className="h-16 border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
+                      onClick={() => {
+                        // Permettre de cliquer pour ajouter des événements/tâches
+                        console.log(`Clicked on ${format(day, 'yyyy-MM-dd')} at ${hour}:00`);
+                      }}
                     />
                   ))}
 
-                  {/* Événements - Style Notion avec contenu aligné en haut */}
-                  <div className="absolute inset-0 p-1 pointer-events-none">
+                  {/* Événements - avec interactions simplifiées */}
+                  <div className="absolute inset-0 p-1">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
                       .map(event => {
@@ -665,20 +667,19 @@ export function CalendarView({
 
                         const isBeingDragged = dragState.itemId === event.id && dragState.itemType === 'event';
                         
-                        // Calculer le nombre de lignes possible pour le titre
-                        const lineHeight = 14; // hauteur d'une ligne en pixels
-                        const padding = 8; // padding vertical total
-                        const timeHeight = position.height > 35 ? 14 : 0; // hauteur de l'heure si affichée
+                        const lineHeight = 14;
+                        const padding = 8;
+                        const timeHeight = position.height > 35 ? 14 : 0;
                         const availableHeight = position.height - padding - timeHeight;
                         const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
 
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm group ${
+                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer select-none shadow-sm group ${
                               isBeingDragged 
                                 ? 'opacity-80 shadow-lg z-50' 
-                                : 'hover:shadow-md'
+                                : 'hover:shadow-md z-20'
                             }`}
                             style={{
                               top: `${position.top}px`,
@@ -700,11 +701,16 @@ export function CalendarView({
                                 handleEventMouseDown(e, event, 'move');
                               }
                             }}
+                            onClick={() => {
+                              if (!dragStartedRef.current) {
+                                handleEventClick(event);
+                              }
+                            }}
                           >
-                            {/* Zone de redimensionnement haut */}
+                            {/* Zones de redimensionnement */}
                             <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                             
-                            {/* Contenu aligné en haut */}
+                            {/* Contenu */}
                             <div className="h-full px-2 py-1 flex flex-col justify-start">
                               <div 
                                 className="text-xs font-medium text-sky-800 leading-tight"
@@ -725,15 +731,14 @@ export function CalendarView({
                               )}
                             </div>
                             
-                            {/* Zone de redimensionnement bas */}
                             <div className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         );
                       })}
                   </div>
 
-                  {/* Tâches - Style Notion avec couleurs de fond corrigées */}
-                  <div className="absolute inset-0 p-1 pointer-events-none">
+                  {/* Tâches - avec interactions simplifiées */}
+                  <div className="absolute inset-0 p-1">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
                       if (!position) {
@@ -746,10 +751,8 @@ export function CalendarView({
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
                       
-                      // Calculer le nombre de lignes possible pour le titre
                       const lineHeight = 14;
                       const padding = 8;
-                      const checkboxWidth = 20;
                       const timeHeight = position.height > 35 ? 14 : 0;
                       const availableHeight = position.height - padding - timeHeight;
                       const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
@@ -757,10 +760,10 @@ export function CalendarView({
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm group ${
+                          className={`absolute rounded-lg transition-all duration-200 cursor-pointer select-none shadow-sm group ${
                             isBeingDragged 
                               ? 'opacity-80 shadow-lg z-50' 
-                              : 'hover:shadow-md'
+                              : 'hover:shadow-md z-20'
                           } ${isCompleted ? 'opacity-60' : ''}`}
                           style={{
                             top: `${position.top}px`,
@@ -782,13 +785,18 @@ export function CalendarView({
                               handleTaskMouseDown(e, task, 'move');
                             }
                           }}
+                          onClick={() => {
+                            if (!dragStartedRef.current) {
+                              handleTaskClick(task);
+                            }
+                          }}
                         >
-                          {/* Zone de redimensionnement haut */}
+                          {/* Zones de redimensionnement */}
                           <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                           
-                          {/* Contenu aligné en haut */}
+                          {/* Contenu */}
                           <div className="h-full px-2 py-1 flex items-start gap-1.5">
-                            {/* Checkbox minimaliste style Notion */}
+                            {/* Checkbox */}
                             {onUpdateTask && (
                               <button
                                 className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 ${
@@ -804,7 +812,6 @@ export function CalendarView({
                               </button>
                             )}
                             
-                            {/* Contenu */}
                             <div className="flex-1 min-w-0 flex flex-col justify-start">
                               <div 
                                 className={`text-xs font-medium leading-tight ${
@@ -832,7 +839,6 @@ export function CalendarView({
                             </div>
                           </div>
                           
-                          {/* Zone de redimensionnement bas */}
                           <div className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       );
