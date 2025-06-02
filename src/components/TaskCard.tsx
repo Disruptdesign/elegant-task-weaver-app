@@ -117,32 +117,34 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
       onClick={handleCardClick}
     >
       <div className="p-5">
-        {/* En-tête avec titre et priorité */}
+        {/* En-tête avec titre et priorité - amélioré pour mobile */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0 mr-3">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h3 className={`font-semibold text-gray-900 leading-tight ${
+            <div className="flex items-start gap-2 mb-1 flex-wrap">
+              <h3 className={`font-semibold text-gray-900 leading-tight break-words ${
                 task.completed ? 'line-through' : ''
               }`}>
                 {task.title}
               </h3>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.color} ${config.border} border shrink-0`}>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.color} ${config.border} border shrink-0 whitespace-nowrap`}>
                 {config.label}
               </span>
             </div>
             {task.description && (
-              <p className="text-sm text-gray-600 mt-1 line-clamp-2">{task.description}</p>
+              <p className="text-sm text-gray-600 mt-1 line-clamp-2 break-words">{task.description}</p>
             )}
           </div>
           
-          {/* Menu d'actions */}
+          {/* Menu d'actions - amélioré pour l'accessibilité */}
           <div className="relative" ref={menuRef}>
             <button
               type="button"
               onClick={handleMenuToggle}
-              className={`p-2 rounded-lg transition-all z-10 relative ${
+              className={`p-2 rounded-lg transition-all z-10 relative touch-target ${
                 showActions ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
               }`}
+              style={{ minWidth: '44px', minHeight: '44px' }}
+              aria-label="Menu d'actions"
             >
               <MoreVertical size={16} />
             </button>
@@ -152,7 +154,7 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
                 <button
                   type="button"
                   onClick={handleEditClick}
-                  className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
+                  className="w-full px-3 py-3 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors touch-target"
                 >
                   <Edit3 size={14} />
                   Modifier
@@ -160,7 +162,7 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
                 <button
                   type="button"
                   onClick={handleDeleteClick}
-                  className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors"
+                  className="w-full px-3 py-3 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors touch-target"
                 >
                   <Trash2 size={14} />
                   Supprimer
@@ -170,18 +172,18 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
           </div>
         </div>
 
-        {/* Informations temporelles */}
+        {/* Informations temporelles - améliorées pour la lisibilité */}
         <div className="space-y-3 mb-4">
           <div className="flex items-center gap-4 text-sm flex-wrap">
             <div className="flex items-center gap-1.5 text-gray-600">
               <Calendar size={14} />
-              <span className={isPast(task.deadline) && !task.completed ? 'text-red-600 font-medium' : ''}>
+              <span className={`${isPast(task.deadline) && !task.completed ? 'text-red-600 font-medium' : ''} whitespace-nowrap`}>
                 {format(task.deadline, 'dd MMM', { locale: fr })}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-gray-600">
               <Clock size={14} />
-              <span>{formatDuration(task.estimatedDuration)}</span>
+              <span className="whitespace-nowrap">{formatDuration(task.estimatedDuration)}</span>
             </div>
           </div>
 
@@ -189,46 +191,47 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
           {task.scheduledStart && (
             <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${statusColors.accent}`}>
               <Calendar size={14} />
-              <span className="font-medium">
+              <span className="font-medium break-words">
                 {formatScheduledTime()}
               </span>
             </div>
           )}
         </div>
 
-        {/* Statuts et actions */}
-        <div className="flex items-center justify-between gap-3">
+        {/* Statuts et actions - améliorés pour mobile */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             {isOverdue && (
-              <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded-md border border-red-200 flex items-center gap-1">
+              <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded-md border border-red-200 flex items-center gap-1 whitespace-nowrap">
                 ⚠️ En retard
               </span>
             )}
             {isApproaching && !isOverdue && (
-              <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-1 rounded-md border border-orange-200 flex items-center gap-1">
+              <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-1 rounded-md border border-orange-200 flex items-center gap-1 whitespace-nowrap">
                 ⏰ Échéance proche
               </span>
             )}
             {task.projectId && (
-              <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
+              <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-md whitespace-nowrap">
                 📁 Projet
               </span>
             )}
           </div>
           
-          {/* Bouton de completion */}
+          {/* Bouton de completion - amélioré pour mobile */}
           <button
             type="button"
             onClick={handleCompleteClick}
             disabled={task.completed}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm shrink-0 z-10 relative ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm shrink-0 z-10 relative touch-target ${
               task.completed
                 ? 'bg-green-500 text-white cursor-not-allowed'
                 : 'bg-white text-gray-700 border border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 hover:shadow-md active:scale-95'
             }`}
+            style={{ minHeight: '44px' }}
           >
             <CheckCircle2 size={14} className={task.completed ? 'text-white' : ''} />
-            <span className="hidden sm:inline">
+            <span className="hidden sm:inline whitespace-nowrap">
               {task.completed ? 'Terminée' : 'Terminer'}
             </span>
           </button>

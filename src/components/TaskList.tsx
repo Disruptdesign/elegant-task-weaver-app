@@ -75,44 +75,45 @@ export function TaskList({
 
   return (
     <div className="space-y-6">
-      {/* En-tête amélioré */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+      {/* En-tête amélioré pour mobile */}
+      <div className="flex flex-col gap-4 items-start">
+        <div className="space-y-1 w-full">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3 flex-wrap">
             <ListTodo className="text-blue-600" size={32} />
             Mes tâches
           </h1>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span className="flex items-center gap-1">
+          <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+            <span className="flex items-center gap-1 whitespace-nowrap">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               {pendingTasks.length} en cours
             </span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 whitespace-nowrap">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               {completedTasks.length} terminée{completedTasks.length > 1 ? 's' : ''}
             </span>
           </div>
         </div>
-        <div className="flex gap-3">
+        
+        <div className="flex gap-3 w-full sm:w-auto">
           <button
             onClick={onReschedule}
-            className="flex items-center gap-2 px-4 py-2.5 text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 px-4 py-2.5 text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm hover:shadow-md touch-target flex-1 sm:flex-none justify-center"
           >
             <RefreshCw size={16} />
-            <span className="hidden sm:inline">Replanifier</span>
+            <span>Replanifier</span>
           </button>
           <button
             onClick={() => setIsFormOpen(true)}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl touch-target flex-1 sm:flex-none justify-center"
           >
             <Plus size={16} />
-            <span className="hidden sm:inline">Nouvelle tâche</span>
+            <span>Nouvelle tâche</span>
           </button>
         </div>
       </div>
 
-      {/* Barre de recherche et filtres améliorée */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      {/* Barre de recherche et filtres améliorée pour mobile */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
         <div className="space-y-4">
           {/* Recherche */}
           <div className="relative">
@@ -122,21 +123,21 @@ export function TaskList({
               placeholder="Rechercher une tâche..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
             />
           </div>
 
-          {/* Filtres */}
-          <div className="flex flex-wrap gap-3">
+          {/* Filtres - améliorés pour mobile */}
+          <div className="flex flex-col sm:flex-row gap-3">
             {/* Filtres de statut */}
-            <div className="flex items-center gap-2">
-              <Filter size={16} className="text-gray-400" />
-              <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Filter size={16} className="text-gray-400 flex-shrink-0" />
+              <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
                 {statusFilterOptions.map((option) => (
                   <button
                     key={option.value}
                     onClick={() => setFilterStatus(option.value as any)}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${
                       filterStatus === option.value
                         ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900'
@@ -152,7 +153,7 @@ export function TaskList({
             <select
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value as any)}
-              className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm touch-target flex-1 sm:flex-none"
             >
               <option value="all">Toutes priorités</option>
               <option value="urgent">🔴 Urgente</option>
@@ -164,23 +165,23 @@ export function TaskList({
         </div>
       </div>
 
-      {/* Liste des tâches */}
+      {/* Liste des tâches - améliorée pour mobile */}
       {filteredTasks.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-          <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full flex items-center justify-center mb-6">
+        <div className="text-center py-12 sm:py-16 bg-white rounded-2xl border border-gray-100">
+          <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full flex items-center justify-center mb-6">
             {searchTerm || filterStatus !== 'all' || filterPriority !== 'all' ? (
-              <Search className="text-blue-400" size={32} />
+              <Search className="text-blue-400" size={28} />
             ) : (
-              <ListTodo className="text-blue-400" size={32} />
+              <ListTodo className="text-blue-400" size={28} />
             )}
           </div>
-          <h3 className="text-xl font-medium text-gray-900 mb-2">
+          <h3 className="text-lg sm:text-xl font-medium text-gray-900 mb-2">
             {searchTerm || filterStatus !== 'all' || filterPriority !== 'all' 
               ? 'Aucune tâche trouvée' 
               : 'Aucune tâche pour le moment'
             }
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 mb-6 px-4">
             {searchTerm || filterStatus !== 'all' || filterPriority !== 'all'
               ? 'Essayez de modifier vos filtres de recherche'
               : 'Commencez par créer votre première tâche'
@@ -189,7 +190,7 @@ export function TaskList({
           {(!searchTerm && filterStatus === 'all' && filterPriority === 'all') && (
             <button
               onClick={() => setIsFormOpen(true)}
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl touch-target"
             >
               Créer ma première tâche
             </button>
