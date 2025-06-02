@@ -198,13 +198,8 @@ export function CalendarView({
     return { top: Math.max(0, top), height };
   };
 
-  // Gestionnaires de clic avec protection contre le drag
+  // Gestionnaires de clic simplifiés
   const handleTaskClick = (task: Task) => {
-    if (dragStartedRef.current) {
-      console.log('Ignoring task click during drag operation');
-      return;
-    }
-    
     console.log('Task clicked for editing:', task.id);
     setSelectedTask(task);
     setSelectedEvent(undefined);
@@ -212,11 +207,6 @@ export function CalendarView({
   };
 
   const handleEventClick = (event: Event) => {
-    if (dragStartedRef.current) {
-      console.log('Ignoring event click during drag operation');
-      return;
-    }
-    
     console.log('Event clicked for editing:', event.id);
     setSelectedEvent(event);
     setSelectedTask(undefined);
@@ -226,11 +216,6 @@ export function CalendarView({
   const handleTaskCompletion = (task: Task, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (dragStartedRef.current) {
-      console.log('Ignoring task completion during drag operation');
-      return;
-    }
     
     console.log('Completing task:', task.id, 'current completed:', task.completed);
     if (onUpdateTask) {
@@ -291,11 +276,9 @@ export function CalendarView({
       return;
     }
     
-    e.preventDefault();
-    e.stopPropagation();
-    
-    dragStartedRef.current = true;
-    startTaskDrag(e, task, action, resizeHandle);
+    // Passer la fonction de clic appropriée
+    const onTaskClick = action === 'move' ? () => handleTaskClick(task) : undefined;
+    startTaskDrag(e, task, action, resizeHandle, onTaskClick);
   };
 
   // Gestionnaires pour le drag & drop des événements
@@ -315,11 +298,9 @@ export function CalendarView({
       return;
     }
     
-    e.preventDefault();
-    e.stopPropagation();
-    
-    dragStartedRef.current = true;
-    startEventDrag(e, event, action, resizeHandle);
+    // Passer la fonction de clic appropriée
+    const onEventClick = action === 'move' ? () => handleEventClick(event) : undefined;
+    startEventDrag(e, event, action, resizeHandle, onEventClick);
   };
 
   return (
@@ -477,7 +458,6 @@ export function CalendarView({
                               backgroundColor: '#f0f9ff',
                               border: '1px solid #e0f2fe',
                             }}
-                            onClick={() => handleEventClick(event)}
                             onMouseDown={(e) => {
                               const rect = e.currentTarget.getBoundingClientRect();
                               const relativeY = e.clientY - rect.top;
@@ -540,7 +520,6 @@ export function CalendarView({
                             backgroundColor: isCompleted ? '#f8f8f8' : '#fef7ed',
                             border: isCompleted ? '1px solid #e5e5e5' : '1px solid #fed7aa',
                           }}
-                          onClick={() => handleTaskClick(task)}
                           onMouseDown={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
                             const relativeY = e.clientY - rect.top;

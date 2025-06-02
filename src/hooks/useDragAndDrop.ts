@@ -11,12 +11,16 @@ interface DragState {
   startTime: Date | null;
   originalDuration: number;
   resizeHandle: 'top' | 'bottom' | null;
+  isPendingDrag: boolean;
 }
 
 interface DragCallbacks {
   onUpdateTask?: (id: string, updates: any) => void;
   onUpdateEvent?: (id: string, updates: any) => void;
 }
+
+const DRAG_THRESHOLD = 5; // pixels
+const DRAG_DELAY = 150; // milliseconds
 
 export function useDragAndDrop(callbacks: DragCallbacks) {
   const [dragState, setDragState] = useState<DragState>({
@@ -29,10 +33,17 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     startTime: null,
     originalDuration: 0,
     resizeHandle: null,
+    isPendingDrag: false,
   });
 
   const dragStateRef = useRef(dragState);
   const callbacksRef = useRef(callbacks);
+  const dragTimeoutRef = useRef<number | null>(null);
+  const pendingClickRef = useRef<{
+    item: any;
+    itemType: 'task' | 'event';
+    onClick: () => void;
+  } | null>(null);
 
   // Garder les refs à jour
   useEffect(() => {
@@ -49,6 +60,13 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
 
   const cleanupDrag = useCallback(() => {
     console.log('Cleaning up drag state');
+    
+    // Nettoyer le timeout
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+      dragTimeoutRef.current = null;
+    }
+
     setDragState({
       isDragging: false,
       isResizing: false,
@@ -59,10 +77,25 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       startTime: null,
       originalDuration: 0,
       resizeHandle: null,
+      isPendingDrag: false,
     });
 
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
+  }, []);
+
+  const startActualDrag = useCallback((action: 'move' | 'resize') => {
+    console.log('Starting actual drag operation');
+    
+    setDragState(prev => ({
+      ...prev,
+      isDragging: action === 'move',
+      isResizing: action === 'resize',
+      isPendingDrag: false,
+    }));
+
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = action === 'move' ? 'grabbing' : (dragStateRef.current.resizeHandle === 'top' ? 'n-resize' : 's-resize');
   }, []);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -75,6 +108,27 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
 
     const deltaY = e.clientY - currentState.startY;
     const deltaX = e.clientX - currentState.startX;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // Si on est en attente de drag et qu'on a bougé assez, démarrer le drag
+    if (currentState.isPendingDrag && distance > DRAG_THRESHOLD) {
+      console.log('Distance threshold reached, starting drag');
+      startActualDrag(currentState.isResizing ? 'resize' : 'move');
+      
+      // Annuler le clic en attente
+      pendingClickRef.current = null;
+      
+      // Nettoyer le timeout
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current);
+        dragTimeoutRef.current = null;
+      }
+    }
+
+    // Ne continuer que si on est vraiment en train de draguer
+    if (!currentState.isDragging && !currentState.isResizing) {
+      return;
+    }
     
     if (currentState.isDragging) {
       // Déplacement
@@ -150,10 +204,22 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
         }
       }
     }
-  }, [snapToQuarterHour]);
+  }, [snapToQuarterHour, startActualDrag]);
 
   const handleMouseUp = useCallback(() => {
     console.log('Mouse up - cleaning up');
+    
+    // Si on avait un clic en attente et qu'on n'a pas commencé à draguer, exécuter le clic
+    if (pendingClickRef.current && !dragStateRef.current.isDragging && !dragStateRef.current.isResizing) {
+      console.log('Executing pending click');
+      setTimeout(() => {
+        if (pendingClickRef.current) {
+          pendingClickRef.current.onClick();
+          pendingClickRef.current = null;
+        }
+      }, 0);
+    }
+    
     cleanupDrag();
     
     // Nettoyer les event listeners
@@ -166,12 +232,13 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     item: any,
     itemType: 'task' | 'event',
     action: 'move' | 'resize',
-    resizeHandle?: 'top' | 'bottom'
+    resizeHandle?: 'top' | 'bottom',
+    onItemClick?: () => void
   ) => {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('Starting drag:', { action, itemType, itemId: item.id });
+    console.log('Starting drag preparation:', { action, itemType, itemId: item.id });
 
     // Vérifications
     if (itemType === 'task' && !item.scheduledStart) {
@@ -189,9 +256,18 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       ? item.estimatedDuration 
       : (new Date(item.endDate).getTime() - new Date(item.startDate).getTime()) / (1000 * 60);
 
+    // Stocker le clic en attente
+    if (onItemClick) {
+      pendingClickRef.current = {
+        item,
+        itemType,
+        onClick: onItemClick,
+      };
+    }
+
     const newDragState = {
-      isDragging: action === 'move',
-      isResizing: action === 'resize',
+      isDragging: false,
+      isResizing: false,
       itemId: item.id,
       itemType,
       startY: e.clientY,
@@ -199,9 +275,10 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       startTime,
       originalDuration: duration,
       resizeHandle: resizeHandle || null,
+      isPendingDrag: true,
     };
 
-    console.log('Setting drag state:', newDragState);
+    console.log('Setting pending drag state:', newDragState);
     setDragState(newDragState);
 
     // Nettoyer les anciens event listeners
@@ -212,11 +289,16 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     document.addEventListener('mousemove', handleMouseMove, { passive: false });
     document.addEventListener('mouseup', handleMouseUp, { passive: false });
     
-    document.body.style.userSelect = 'none';
-    document.body.style.cursor = action === 'move' ? 'grabbing' : (resizeHandle === 'top' ? 'n-resize' : 's-resize');
+    // Démarrer le drag après un délai si pas de mouvement
+    dragTimeoutRef.current = window.setTimeout(() => {
+      console.log('Drag timeout reached, starting drag');
+      startActualDrag(action);
+      // Annuler le clic en attente
+      pendingClickRef.current = null;
+    }, DRAG_DELAY);
     
-    console.log('Event listeners added');
-  }, [handleMouseMove, handleMouseUp]);
+    console.log('Event listeners added, timeout set');
+  }, [handleMouseMove, handleMouseUp, startActualDrag]);
 
   // Nettoyage lors du démontage
   useEffect(() => {
@@ -225,6 +307,9 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current);
+      }
     };
   }, [handleMouseMove, handleMouseUp]);
 
