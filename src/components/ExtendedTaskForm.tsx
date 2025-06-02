@@ -3,7 +3,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Calendar as CalendarIcon, Clock, AlertTriangle, Tag, FolderOpen } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, AlertTriangle, Tag, FolderOpen, GitBranch } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -76,7 +76,23 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
     onSubmit(data);
   };
 
-  const availableTasksForDependencies = tasks.filter(task => task.id !== initialData?.id);
+  const availableTasksForDependencies = tasks.filter(task => task.id !== initialData?.id && !task.completed);
+
+  // Grouper les tâches disponibles par projet pour une meilleure organisation
+  const tasksByProject = availableTasksForDependencies.reduce((acc, task) => {
+    const projectId = task.projectId || 'no-project';
+    if (!acc[projectId]) {
+      acc[projectId] = [];
+    }
+    acc[projectId].push(task);
+    return acc;
+  }, {} as Record<string, Task[]>);
+
+  const getProjectName = (projectId: string) => {
+    if (projectId === 'no-project') return 'Tâches sans projet';
+    const project = projects.find(p => p.id === projectId);
+    return project?.title || 'Projet inconnu';
+  };
 
   return (
     <Form {...form}>
@@ -285,6 +301,95 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
           />
         </div>
 
+        {/* Dépendances */}
+        {availableTasksForDependencies.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <GitBranch size={20} />
+              Dépendances des tâches
+            </h3>
+            <p className="text-sm text-gray-600">
+              Cette tâche ne pourra pas démarrer avant que les tâches sélectionnées ci-dessous soient terminées.
+            </p>
+
+            <FormField
+              control={form.control}
+              name="dependencies"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cette tâche dépend de :</FormLabel>
+                  <div className="space-y-4 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-4">
+                    {Object.entries(tasksByProject).map(([projectId, projectTasks]) => (
+                      <div key={projectId} className="space-y-2">
+                        <h4 className="font-medium text-gray-800 text-sm flex items-center gap-2">
+                          <FolderOpen size={14} />
+                          {getProjectName(projectId)}
+                        </h4>
+                        <div className="ml-4 space-y-2">
+                          {projectTasks.map((task) => {
+                            const isSelected = field.value?.includes(task.id) || false;
+                            const taskProject = projects.find(p => p.id === task.projectId);
+                            
+                            return (
+                              <div key={task.id} className="flex items-start space-x-2 p-2 rounded border border-gray-100 hover:bg-gray-50">
+                                <Checkbox
+                                  id={`dep-${task.id}`}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => {
+                                    const currentDeps = field.value || [];
+                                    if (checked) {
+                                      field.onChange([...currentDeps, task.id]);
+                                    } else {
+                                      field.onChange(currentDeps.filter(id => id !== task.id));
+                                    }
+                                  }}
+                                  className="mt-1"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <Label 
+                                    htmlFor={`dep-${task.id}`}
+                                    className="text-sm font-medium cursor-pointer block"
+                                  >
+                                    {task.title}
+                                  </Label>
+                                  {task.description && (
+                                    <p className="text-xs text-gray-500 mt-1 truncate">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                      task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                                      task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                                      task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-green-100 text-green-800'
+                                    }`}>
+                                      {task.priority === 'urgent' ? 'Urgente' :
+                                       task.priority === 'high' ? 'Haute' :
+                                       task.priority === 'medium' ? 'Moyenne' : 'Faible'}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {task.estimatedDuration} min
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {format(task.deadline, 'dd/MM', { locale: fr })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
         {/* Planification */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -458,51 +563,6 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
             )}
           </div>
         </div>
-
-        {/* Dépendances */}
-        {availableTasksForDependencies.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <AlertTriangle size={20} />
-              Dépendances
-            </h3>
-
-            <FormField
-              control={form.control}
-              name="dependencies"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cette tâche dépend de :</FormLabel>
-                  <div className="space-y-2">
-                    {availableTasksForDependencies.map((task) => (
-                      <div key={task.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`dep-${task.id}`}
-                          checked={field.value?.includes(task.id) || false}
-                          onCheckedChange={(checked) => {
-                            const currentDeps = field.value || [];
-                            if (checked) {
-                              field.onChange([...currentDeps, task.id]);
-                            } else {
-                              field.onChange(currentDeps.filter(id => id !== task.id));
-                            }
-                          }}
-                        />
-                        <Label 
-                          htmlFor={`dep-${task.id}`}
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {task.title}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        )}
 
         {/* Boutons d'action */}
         <div className="flex justify-end gap-3 pt-6 border-t">

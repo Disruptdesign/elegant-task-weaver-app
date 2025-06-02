@@ -62,7 +62,116 @@ export class AlgorithmicScheduler {
   }
 
   /**
-   * Planifie automatiquement les tâches selon leur priorité et deadline
+   * Résout les dépendances des tâches et retourne un ordre de planification valide
+   */
+  private resolveDependencies(tasks: Task[]): Task[] {
+    console.log('🔗 Résolution des dépendances pour', tasks.length, 'tâches');
+    
+    const resolved: Task[] = [];
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
+    
+    const visit = (task: Task): boolean => {
+      if (visiting.has(task.id)) {
+        console.warn('⚠️ Dépendance circulaire détectée pour la tâche:', task.title);
+        return false;
+      }
+      
+      if (visited.has(task.id)) {
+        return true;
+      }
+      
+      visiting.add(task.id);
+      
+      // Traiter les dépendances d'abord
+      if (task.dependencies && task.dependencies.length > 0) {
+        console.log('📋 Tâche', task.title, 'dépend de', task.dependencies.length, 'autre(s) tâche(s)');
+        
+        for (const depId of task.dependencies) {
+          const dependency = tasks.find(t => t.id === depId);
+          if (dependency) {
+            console.log('   ➡️ Dépendance:', dependency.title);
+            if (!visit(dependency)) {
+              console.error('❌ Impossible de résoudre la dépendance:', dependency.title);
+              visiting.delete(task.id);
+              return false;
+            }
+          } else {
+            console.warn('⚠️ Dépendance introuvable:', depId, 'pour la tâche:', task.title);
+          }
+        }
+      }
+      
+      visiting.delete(task.id);
+      visited.add(task.id);
+      resolved.push(task);
+      
+      return true;
+    };
+    
+    // Visiter toutes les tâches
+    for (const task of tasks) {
+      if (!visited.has(task.id)) {
+        visit(task);
+      }
+    }
+    
+    console.log('✅ Ordre de résolution des dépendances:');
+    resolved.forEach((task, index) => {
+      const deps = task.dependencies?.length || 0;
+      console.log(`   ${index + 1}. ${task.title} ${deps > 0 ? `(dépend de ${deps} tâche(s))` : '(aucune dépendance)'}`);
+    });
+    
+    return resolved;
+  }
+
+  /**
+   * Calcule la date de début la plus tôt possible pour une tâche en fonction de ses dépendances
+   */
+  private calculateEarliestStart(task: Task, completedTasks: Task[], scheduledTasks: Task[]): Date {
+    const now = new Date();
+    let earliestStart = now;
+    
+    // Appliquer la contrainte canStartFrom si définie
+    if (task.canStartFrom && task.canStartFrom > earliestStart) {
+      earliestStart = task.canStartFrom;
+    }
+    
+    // Vérifier les dépendances
+    if (task.dependencies && task.dependencies.length > 0) {
+      console.log('🔗 Calcul de la date de début pour', task.title, 'avec', task.dependencies.length, 'dépendance(s)');
+      
+      for (const depId of task.dependencies) {
+        // Chercher dans les tâches terminées
+        const completedDep = completedTasks.find(t => t.id === depId && t.completed);
+        if (completedDep) {
+          console.log('   ✅ Dépendance terminée:', completedDep.title);
+          continue;
+        }
+        
+        // Chercher dans les tâches programmées
+        const scheduledDep = scheduledTasks.find(t => t.id === depId && t.scheduledEnd);
+        if (scheduledDep && scheduledDep.scheduledEnd) {
+          const depEnd = new Date(scheduledDep.scheduledEnd);
+          const depEndWithBuffer = addMinutes(depEnd, this.options.bufferBetweenTasks);
+          
+          if (depEndWithBuffer > earliestStart) {
+            earliestStart = depEndWithBuffer;
+            console.log('   ⏰ Dépendance programmée:', scheduledDep.title, 
+              'se termine à', format(depEnd, 'dd/MM HH:mm'),
+              'donc début au plus tôt à', format(earliestStart, 'dd/MM HH:mm'));
+          }
+        } else {
+          console.warn('   ⚠️ Dépendance non programmée:', depId);
+        }
+      }
+    }
+    
+    return earliestStart;
+  }
+
+  /**
+   * Planifie automatiquement les tâches selon leur priorité, deadline et dépendances
    */
   scheduleTasks(tasks: Task[], isRescheduling: boolean = false): Task[] {
     console.log('🤖 Début de la planification algorithmique pour', tasks.length, 'tâches');
@@ -160,18 +269,28 @@ export class AlgorithmicScheduler {
       console.log('✅ Tâches protégées (complétées/programmées sans conflit):', protectedTasks.length);
     }
 
-    // Trier les tâches par priorité et deadline
-    const sortedTasks = this.prioritizeTasks(tasksToSchedule);
+    // Résoudre les dépendances et trier les tâches
+    const resolvedTasks = this.resolveDependencies(tasksToSchedule);
+    const sortedTasks = this.prioritizeTasks(resolvedTasks);
     
     // Programmer chaque tâche à partir de maintenant
     const newlyScheduledTasks: Task[] = [];
     const startDate = now; // Commencer à partir de maintenant
     const endDate = addDays(startDate, 30); // Planifier sur 30 jours
 
-    console.log(`🎯 Planification de ${sortedTasks.length} tâche(s) par ordre de priorité...`);
+    console.log(`🎯 Planification de ${sortedTasks.length} tâche(s) par ordre de priorité et dépendances...`);
 
     for (const task of sortedTasks) {
-      const scheduledTask = this.scheduleTask(task, startDate, endDate, [...protectedTasks, ...newlyScheduledTasks]);
+      // Calculer la date de début la plus tôt possible en fonction des dépendances
+      const earliestStart = this.calculateEarliestStart(task, protectedTasks, [...protectedTasks, ...newlyScheduledTasks]);
+      
+      const scheduledTask = this.scheduleTask(
+        { ...task, canStartFrom: earliestStart }, 
+        startDate, 
+        endDate, 
+        [...protectedTasks, ...newlyScheduledTasks]
+      );
+      
       if (scheduledTask) {
         newlyScheduledTasks.push(scheduledTask);
         console.log('✅ Tâche programmée:', task.title, 'à', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm'));
@@ -183,12 +302,13 @@ export class AlgorithmicScheduler {
 
     const result = [...protectedTasks, ...newlyScheduledTasks];
     
-    console.log('📊 Résumé de la planification avec protection:');
+    console.log('📊 Résumé de la planification avec dépendances:');
     console.log(`   - Tâches traitées: ${result.length}`);
     console.log(`   - Tâches programmées: ${result.filter(t => t.scheduledStart && !t.completed).length}`);
     console.log(`   - Tâches non programmées: ${result.filter(t => !t.scheduledStart && !t.completed).length}`);
     console.log(`   - Tâches terminées: ${result.filter(t => t.completed).length}`);
     console.log(`   - Tâches en cours (protégées): ${result.filter(t => this.isTaskInProgress(t)).length}`);
+    console.log(`   - Tâches avec dépendances: ${result.filter(t => t.dependencies && t.dependencies.length > 0).length}`);
 
     return result;
   }
@@ -269,7 +389,7 @@ export class AlgorithmicScheduler {
     // Si canStartFrom est défini et est après maintenant, l'utiliser comme référence
     if (task.canStartFrom && task.canStartFrom.getTime() > now.getTime()) {
       earliestStart = task.canStartFrom.getTime();
-      console.log('📅 Tâche contrainte à commencer après:', format(task.canStartFrom, 'dd/MM HH:mm'), '(probablement après un événement)');
+      console.log('📅 Tâche contrainte à commencer après:', format(task.canStartFrom, 'dd/MM HH:mm'), '(probablement après un événement ou dépendance)');
     }
     
     let currentDate = new Date(earliestStart);

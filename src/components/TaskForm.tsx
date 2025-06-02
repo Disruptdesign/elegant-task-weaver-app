@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Flag, Plus, CalendarIcon, FolderOpen, Tag, Zap } from 'lucide-react';
+import { X, Calendar, Clock, Flag, Plus, CalendarIcon, FolderOpen, Tag, Zap, GitBranch } from 'lucide-react';
 import { Task, Priority, Project, TaskType } from '../types/task';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -18,9 +18,10 @@ interface TaskFormProps {
   initialData?: { title: string; description?: string };
   projects?: Project[];
   taskTypes?: TaskType[];
+  tasks?: Task[];
 }
 
-export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, projects = [], taskTypes = [] }: TaskFormProps) {
+export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, projects = [], taskTypes = [], tasks = [] }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -34,10 +35,12 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
   const [bufferAfter, setBufferAfter] = useState(0);
   const [allowSplitting, setAllowSplitting] = useState(false);
   const [splitDuration, setSplitDuration] = useState(60);
+  const [dependencies, setDependencies] = useState<string[]>([]);
 
   console.log('TaskForm: Rendering with', {
     projects: projects.length,
     taskTypes: taskTypes.length,
+    tasks: tasks.length,
     projectsData: projects.map(p => ({ id: p.id, title: p.title })),
     taskTypesData: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
@@ -59,7 +62,8 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       setBufferAfter(editingTask.bufferAfter || 0);
       setAllowSplitting(editingTask.allowSplitting || false);
       setSplitDuration(editingTask.splitDuration || 60);
-      setShowAdvanced(Boolean(editingTask.canStartFrom || editingTask.bufferBefore || editingTask.bufferAfter || editingTask.allowSplitting));
+      setDependencies(editingTask.dependencies || []);
+      setShowAdvanced(Boolean(editingTask.canStartFrom || editingTask.bufferBefore || editingTask.bufferAfter || editingTask.allowSplitting || (editingTask.dependencies && editingTask.dependencies.length > 0)));
     } else if (initialData) {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
@@ -76,6 +80,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       setBufferAfter(0);
       setAllowSplitting(false);
       setSplitDuration(60);
+      setDependencies([]);
       setShowAdvanced(false);
     } else {
       setTitle('');
@@ -93,6 +98,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       setBufferAfter(0);
       setAllowSplitting(false);
       setSplitDuration(60);
+      setDependencies([]);
       setShowAdvanced(false);
     }
   }, [editingTask, initialData, isOpen]);
@@ -114,6 +120,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
       allowSplitting,
       splitDuration: allowSplitting && splitDuration > 0 ? splitDuration : undefined,
+      dependencies: dependencies.length > 0 ? dependencies : undefined,
       ...(editingTask && {
         scheduledStart: editingTask.scheduledStart,
         scheduledEnd: editingTask.scheduledEnd,
@@ -123,6 +130,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
     console.log('TaskForm: Submitting task with data:', {
       projectId,
       taskTypeId,
+      dependencies,
       taskData
     });
     onSubmit(taskData);
@@ -144,6 +152,19 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
   };
 
   const durationPresets = [15, 30, 60, 90, 120, 180, 240, 360, 480];
+
+  // Filtrer les tâches disponibles pour les dépendances
+  const availableTasksForDependencies = tasks.filter(task => 
+    task.id !== editingTask?.id && !task.completed
+  );
+
+  const handleDependencyToggle = (taskId: string) => {
+    setDependencies(prev => 
+      prev.includes(taskId) 
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -286,7 +307,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
             </div>
           </div>
 
-          {/* Project and Type - corrected Select components */}
+          {/* Project and Type */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -314,9 +335,6 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500 mt-1">
-                {projects.length} projet{projects.length > 1 ? 's' : ''} disponible{projects.length > 1 ? 's' : ''}
-              </p>
             </div>
 
             <div>
@@ -343,9 +361,6 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500 mt-1">
-                {taskTypes.length} type{taskTypes.length > 1 ? 's' : ''} disponible{taskTypes.length > 1 ? 's' : ''}
-              </p>
             </div>
           </div>
 
@@ -357,12 +372,57 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
               className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
             >
               <Zap size={16} />
-              Options avancées
+              Options avancées {dependencies.length > 0 && <span className="text-blue-600">({dependencies.length} dépendance{dependencies.length > 1 ? 's' : ''})</span>}
               <span className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`}>▶</span>
             </button>
             
             {showAdvanced && (
               <div className="mt-4 space-y-4 animate-fade-in">
+                {/* Dépendances */}
+                {availableTasksForDependencies.length > 0 && (
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <GitBranch size={16} />
+                      Dépendances (cette tâche ne peut pas démarrer avant que les tâches sélectionnées soient terminées)
+                    </label>
+                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-2">
+                      {availableTasksForDependencies.map(task => (
+                        <label
+                          key={task.id}
+                          className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={dependencies.includes(task.id)}
+                            onChange={() => handleDependencyToggle(task.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-gray-900 block truncate">
+                              {task.title}
+                            </span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                                task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                                task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {task.priority === 'urgent' ? 'Urgente' :
+                                 task.priority === 'high' ? 'Haute' :
+                                 task.priority === 'medium' ? 'Moyenne' : 'Faible'}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {formatDuration(task.estimatedDuration)}
+                              </span>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Date de début */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

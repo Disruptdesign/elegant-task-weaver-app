@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Dashboard } from '../components/Dashboard';
@@ -88,7 +89,7 @@ const Index = () => {
   };
 
   const handleTaskSubmit = (taskData: any) => {
-    console.log('Submitting task:', taskData);
+    console.log('Submitting task with dependencies:', taskData);
     addTask(taskData);
     // Si c'était une conversion d'inbox, supprimer l'item maintenant
     if (taskFormData) {
@@ -167,6 +168,7 @@ const Index = () => {
   console.log('Index: Before rendering AddItemForm with props:', {
     projects: projects.length,
     taskTypes: taskTypes.length,
+    tasks: tasks.length,
     isAddFormOpen
   });
 
@@ -188,6 +190,7 @@ const Index = () => {
         initialData={taskFormData}
         projects={projects}
         taskTypes={taskTypes}
+        tasks={tasks}
       />
     </>
   );
