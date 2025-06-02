@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -33,6 +33,10 @@ export function CalendarView({
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [testDataAdded, setTestDataAdded] = useState(false);
   
+  // Gestion des clics avec délai pour éviter l'ouverture pendant le drag
+  const clickTimerRef = useRef<number | null>(null);
+  const pendingClickRef = useRef<{ item: Task | Event; type: 'task' | 'event' } | null>(null);
+  
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i);
 
   console.log('CalendarView render:', { 
@@ -51,6 +55,27 @@ export function CalendarView({
     onUpdateTask || (() => console.log('No task update function provided')),
     onUpdateEvent || (() => console.log('No event update function provided'))
   );
+
+  // Nettoyer le timer de clic quand un drag commence
+  useEffect(() => {
+    if (dragState.isDragging || dragState.isResizing) {
+      if (clickTimerRef.current) {
+        console.log('Drag started - cancelling pending click');
+        clearTimeout(clickTimerRef.current);
+        clickTimerRef.current = null;
+        pendingClickRef.current = null;
+      }
+    }
+  }, [dragState.isDragging, dragState.isResizing]);
+
+  // Nettoyer le timer au démontage
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current);
+      }
+    };
+  }, []);
 
   // Ajouter des données de test si nécessaire et si les fonctions sont disponibles
   useEffect(() => {
@@ -168,35 +193,62 @@ export function CalendarView({
     return { top: Math.max(0, top), height };
   };
 
-  const handleTaskClick = (task: Task, e: React.MouseEvent) => {
-    // Empêcher l'ouverture seulement si on vient de terminer une opération de drag
-    if (dragState.isDragging || dragState.isResizing) {
-      console.log('Task click ignored: drag operation in progress');
-      return;
+  // Nouvelle logique de clic avec délai
+  const scheduleClick = (item: Task | Event, type: 'task' | 'event') => {
+    console.log('Scheduling click for:', type, item.id);
+    
+    // Annuler le timer précédent s'il existe
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
     }
     
-    console.log('Task clicked for editing:', task.title);
-    setSelectedTask(task);
-    setSelectedEvent(undefined);
-    setIsFormOpen(true);
+    pendingClickRef.current = { item, type };
+    
+    // Programmer l'ouverture de la fenêtre dans 250ms
+    clickTimerRef.current = window.setTimeout(() => {
+      const pending = pendingClickRef.current;
+      if (pending && !dragState.isDragging && !dragState.isResizing) {
+        console.log('Executing delayed click for:', pending.type, pending.item.id);
+        
+        if (pending.type === 'task') {
+          setSelectedTask(pending.item as Task);
+          setSelectedEvent(undefined);
+        } else {
+          setSelectedEvent(pending.item as Event);
+          setSelectedTask(undefined);
+        }
+        setIsFormOpen(true);
+      } else {
+        console.log('Cancelled delayed click - drag in progress');
+      }
+      
+      clickTimerRef.current = null;
+      pendingClickRef.current = null;
+    }, 250);
+  };
+
+  const handleTaskClick = (task: Task, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    scheduleClick(task, 'task');
   };
 
   const handleEventClick = (event: Event, e: React.MouseEvent) => {
-    // Empêcher l'ouverture seulement si on vient de terminer une opération de drag
-    if (dragState.isDragging || dragState.isResizing) {
-      console.log('Event click ignored: drag operation in progress');
-      return;
-    }
-    
-    console.log('Event clicked for editing:', event.title);
-    setSelectedEvent(event);
-    setSelectedTask(undefined);
-    setIsFormOpen(true);
+    e.preventDefault();
+    e.stopPropagation();
+    scheduleClick(event, 'event');
   };
 
   const handleTaskCompletion = (task: Task, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Annuler le timer de clic s'il y en a un
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      pendingClickRef.current = null;
+    }
     
     console.log('Completing task:', task.id, 'current completed:', task.completed);
     if (onUpdateTask) {
@@ -257,7 +309,13 @@ export function CalendarView({
       return;
     }
     
-    // Empêcher la propagation seulement pour les actions de drag
+    // Annuler tout clic en attente
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      pendingClickRef.current = null;
+    }
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -281,7 +339,13 @@ export function CalendarView({
       return;
     }
     
-    // Empêcher la propagation seulement pour les actions de drag
+    // Annuler tout clic en attente
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      pendingClickRef.current = null;
+    }
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -354,6 +418,7 @@ export function CalendarView({
           {events.filter(e => !e.allDay).length > 0 && ` - ${events.filter(e => !e.allDay).length} événement(s) avec horaire`}
           {dragState.isDragging && ' - 🎯 DRAGGING'}
           {dragState.isResizing && ' - 📏 RESIZING'}
+          {clickTimerRef.current && ' - ⏱️ CLICK PENDING'}
         </p>
       </div>
 
@@ -463,7 +528,7 @@ export function CalendarView({
                             )}
 
                             <div
-                              className={`flex p-1 h-full overflow-hidden ${onUpdateTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                              className={`flex p-1 h-full overflow-hidden ${onUpdateEvent ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                               onMouseDown={onUpdateEvent ? (e) => handleEventMouseDown(e, event, 'move') : undefined}
                             >
                               <div className="flex items-start gap-1 w-full min-w-0">
@@ -755,9 +820,10 @@ export function CalendarView({
                 </div>
                 <div className="flex items-center gap-2">
                   <Edit size={12} className="text-gray-400" />
-                  <span>Icône d'édition pour modifier les détails</span>
+                  <span>Clic simple pour ouvrir l'édition (délai de 250ms pour éviter les conflits)</span>
                 </div>
                 <div>• Déplacement libre entre les jours - pas de contrainte horaire</div>
+                <div>• Le clic pour éditer ne s'active que si aucun drag n'est détecté</div>
               </div>
             </div>
           )}
