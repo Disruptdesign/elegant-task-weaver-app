@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, GripVertical, ArrowUpDown, Edit, Check, Square, MoreVertical, Move } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, Edit, Check, Square } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
 import { AddItemForm } from './AddItemForm';
 import { useCalendarDragAndDrop } from '../hooks/useCalendarDragAndDrop';
@@ -439,7 +439,7 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements avec interface redessinée */}
+                  {/* Événements - design simple */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -448,63 +448,41 @@ export function CalendarView({
                         if (!position) return null;
 
                         const isBeingDragged = dragState.itemId === event.id && dragState.itemType === 'event';
-                        const isHovered = hoveredItem === `event-${event.id}`;
 
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded-xl border-2 transition-all duration-200 group select-none overflow-hidden pointer-events-auto cursor-pointer ${
+                            className={`absolute rounded-lg bg-purple-100 border border-purple-300 transition-all duration-200 cursor-pointer pointer-events-auto select-none ${
                               isBeingDragged 
-                                ? 'opacity-80 shadow-xl ring-4 ring-purple-300 z-50' 
-                                : 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-300 hover:shadow-lg hover:scale-[1.02] hover:border-purple-400'
+                                ? 'opacity-80 shadow-xl ring-2 ring-purple-400 z-50' 
+                                : 'hover:shadow-md hover:bg-purple-200'
                             }`}
                             style={{
                               top: `${position.top}px`,
                               height: `${position.height}px`,
                               left: '4px',
                               right: '4px',
-                              minWidth: '0',
                             }}
-                            onMouseEnter={() => setHoveredItem(`event-${event.id}`)}
-                            onMouseLeave={() => setHoveredItem(null)}
                             onClick={() => handleEventClick(event)}
+                            onMouseDown={(e) => {
+                              // Zone de resize du haut (premiers 6px)
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const relativeY = e.clientY - rect.top;
+                              
+                              if (relativeY <= 6 && onUpdateEvent) {
+                                handleEventMouseDown(e, event, 'resize', 'top');
+                              } else if (relativeY >= rect.height - 6 && onUpdateEvent) {
+                                // Zone de resize du bas (derniers 6px)
+                                handleEventMouseDown(e, event, 'resize', 'bottom');
+                              } else if (onUpdateEvent) {
+                                // Zone de déplacement (milieu)
+                                handleEventMouseDown(e, event, 'move');
+                              }
+                            }}
                           >
-                            {/* Overlay d'actions au survol */}
-                            {isHovered && onUpdateEvent && (
-                              <>
-                                {/* Zone de resize du haut */}
-                                <div
-                                  className="absolute -top-1 left-2 right-2 h-3 cursor-n-resize bg-purple-400 hover:bg-purple-500 rounded-t-lg flex items-center justify-center z-50"
-                                  onMouseDown={(e) => handleEventMouseDown(e, event, 'resize', 'top')}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ArrowUpDown size={10} className="text-white" />
-                                </div>
-                                
-                                {/* Zone de drag */}
-                                <div
-                                  className="absolute top-1 left-1 w-6 h-6 cursor-grab active:cursor-grabbing bg-purple-500 hover:bg-purple-600 rounded-lg flex items-center justify-center z-50"
-                                  onMouseDown={(e) => handleEventMouseDown(e, event, 'move')}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Move size={12} className="text-white" />
-                                </div>
-
-                                {/* Zone de resize du bas */}
-                                <div
-                                  className="absolute -bottom-1 left-2 right-2 h-3 cursor-s-resize bg-purple-400 hover:bg-purple-500 rounded-b-lg flex items-center justify-center z-50"
-                                  onMouseDown={(e) => handleEventMouseDown(e, event, 'resize', 'bottom')}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ArrowUpDown size={10} className="text-white" />
-                                </div>
-                              </>
-                            )}
-
-                            {/* Contenu principal - largeur maximale */}
-                            <div className="h-full p-3 flex flex-col justify-center">
-                              <div className="flex items-start gap-2 mb-1">
-                                <Users size={12} className="text-purple-600 flex-shrink-0 mt-0.5" />
+                            <div className="h-full p-2 flex flex-col justify-center">
+                              <div className="flex items-center gap-2">
+                                <Users size={12} className="text-purple-600 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-semibold text-purple-900 text-sm leading-tight truncate">
                                     {event.title}
@@ -514,17 +492,7 @@ export function CalendarView({
                                       {format(new Date(event.startDate), 'HH:mm')} - {format(new Date(event.endDate), 'HH:mm')}
                                     </p>
                                   )}
-                                  {position.height > 70 && event.location && (
-                                    <p className="text-xs text-purple-600 opacity-80 truncate mt-1">
-                                      📍 {event.location}
-                                    </p>
-                                  )}
                                 </div>
-                                {onUpdateEvent && (
-                                  <Edit size={10} className={`text-purple-700 transition-opacity ${
-                                    isHovered ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                                  }`} />
-                                )}
                               </div>
                             </div>
                           </div>
@@ -532,7 +500,7 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches avec interface redessinée */}
+                  {/* Tâches - design simple */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -544,78 +512,56 @@ export function CalendarView({
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
                       const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
-                      const isHovered = hoveredItem === `task-${task.id}`;
 
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute rounded-xl border-2 transition-all duration-200 group select-none overflow-hidden pointer-events-auto cursor-pointer ${
+                          className={`absolute rounded-lg border transition-all duration-200 cursor-pointer pointer-events-auto select-none ${
                             statusColors.bg
                           } ${statusColors.border} ${
                             isBeingDragged 
-                              ? 'opacity-80 shadow-xl ring-4 ring-blue-300 z-50' 
-                              : 'hover:shadow-lg hover:scale-[1.02]'
+                              ? 'opacity-80 shadow-xl ring-2 ring-blue-400 z-50' 
+                              : 'hover:shadow-md'
                           } ${task.completed ? 'opacity-60' : ''}`}
                           style={{
                             top: `${position.top}px`,
                             height: `${position.height}px`,
                             left: '4px',
                             right: '4px',
-                            minWidth: '0',
                           }}
-                          onMouseEnter={() => setHoveredItem(`task-${task.id}`)}
-                          onMouseLeave={() => setHoveredItem(null)}
                           onClick={() => handleTaskClick(task)}
+                          onMouseDown={(e) => {
+                            // Zone de resize du haut (premiers 6px)
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const relativeY = e.clientY - rect.top;
+                            
+                            if (relativeY <= 6 && onUpdateTask) {
+                              handleTaskMouseDown(e, task, 'resize', 'top');
+                            } else if (relativeY >= rect.height - 6 && onUpdateTask) {
+                              // Zone de resize du bas (derniers 6px)
+                              handleTaskMouseDown(e, task, 'resize', 'bottom');
+                            } else if (onUpdateTask) {
+                              // Zone de déplacement (milieu)
+                              handleTaskMouseDown(e, task, 'move');
+                            }
+                          }}
                         >
-                          {/* Overlay d'actions au survol */}
-                          {isHovered && onUpdateTask && (
-                            <>
-                              {/* Zone de resize du haut */}
-                              <div
-                                className="absolute -top-1 left-2 right-2 h-3 cursor-n-resize bg-gray-400 hover:bg-gray-500 rounded-t-lg flex items-center justify-center z-50"
-                                onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize', 'top')}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <ArrowUpDown size={10} className="text-white" />
-                              </div>
-                              
-                              {/* Zone de drag */}
-                              <div
-                                className="absolute top-1 left-1 w-6 h-6 cursor-grab active:cursor-grabbing bg-gray-500 hover:bg-gray-600 rounded-lg flex items-center justify-center z-50"
-                                onMouseDown={(e) => handleTaskMouseDown(e, task, 'move')}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Move size={12} className="text-white" />
-                              </div>
-
-                              {/* Zone de resize du bas */}
-                              <div
-                                className="absolute -bottom-1 left-2 right-2 h-3 cursor-s-resize bg-gray-400 hover:bg-gray-500 rounded-b-lg flex items-center justify-center z-50"
-                                onMouseDown={(e) => handleTaskMouseDown(e, task, 'resize', 'bottom')}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <ArrowUpDown size={10} className="text-white" />
-                              </div>
-                            </>
-                          )}
-
-                          {/* Contenu principal - largeur maximale */}
-                          <div className="h-full p-3 flex items-center gap-2">
-                            {/* Checkbox plus proéminente */}
+                          <div className="h-full p-2 flex items-center gap-2">
+                            {/* Checkbox */}
                             {onUpdateTask && (
                               <button
-                                className="flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center bg-white hover:bg-gray-50 transition-colors"
+                                className="flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center bg-white hover:bg-gray-50 transition-colors"
                                 onClick={(e) => handleTaskCompletion(task, e)}
                                 style={{ 
                                   borderColor: task.completed ? '#10b981' : '#d1d5db',
                                   backgroundColor: task.completed ? '#10b981' : '#ffffff'
                                 }}
                               >
-                                {task.completed && <Check size={12} className="text-white" />}
+                                {task.completed && <Check size={10} className="text-white" />}
                               </button>
                             )}
                             
-                            {/* Contenu de la tâche - espace maximisé */}
+                            {/* Contenu de la tâche */}
                             <div className="flex-1 min-w-0">
                               <h4 className={`font-semibold text-gray-900 text-sm leading-tight truncate ${
                                 task.completed ? 'line-through opacity-70' : ''
@@ -632,13 +578,6 @@ export function CalendarView({
                                 </div>
                               )}
                             </div>
-
-                            {/* Icône d'édition */}
-                            {onUpdateTask && (
-                              <Edit size={12} className={`text-gray-600 transition-opacity ${
-                                isHovered ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                              }`} />
-                            )}
                           </div>
                         </div>
                       );
@@ -737,7 +676,7 @@ export function CalendarView({
       )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-sm font-medium text-gray-900 mb-4">Nouvelle interface intuitive</h3>
+        <h3 className="text-sm font-medium text-gray-900 mb-4">Interface simplifiée</h3>
         <div className="space-y-4">
           <div className="flex flex-wrap gap-6">
             <div className="flex items-center gap-2">
@@ -760,15 +699,12 @@ export function CalendarView({
           
           {(onUpdateTask || onUpdateEvent) && (
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Nouvelle expérience utilisateur :</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Interactions naturelles :</h4>
               <div className="text-xs text-gray-600 space-y-1">
-                <div>• Interface épurée : le titre est maintenant parfaitement lisible</div>
-                <div>• Interactions au survol : les outils apparaissent uniquement quand nécessaire</div>
-                <div>• Zone principale : clic pour éditer (plus de conflit)</div>
-                <div>• Contrôles contextuels : apparaissent seulement au survol</div>
-                <div>• Checkbox améliorée : plus visible et accessible pour les tâches</div>
-                <div>• Design moderne : bordures arrondies et transitions fluides</div>
-                <div>• Feedback visuel : échelle et ombres au survol pour guider l'utilisateur</div>
+                <div>• Clic simple : éditer l'élément</div>
+                <div>• Glisser depuis le centre : déplacer</div>
+                <div>• Glisser depuis les bords : redimensionner</div>
+                <div>• Les interactions se découvrent naturellement</div>
               </div>
             </div>
           )}
