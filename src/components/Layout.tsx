@@ -27,7 +27,7 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex">
+    <div className="h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex overflow-hidden">
       {/* Sidebar mobile overlay */}
       {isSidebarOpen && (
         <div 
@@ -36,13 +36,13 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Fixe à la hauteur du viewport */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 lg:relative lg:translate-x-0 ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
         <div className="flex flex-col h-full">
           {/* Logo et fermeture mobile */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                 <CheckSquare className="text-white" size={22} />
@@ -62,8 +62,8 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
             </button>
           </div>
 
-          {/* Navigation améliorée */}
-          <nav className="flex-1 p-4 space-y-2">
+          {/* Navigation - Défilable */}
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {navigation.map((item) => {
               const IconComponent = item.icon;
               const isActive = currentView === item.id;
@@ -97,13 +97,13 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
 
           {/* Sidebar Footer */}
           {sidebarFooter && (
-            <div className="border-t border-gray-100">
+            <div className="border-t border-gray-100 flex-shrink-0">
               {sidebarFooter}
             </div>
           )}
 
           {/* Version */}
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-100 flex-shrink-0">
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>FlowSavvy v1.0</span>
               <div className="flex items-center gap-1">
@@ -116,9 +116,9 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar mobile amélioré */}
-        <div className="bg-white/90 backdrop-blur-sm border-b border-gray-100 p-4 lg:hidden sticky top-0 z-30">
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+        {/* Top bar mobile */}
+        <div className="bg-white/90 backdrop-blur-sm border-b border-gray-100 p-4 lg:hidden sticky top-0 z-30 flex-shrink-0">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -140,7 +140,7 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
           </div>
         </div>
 
-        {/* Page content */}
+        {/* Page content - Défilable */}
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
           <div className="max-w-7xl mx-auto">
             {children}
