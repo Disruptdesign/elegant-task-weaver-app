@@ -24,6 +24,7 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [hasAddedTestTask, setHasAddedTestTask] = useState(false);
+  const [hasAddedTestEvent, setHasAddedTestEvent] = useState(false);
   
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i); // 9h à 18h
 
@@ -31,33 +32,18 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
   console.log('CalendarView: onUpdateTask function provided:', !!onUpdateTask);
   console.log('CalendarView: onUpdateEvent function provided:', !!onUpdateEvent);
 
-  // Ajouter une tâche de test automatiquement si aucune tâche programmée et onUpdateTask disponible
+  // Ajouter des éléments de test automatiquement
   useEffect(() => {
     if (onUpdateTask && tasks.length === 0 && !hasAddedTestTask) {
       console.log('Adding test task for drag & drop testing');
-      const testTask: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'> = {
-        title: 'Tâche test drag & drop',
-        description: 'Tâche pour tester le glisser-déposer',
-        deadline: new Date(Date.now() + 24 * 60 * 60 * 1000), // demain
-        priority: 'medium',
-        estimatedDuration: 60, // 1 heure
-        scheduledStart: new Date(Date.now() + 60 * 60 * 1000), // dans 1 heure
-        scheduledEnd: new Date(Date.now() + 2 * 60 * 60 * 1000), // dans 2 heures
-      };
-      
-      // Simuler l'ajout d'une tâche via onUpdateTask (mais en fait on utilise un hack)
-      const newTask: Task = {
-        ...testTask,
-        id: 'test-task-1',
-        completed: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      
-      console.log('Test task created:', newTask);
       setHasAddedTestTask(true);
     }
-  }, [tasks, onUpdateTask, hasAddedTestTask]);
+    
+    if (onUpdateEvent && events.length === 0 && !hasAddedTestEvent) {
+      console.log('Adding test event for drag & drop testing');
+      setHasAddedTestEvent(true);
+    }
+  }, [tasks, events, onUpdateTask, onUpdateEvent, hasAddedTestTask, hasAddedTestEvent]);
 
   // Créer une liste de tâches avec la tâche de test si nécessaire
   const tasksWithTest = React.useMemo(() => {
@@ -80,7 +66,27 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
     return tasks;
   }, [tasks, onUpdateTask, hasAddedTestTask]);
 
-  // Utiliser les hooks de drag & drop
+  // Créer une liste d'événements avec l'événement de test si nécessaire
+  const eventsWithTest = React.useMemo(() => {
+    if (onUpdateEvent && events.length === 0 && hasAddedTestEvent) {
+      const testEvent: Event = {
+        id: 'test-event-1',
+        title: 'Événement test drag & drop',
+        description: 'Événement pour tester le glisser-déposer',
+        startDate: new Date(Date.now() + 3 * 60 * 60 * 1000), // dans 3 heures
+        endDate: new Date(Date.now() + 4 * 60 * 60 * 1000), // dans 4 heures
+        allDay: false,
+        markAsBusy: true,
+        location: 'Bureau',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      return [testEvent];
+    }
+    return events;
+  }, [events, onUpdateEvent, hasAddedTestEvent]);
+
+  // Utiliser les hooks de drag & drop avec les fonctions de mise à jour réelles
   const { dragState: taskDragState, startDrag: startTaskDrag } = useTaskDragAndDrop(
     onUpdateTask || (() => {
       console.log('No task update function provided, drag & drop disabled');
@@ -115,7 +121,7 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
   };
 
   const getEventsForDay = (date: Date) => {
-    const dayEvents = events.filter(event => {
+    const dayEvents = eventsWithTest.filter(event => {
       const eventStart = new Date(event.startDate);
       const eventEnd = new Date(event.endDate);
       return isSameDay(eventStart, date) || isSameDay(eventEnd, date) || 
@@ -335,7 +341,7 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
       </div>
 
       {/* Messages d'état */}
-      {!onUpdateTask && (
+      {!onUpdateTask && !onUpdateEvent && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p className="text-sm text-blue-800">
             📖 Mode lecture seule - Aucune modification possible
@@ -343,11 +349,11 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
         </div>
       )}
 
-      {/* Info sur la tâche de test */}
-      {onUpdateTask && hasAddedTestTask && tasksWithTest.length > 0 && (
+      {/* Info sur les éléments de test */}
+      {((onUpdateTask && hasAddedTestTask && tasksWithTest.length > 0) || (onUpdateEvent && hasAddedTestEvent && eventsWithTest.length > 0)) && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
           <p className="text-sm text-green-800">
-            ✅ Tâche de test ajoutée ! Glissez-la horizontalement pour la déplacer vers un autre jour.
+            ✅ Éléments de test ajoutés ! Glissez-les horizontalement pour les déplacer vers un autre jour.
           </p>
         </div>
       )}
@@ -413,7 +419,7 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
                 <div 
                   key={dayIndex} 
                   className="relative border-l border-gray-200 overflow-hidden"
-                  style={{ minWidth: '150px' }} // Largeur fixe pour éviter les débordements
+                  style={{ minWidth: '150px' }}
                 >
                   {/* Lignes horaires */}
                   {workingHours.map(hour => (
@@ -513,7 +519,7 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
                       })}
                   </div>
 
-                  {/* Tâches avec drag & drop */}
+                  {/* Tâches avec checkbox */}
                   <div className="absolute inset-0 p-1">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -551,22 +557,23 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
                             </div>
                           )}
 
-                          {/* Contenu de la tâche avec handle de déplacement */}
+                          {/* Contenu de la tâche avec handle de déplacement et checkbox bien visible */}
                           <div
                             className={`p-2 h-full flex flex-col justify-between ${onUpdateTask ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                             onMouseDown={onUpdateTask ? (e) => handleTaskMouseDown(e, task, 'move') : undefined}
                           >
-                            <div className="flex items-start gap-1">
-                              {/* Checkbox de completion */}
+                            <div className="flex items-start gap-2">
+                              {/* Checkbox de completion PLUS VISIBLE */}
                               {onUpdateTask && (
                                 <button
                                   onClick={(e) => handleTaskCompletion(task, e)}
-                                  className="hover:bg-gray-300 rounded p-0.5"
+                                  className="p-0.5 hover:bg-gray-300 rounded flex-shrink-0 bg-white bg-opacity-80 border border-gray-300"
+                                  title={task.completed ? "Marquer comme non terminé" : "Marquer comme terminé"}
                                 >
                                   {task.completed ? (
-                                    <Check size={10} className="text-green-600" />
+                                    <Check size={12} className="text-green-600" />
                                   ) : (
-                                    <Square size={10} className="text-gray-500" />
+                                    <Square size={12} className="text-gray-500" />
                                   )}
                                 </button>
                               )}
@@ -589,7 +596,7 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
                                     e.stopPropagation();
                                     handleTaskClick(task, e);
                                   }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-300 rounded z-50"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-300 rounded z-50 flex-shrink-0"
                                   title="Modifier la tâche"
                                 >
                                   <Edit size={10} className="text-gray-700" />
@@ -654,22 +661,22 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
                     {format(day, 'd')}
                   </div>
                   <div className="space-y-1">
-                    {/* Événements */}
+                    {/* Événements avec icône d'édition */}
                     {dayEvents.slice(0, 2).map(event => (
                       <div
                         key={`month-event-${event.id}`}
-                        className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate font-medium flex items-center gap-1"
+                        className="text-xs p-1 rounded cursor-pointer hover:opacity-80 bg-purple-100 text-purple-800 truncate font-medium flex items-center gap-1 group"
                         onClick={(e) => handleEventClick(event, e)}
                         title={`${event.title}\n${event.allDay ? 'Toute la journée' : format(new Date(event.startDate), 'HH:mm') + ' - ' + format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                       >
-                        {event.allDay ? '🗓️' : '📅'} <span className="truncate">{event.title}</span>
+                        {event.allDay ? '🗓️' : '📅'} <span className="truncate flex-1">{event.title}</span>
                         {onUpdateEvent && (
-                          <Edit size={8} className="ml-auto opacity-0 group-hover:opacity-100" />
+                          <Edit size={8} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                         )}
                       </div>
                     ))}
                     
-                    {/* Tâches avec checkbox */}
+                    {/* Tâches avec checkbox visible et icône d'édition */}
                     {dayTasks.slice(0, dayEvents.length > 0 ? 1 : 3).map(task => {
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
@@ -684,7 +691,8 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
                           {onUpdateTask && (
                             <button
                               onClick={(e) => handleTaskCompletion(task, e)}
-                              className="hover:bg-gray-300 rounded p-0.5"
+                              className="p-0.5 hover:bg-gray-200 rounded flex-shrink-0 bg-white bg-opacity-70"
+                              title={task.completed ? "Marquer comme non terminé" : "Marquer comme terminé"}
                             >
                               {task.completed ? (
                                 <Check size={8} className="text-green-600" />
@@ -693,9 +701,9 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
                               )}
                             </button>
                           )}
-                          <span className={`truncate ${task.completed ? 'line-through' : ''}`}>{task.title}</span>
+                          <span className={`truncate flex-1 ${task.completed ? 'line-through' : ''}`}>{task.title}</span>
                           {onUpdateTask && (
-                            <Edit size={8} className="ml-auto opacity-0 group-hover:opacity-100" />
+                            <Edit size={8} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                           )}
                         </div>
                       );
@@ -738,19 +746,26 @@ export function CalendarView({ tasks, events, onUpdateTask, onUpdateEvent }: Cal
             </div>
           </div>
           
-          {onUpdateTask && (
+          {(onUpdateTask || onUpdateEvent) && (
             <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Interactions avec les tâches :</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Interactions disponibles :</h4>
               <div className="text-xs text-gray-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <GripVertical size={12} className="text-gray-400" />
-                  <span>Glisser pour déplacer la tâche (verticalement pour l'heure, horizontalement pour le jour)</span>
+                  <span>Glisser pour déplacer (verticalement pour l'heure, horizontalement pour le jour)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ArrowUpDown size={12} className="text-gray-400" />
                   <span>Glisser les bords gris haut/bas pour ajuster la durée</span>
                 </div>
-                <div>• Cliquer pour éditer les détails de la tâche</div>
+                <div className="flex items-center gap-2">
+                  <Check size={12} className="text-green-600" />
+                  <span>Checkbox pour marquer les tâches comme terminées</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Edit size={12} className="text-gray-400" />
+                  <span>Icône d'édition pour modifier les détails</span>
+                </div>
                 <div>• Déplacement libre entre les jours - pas de contrainte horaire</div>
               </div>
             </div>
