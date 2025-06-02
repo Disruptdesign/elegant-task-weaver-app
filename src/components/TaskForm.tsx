@@ -1,14 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Flag, Plus, CalendarIcon, FolderOpen, Tag, Zap, GitBranch } from 'lucide-react';
+import { X, Flag, Plus, FolderOpen, Tag, Zap, GitBranch } from 'lucide-react';
 import { Task, Priority, Project, TaskType } from '../types/task';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { Button } from './ui/button';
-import { Calendar as CalendarComponent } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { cn } from '../lib/utils';
+import { DurationSelector } from './ui/duration-selector';
+import { DateTimeSelector } from './ui/datetime-selector';
 
 interface TaskFormProps {
   isOpen: boolean;
@@ -24,7 +21,7 @@ interface TaskFormProps {
 export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, projects = [], taskTypes = [], tasks = [] }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [deadline, setDeadline] = useState('');
+  const [deadline, setDeadline] = useState<Date | undefined>();
   const [priority, setPriority] = useState<Priority>('medium');
   const [estimatedDuration, setEstimatedDuration] = useState(60);
   const [projectId, setProjectId] = useState('');
@@ -49,10 +46,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
     if (editingTask) {
       setTitle(editingTask.title);
       setDescription(editingTask.description || '');
-      const deadlineStr = editingTask.deadline instanceof Date 
-        ? editingTask.deadline.toISOString().slice(0, 16)
-        : new Date(editingTask.deadline).toISOString().slice(0, 16);
-      setDeadline(deadlineStr);
+      setDeadline(editingTask.deadline instanceof Date ? editingTask.deadline : new Date(editingTask.deadline));
       setPriority(editingTask.priority);
       setEstimatedDuration(editingTask.estimatedDuration);
       setProjectId(editingTask.projectId || 'no-project');
@@ -70,7 +64,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(17, 0, 0, 0);
-      setDeadline(tomorrow.toISOString().slice(0, 16));
+      setDeadline(tomorrow);
       setPriority('medium');
       setEstimatedDuration(60);
       setProjectId('no-project');
@@ -88,7 +82,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(17, 0, 0, 0);
-      setDeadline(tomorrow.toISOString().slice(0, 16));
+      setDeadline(tomorrow);
       setPriority('medium');
       setEstimatedDuration(60);
       setProjectId('no-project');
@@ -110,7 +104,7 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
     const taskData = {
       title: title.trim(),
       description: description.trim() || undefined,
-      deadline: new Date(deadline),
+      deadline,
       priority,
       estimatedDuration,
       projectId: projectId === 'no-project' ? undefined : projectId,
@@ -150,8 +144,6 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
   };
-
-  const durationPresets = [15, 30, 60, 90, 120, 180, 240, 360, 480];
 
   // Filtrer les tâches disponibles pour les dépendances
   const availableTasksForDependencies = tasks.filter(task => 
@@ -224,61 +216,25 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar size={16} className="inline mr-2" />
                 Date limite *
               </label>
-              <input
-                type="datetime-local"
+              <DateTimeSelector
                 value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                onChange={setDeadline}
+                placeholder="Sélectionnez une date limite"
+                includeTime={false}
                 required
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Clock size={16} className="inline mr-2" />
                 Durée estimée
               </label>
-              <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2">
-                  {durationPresets.slice(0, 6).map(duration => (
-                    <button
-                      key={duration}
-                      type="button"
-                      onClick={() => setEstimatedDuration(duration)}
-                      className={`px-3 py-2 text-sm rounded-lg transition-all ${
-                        estimatedDuration === duration
-                          ? 'bg-blue-500 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {formatDuration(duration)}
-                    </button>
-                  ))}
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEstimatedDuration(Math.max(15, estimatedDuration - 15))}
-                    className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm transition-colors"
-                  >
-                    -15min
-                  </button>
-                  <div className="flex-1 text-center py-2 px-3 border border-gray-200 rounded-lg bg-blue-50">
-                    <span className="font-medium text-blue-900">{formatDuration(estimatedDuration)}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEstimatedDuration(estimatedDuration + 15)}
-                    className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm transition-colors"
-                  >
-                    +15min
-                  </button>
-                </div>
-              </div>
+              <DurationSelector
+                value={estimatedDuration}
+                onChange={setEstimatedDuration}
+              />
             </div>
           </div>
 
@@ -428,29 +384,12 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Peut commencer à partir de
                   </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal rounded-xl",
-                          !canStartFrom && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {canStartFrom ? format(canStartFrom, "PPP", { locale: fr }) : <span>Choisir une date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-white" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={canStartFrom}
-                        onSelect={setCanStartFrom}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DateTimeSelector
+                    value={canStartFrom}
+                    onChange={setCanStartFrom}
+                    placeholder="Choisir une date"
+                    includeTime={false}
+                  />
                 </div>
 
                 {/* Temps de pause */}

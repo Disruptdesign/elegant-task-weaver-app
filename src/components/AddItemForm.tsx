@@ -1,13 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Flag, Plus, CalendarIcon, MapPin, Video, Repeat, FolderOpen, Tag } from 'lucide-react';
+import { X, Flag, Plus, FolderOpen, Tag, MapPin, Video, Repeat } from 'lucide-react';
 import { Task, Event, Priority, ItemType, Project, TaskType } from '../types/task';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { Button } from './ui/button';
-import { Calendar as CalendarComponent } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { cn } from '../lib/utils';
+import { DurationSelector } from './ui/duration-selector';
+import { DateTimeSelector } from './ui/datetime-selector';
 
 interface AddItemFormProps {
   isOpen: boolean;
@@ -41,7 +39,7 @@ export function AddItemForm({
   const [bufferAfter, setBufferAfter] = useState(0);
 
   // États spécifiques aux tâches
-  const [deadline, setDeadline] = useState('');
+  const [deadline, setDeadline] = useState<Date | undefined>();
   const [priority, setPriority] = useState<Priority>('medium');
   const [estimatedDuration, setEstimatedDuration] = useState(60);
   const [projectId, setProjectId] = useState('');
@@ -51,8 +49,8 @@ export function AddItemForm({
   const [splitDuration, setSplitDuration] = useState(60);
 
   // États spécifiques aux événements
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
   const [allDay, setAllDay] = useState(false);
   const [markAsBusy, setMarkAsBusy] = useState(true);
   const [googleMeetLink, setGoogleMeetLink] = useState('');
@@ -72,7 +70,7 @@ export function AddItemForm({
       setItemType('task');
       setTitle(editingTask.title);
       setDescription(editingTask.description || '');
-      setDeadline(editingTask.deadline.toISOString().slice(0, 16));
+      setDeadline(editingTask.deadline);
       setPriority(editingTask.priority);
       setEstimatedDuration(editingTask.estimatedDuration);
       setProjectId(editingTask.projectId || 'no-project');
@@ -86,8 +84,8 @@ export function AddItemForm({
       setItemType('event');
       setTitle(editingEvent.title);
       setDescription(editingEvent.description || '');
-      setStartDate(editingEvent.startDate.toISOString().slice(0, 16));
-      setEndDate(editingEvent.endDate.toISOString().slice(0, 16));
+      setStartDate(editingEvent.startDate);
+      setEndDate(editingEvent.endDate);
       setAllDay(editingEvent.allDay);
       setMarkAsBusy(editingEvent.markAsBusy);
       setGoogleMeetLink(editingEvent.googleMeetLink || '');
@@ -108,7 +106,7 @@ export function AddItemForm({
     setItemType('task');
     setTitle('');
     setDescription('');
-    setDeadline('');
+    setDeadline(undefined);
     setPriority('medium');
     setEstimatedDuration(60);
     setProjectId('no-project');
@@ -118,8 +116,8 @@ export function AddItemForm({
     setBufferAfter(0);
     setAllowSplitting(false);
     setSplitDuration(60);
-    setStartDate('');
-    setEndDate('');
+    setStartDate(undefined);
+    setEndDate(undefined);
     setAllDay(false);
     setMarkAsBusy(true);
     setGoogleMeetLink('');
@@ -137,7 +135,7 @@ export function AddItemForm({
       const taskData = {
         title: title.trim(),
         description: description.trim() || undefined,
-        deadline: new Date(deadline),
+        deadline,
         priority,
         estimatedDuration,
         projectId: projectId === 'no-project' ? undefined : projectId,
@@ -161,8 +159,8 @@ export function AddItemForm({
       const eventData = {
         title: title.trim(),
         description: description.trim() || undefined,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate,
+        endDate,
         allDay,
         markAsBusy,
         googleMeetLink: googleMeetLink.trim() || undefined,
@@ -192,17 +190,6 @@ export function AddItemForm({
     { value: 'monthly', label: 'Mensuelle' },
     { value: 'yearly', label: 'Annuelle' },
   ] as const;
-
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) {
-      return `${minutes} min`;
-    }
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
-  };
-
-  const durationPresets = [30, 60, 90, 120, 180, 240, 360, 480];
 
   if (!isOpen) return null;
 
@@ -357,74 +344,25 @@ export function AddItemForm({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Calendar size={16} className="inline mr-2" />
                       Date limite
                     </label>
-                    <input
-                      type="datetime-local"
+                    <DateTimeSelector
                       value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={setDeadline}
+                      placeholder="Sélectionnez une date limite"
+                      includeTime={false}
                       required
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Clock size={16} className="inline mr-2" />
                       Durée estimée
                     </label>
-                    <div className="space-y-3">
-                      {/* Préréglages rapides */}
-                      <div className="grid grid-cols-4 gap-2">
-                        {durationPresets.map(duration => (
-                          <button
-                            key={duration}
-                            type="button"
-                            onClick={() => setEstimatedDuration(duration)}
-                            className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                              estimatedDuration === duration
-                                ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {formatDuration(duration)}
-                          </button>
-                        ))}
-                      </div>
-                      
-                      {/* Contrôle précis */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setEstimatedDuration(Math.max(15, estimatedDuration - 15))}
-                          className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
-                        >
-                          -15min
-                        </button>
-                        <div className="flex-1 text-center py-2 px-3 border border-gray-200 rounded-lg bg-gray-50">
-                          <span className="font-medium">{formatDuration(estimatedDuration)}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setEstimatedDuration(estimatedDuration + 15)}
-                          className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
-                        >
-                          +15min
-                        </button>
-                      </div>
-                      
-                      {/* Slider pour les valeurs personnalisées */}
-                      <input
-                        type="range"
-                        min="15"
-                        max="480"
-                        step="15"
-                        value={estimatedDuration}
-                        onChange={(e) => setEstimatedDuration(Number(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
+                    <DurationSelector
+                      value={estimatedDuration}
+                      onChange={setEstimatedDuration}
+                    />
                   </div>
                 </div>
 
@@ -432,29 +370,12 @@ export function AddItemForm({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Peut commencer à partir de
                   </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !canStartFrom && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {canStartFrom ? format(canStartFrom, "PPP", { locale: fr }) : <span>Choisir une date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-white" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={canStartFrom}
-                        onSelect={setCanStartFrom}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DateTimeSelector
+                    value={canStartFrom}
+                    onChange={setCanStartFrom}
+                    placeholder="Choisir une date"
+                    includeTime={false}
+                  />
                 </div>
               </div>
 
@@ -574,11 +495,11 @@ export function AddItemForm({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Date et heure de début
                     </label>
-                    <input
-                      type={allDay ? "date" : "datetime-local"}
+                    <DateTimeSelector
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={setStartDate}
+                      placeholder="Début de l'événement"
+                      includeTime={!allDay}
                       required
                     />
                   </div>
@@ -587,11 +508,11 @@ export function AddItemForm({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Date et heure de fin
                     </label>
-                    <input
-                      type={allDay ? "date" : "datetime-local"}
+                    <DateTimeSelector
                       value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onChange={setEndDate}
+                      placeholder="Fin de l'événement"
+                      includeTime={!allDay}
                       required
                     />
                   </div>

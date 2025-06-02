@@ -3,17 +3,16 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Calendar as CalendarIcon, Clock, AlertTriangle, Tag, FolderOpen, GitBranch } from 'lucide-react';
+import { AlertTriangle, Tag, FolderOpen, GitBranch } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
-import { Calendar } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
-import { cn } from '../lib/utils';
+import { DurationSelector } from './ui/duration-selector';
+import { DateTimeSelector } from './ui/datetime-selector';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Task, Project, TaskType } from '../types/task';
@@ -162,14 +161,11 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
               name="estimatedDuration"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Durée estimée (minutes)</FormLabel>
+                  <FormLabel>Durée estimée</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      min="15" 
-                      step="15" 
-                      {...field} 
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    <DurationSelector
+                      value={field.value}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />
@@ -184,35 +180,15 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Date limite</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP", { locale: fr })
-                        ) : (
-                          <span>Sélectionnez une date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <FormControl>
+                  <DateTimeSelector
+                    value={field.value}
+                    onChange={(date) => field.onChange(date)}
+                    placeholder="Sélectionnez une date limite"
+                    includeTime={false}
+                    required
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -328,7 +304,6 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
                         <div className="ml-4 space-y-2">
                           {projectTasks.map((task) => {
                             const isSelected = field.value?.includes(task.id) || false;
-                            const taskProject = projects.find(p => p.id === task.projectId);
                             
                             return (
                               <div key={task.id} className="flex items-start space-x-2 p-2 rounded border border-gray-100 hover:bg-gray-50">
@@ -393,7 +368,7 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
         {/* Planification */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Clock size={20} />
+            <AlertTriangle size={20} />
             Planification
           </h3>
 
@@ -404,34 +379,14 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Début planifié (optionnel)</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP 'à' HH:mm", { locale: fr })
-                          ) : (
-                            <span>Sélectionnez une date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FormControl>
+                    <DateTimeSelector
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Sélectionnez une date et heure"
+                      includeTime={true}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -443,34 +398,14 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Peut commencer à partir du</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP", { locale: fr })
-                          ) : (
-                            <span>Sélectionnez une date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FormControl>
+                    <DateTimeSelector
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Sélectionnez une date"
+                      includeTime={false}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
