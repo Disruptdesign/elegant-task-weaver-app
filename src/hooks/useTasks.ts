@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Task, Event, InboxItem, Project, TaskType } from '../types/task';
 import { taskScheduler } from '../utils/taskScheduler';
@@ -70,6 +71,8 @@ export function useTasks() {
         updatedAt: new Date(),
       };
       console.log('Created test event:', testEvent);
+      // Sauvegarder immédiatement l'événement de test dans localStorage
+      localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify([testEvent]));
       setEvents([testEvent]);
     }
   }, []);
@@ -150,14 +153,18 @@ export function useTasks() {
 
   // Sauvegarder les tâches dans le localStorage
   useEffect(() => {
-    console.log('Saving tasks to localStorage:', tasks);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    if (tasks.length > 0) { // Ne sauvegarder que si on a des tâches
+      console.log('Saving tasks to localStorage:', tasks);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    }
   }, [tasks]);
 
   // Sauvegarder les événements dans le localStorage
   useEffect(() => {
-    console.log('Saving events to localStorage:', events);
-    localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events));
+    if (events.length > 0) { // Ne sauvegarder que si on a des événements
+      console.log('Saving events to localStorage:', events);
+      localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events));
+    }
   }, [events]);
 
   // Sauvegarder l'inbox dans le localStorage
