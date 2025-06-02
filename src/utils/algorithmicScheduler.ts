@@ -48,66 +48,40 @@ export class AlgorithmicScheduler {
     
     // Séparer les tâches selon leur statut
     let completedTasks: Task[] = [];
-    let scheduledTasks: Task[] = [];
-    let unscheduledTasks: Task[] = [];
+    let tasksToSchedule: Task[] = [];
 
     if (isRescheduling) {
-      // En mode replanification, figer les tâches terminées
+      console.log('🔄 MODE REPLANIFICATION AGGRESSIVE - Toutes les tâches non terminées seront replanifiées');
+      
+      // Figer les tâches terminées
       completedTasks = tasks.filter(task => task.completed);
       
-      // Les tâches non terminées perdent leur planification sauf si elles sont dans le passé
+      // TOUTES les tâches non terminées seront replanifiées pour optimisation
       const incompleteTasks = tasks.filter(task => !task.completed);
       
-      incompleteTasks.forEach(task => {
-        if (task.scheduledStart && task.scheduledEnd) {
-          const taskStart = new Date(task.scheduledStart);
-          
-          // RÈGLE 1: Si la tâche est planifiée avant maintenant, la replanifier
-          if (taskStart < now) {
-            console.log('⏰ Tâche dépassée - replanification nécessaire:', task.title, 'était à', format(taskStart, 'dd/MM HH:mm'));
-            unscheduledTasks.push({
-              ...task,
-              scheduledStart: undefined,
-              scheduledEnd: undefined
-            });
-          } else {
-            // RÈGLE 2: Vérifier les conflits avec les événements
-            const hasConflictWithEvents = this.checkEventConflict(task, this.events);
-            
-            if (hasConflictWithEvents) {
-              console.log('⚠️ Tâche en conflit avec un événement - replanification nécessaire:', task.title);
-              unscheduledTasks.push({
-                ...task,
-                scheduledStart: undefined,
-                scheduledEnd: undefined
-              });
-            } else {
-              // Pas de conflit, on garde la planification
-              scheduledTasks.push(task);
-              console.log('📌 Tâche conservée (pas de conflit):', task.title);
-            }
-          }
-        } else {
-          unscheduledTasks.push(task);
-        }
-      });
+      tasksToSchedule = incompleteTasks.map(task => ({
+        ...task,
+        scheduledStart: undefined,
+        scheduledEnd: undefined
+      }));
       
       console.log('🔒 Tâches figées (terminées):', completedTasks.length);
-      console.log('📌 Tâches conservées (sans conflit):', scheduledTasks.filter(t => !t.completed).length);
-      console.log('🔄 Tâches à replanifier:', unscheduledTasks.length);
+      console.log('🔄 Tâches à replanifier (optimisation globale):', tasksToSchedule.length);
     } else {
       // Mode planification normale
-      unscheduledTasks = tasks.filter(task => !task.scheduledStart && !task.completed);
+      tasksToSchedule = tasks.filter(task => !task.scheduledStart && !task.completed);
       
-      // Vérifier les tâches déjà programmées pour les conflits
+      // Vérifier les tâches déjà programmées pour les conflits ou problèmes
       const alreadyScheduled = tasks.filter(task => task.scheduledStart && !task.completed);
+      const validScheduledTasks: Task[] = [];
+      
       alreadyScheduled.forEach(task => {
         const taskStart = new Date(task.scheduledStart!);
         
         // RÈGLE 1: Vérifier si la tâche est dans le passé
         if (taskStart < now) {
           console.log('⏰ Tâche dépassée détectée:', task.title, 'était à', format(taskStart, 'dd/MM HH:mm'));
-          unscheduledTasks.push({
+          tasksToSchedule.push({
             ...task,
             scheduledStart: undefined,
             scheduledEnd: undefined
@@ -118,13 +92,13 @@ export class AlgorithmicScheduler {
           
           if (hasConflictWithEvents) {
             console.log('⚠️ Tâche programmée en conflit avec un événement:', task.title);
-            unscheduledTasks.push({
+            tasksToSchedule.push({
               ...task,
               scheduledStart: undefined,
               scheduledEnd: undefined
             });
           } else {
-            scheduledTasks.push(task);
+            validScheduledTasks.push(task);
           }
         }
       });
@@ -132,20 +106,25 @@ export class AlgorithmicScheduler {
       // Ajouter les tâches déjà terminées
       completedTasks = tasks.filter(task => task.completed);
       
-      console.log('📋 Tâches à programmer:', unscheduledTasks.length);
-      console.log('✅ Tâches déjà programmées/complétées (sans conflit):', scheduledTasks.length + completedTasks.length);
+      console.log('📋 Tâches à programmer:', tasksToSchedule.length);
+      console.log('✅ Tâches déjà programmées/complétées (sans conflit):', validScheduledTasks.length + completedTasks.length);
+      
+      // En mode planification normale, on garde les tâches déjà bien programmées
+      completedTasks = [...completedTasks, ...validScheduledTasks];
     }
 
     // Trier les tâches par priorité et deadline
-    const sortedTasks = this.prioritizeTasks(unscheduledTasks);
+    const sortedTasks = this.prioritizeTasks(tasksToSchedule);
     
     // Programmer chaque tâche à partir de maintenant
     const newlyScheduledTasks: Task[] = [];
     const startDate = now; // Commencer à partir de maintenant
     const endDate = addDays(startDate, 30); // Planifier sur 30 jours
 
+    console.log(`🎯 Planification de ${sortedTasks.length} tâche(s) par ordre de priorité...`);
+
     for (const task of sortedTasks) {
-      const scheduledTask = this.scheduleTask(task, startDate, endDate, [...scheduledTasks, ...newlyScheduledTasks, ...completedTasks]);
+      const scheduledTask = this.scheduleTask(task, startDate, endDate, [...completedTasks, ...newlyScheduledTasks]);
       if (scheduledTask) {
         newlyScheduledTasks.push(scheduledTask);
         console.log('✅ Tâche programmée:', task.title, 'à', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm'));
@@ -155,7 +134,15 @@ export class AlgorithmicScheduler {
       }
     }
 
-    return [...completedTasks, ...scheduledTasks, ...newlyScheduledTasks];
+    const result = [...completedTasks, ...newlyScheduledTasks];
+    
+    console.log('📊 Résumé de la planification:');
+    console.log(`   - Tâches traitées: ${result.length}`);
+    console.log(`   - Tâches programmées: ${result.filter(t => t.scheduledStart && !t.completed).length}`);
+    console.log(`   - Tâches non programmées: ${result.filter(t => !t.scheduledStart && !t.completed).length}`);
+    console.log(`   - Tâches terminées: ${result.filter(t => t.completed).length}`);
+
+    return result;
   }
 
   /**

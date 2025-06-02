@@ -51,8 +51,8 @@ export function CalendarView({
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [testDataAdded, setTestDataAdded] = useState(false);
   
-  // Hook pour la planification algorithmique
-  const { isScheduling, scheduleAllTasks } = useAlgorithmicScheduler();
+  // Hook pour la planification algorithmique - utiliser rescheduleAllTasks pour la replanification
+  const { isScheduling, rescheduleAllTasks } = useAlgorithmicScheduler();
   
   // Gestion des clics avec délai pour éviter l'ouverture pendant le drag
   const clickTimerRef = useRef<number | null>(null);
@@ -275,14 +275,14 @@ export function CalendarView({
     return { top: Math.max(0, top), height };
   };
 
-  // Gestionnaire amélioré pour la replanification algorithmique
+  // Gestionnaire amélioré pour la replanification algorithmique AGGRESSIVE
   const handleReschedule = async () => {
     if (!onUpdateTask) {
       console.log('🚫 Impossible de replanifier : aucune fonction de mise à jour des tâches fournie');
       return;
     }
 
-    console.log('🤖 Démarrage de la replanification algorithmique optimisée...');
+    console.log('🔄 Démarrage de la replanification algorithmique AGGRESSIVE...');
     console.log('📊 État initial:', {
       totalTasks: tasks.length,
       scheduledTasks: tasks.filter(t => t.scheduledStart && !t.completed).length,
@@ -292,16 +292,13 @@ export function CalendarView({
     });
     
     try {
-      // Utiliser l'algorithme de planification pour replanifier toutes les tâches
-      const rescheduledTasks = await scheduleAllTasks(tasks, events);
+      // Utiliser la replanification aggressive qui va replanifier TOUTES les tâches non terminées
+      const rescheduledTasks = await rescheduleAllTasks(tasks, events);
       
-      console.log('📈 Résultats de la replanification:', {
+      console.log('📈 Résultats de la replanification aggressive:', {
         tasksProcessed: rescheduledTasks.length,
-        newlyScheduled: rescheduledTasks.filter(t => t.scheduledStart && !tasks.find(orig => orig.id === t.id)?.scheduledStart).length,
-        rescheduled: rescheduledTasks.filter(t => {
-          const original = tasks.find(orig => orig.id === t.id);
-          return original?.scheduledStart && t.scheduledStart && original.scheduledStart !== t.scheduledStart;
-        }).length
+        newlyScheduled: rescheduledTasks.filter(t => t.scheduledStart && !t.completed).length,
+        totalUnscheduled: rescheduledTasks.filter(t => !t.scheduledStart && !t.completed).length
       });
       
       // Appliquer les changements pour chaque tâche modifiée
@@ -330,7 +327,7 @@ export function CalendarView({
         }
       });
       
-      console.log(`✅ Replanification terminée avec succès ! ${updatedCount} tâche(s) mise(s) à jour.`);
+      console.log(`✅ Replanification aggressive terminée avec succès ! ${updatedCount} tâche(s) mise(s) à jour.`);
       
     } catch (error) {
       console.error('❌ Erreur lors de la replanification algorithmique:', error);

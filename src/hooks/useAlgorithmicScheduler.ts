@@ -59,7 +59,7 @@ export function useAlgorithmicScheduler() {
       return tasks;
     }
 
-    console.log('🔄 Démarrage de la replanification (avec contraintes temporelles)...');
+    console.log('🔄 Démarrage de la replanification AGGRESSIVE (toutes les tâches seront replanifiées)...');
     setIsScheduling(true);
 
     try {
@@ -69,7 +69,7 @@ export function useAlgorithmicScheduler() {
         allowWeekends: settings.allowWeekends
       });
 
-      console.log('✅ Replanification terminée avec respect des contraintes');
+      console.log('✅ Replanification aggressive terminée - optimisation globale appliquée');
       return rescheduledTasks;
     } catch (error) {
       console.error('❌ Erreur lors de la replanification:', error);
