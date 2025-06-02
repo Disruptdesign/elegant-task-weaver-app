@@ -5,8 +5,6 @@ import { differenceInDays, isPast } from 'date-fns';
 export type TaskStatus = 'on-time' | 'approaching' | 'overdue';
 
 export const getTaskStatus = (task: Task, warningDays: number = 1): TaskStatus => {
-  // Si la tâche n'a pas de date de planification, utiliser la date actuelle comme référence
-  const referenceDate = task.scheduledStart ? new Date(task.scheduledStart) : new Date();
   const deadline = new Date(task.deadline);
   
   // Si la tâche est terminée, elle n'est jamais en retard
@@ -14,15 +12,38 @@ export const getTaskStatus = (task: Task, warningDays: number = 1): TaskStatus =
     return 'on-time';
   }
   
-  // Si l'échéance est passée par rapport à la date de référence (planification)
-  if (isPast(deadline) && referenceDate > deadline) {
+  // Si la tâche a une date de planification
+  if (task.scheduledStart) {
+    const scheduledStart = new Date(task.scheduledStart);
+    
+    // Si la date de planification dépasse la deadline, c'est en retard
+    if (scheduledStart > deadline) {
+      return 'overdue';
+    }
+    
+    // Calculer les jours entre la date de planification et l'échéance
+    const daysUntilDeadline = differenceInDays(deadline, scheduledStart);
+    
+    // Si l'échéance est proche de la date de planification
+    if (daysUntilDeadline <= warningDays && daysUntilDeadline >= 0) {
+      return 'approaching';
+    }
+    
+    return 'on-time';
+  }
+  
+  // Si pas de date de planification, utiliser la date actuelle comme référence
+  const now = new Date();
+  
+  // Si l'échéance est passée par rapport à maintenant
+  if (isPast(deadline)) {
     return 'overdue';
   }
   
-  // Calculer les jours entre la date de référence (planification) et l'échéance
-  const daysUntilDeadline = differenceInDays(deadline, referenceDate);
+  // Calculer les jours entre maintenant et l'échéance
+  const daysUntilDeadline = differenceInDays(deadline, now);
   
-  // Si l'échéance est proche de la date de planification
+  // Si l'échéance est proche
   if (daysUntilDeadline <= warningDays && daysUntilDeadline >= 0) {
     return 'approaching';
   }
