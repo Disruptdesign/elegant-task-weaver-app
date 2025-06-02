@@ -1,4 +1,3 @@
-
 import { Task, Event } from '../types/task';
 import { addMinutes, startOfDay, endOfDay, isAfter, isBefore, isWithinInterval, addDays, format } from 'date-fns';
 
@@ -41,26 +40,64 @@ export class AlgorithmicScheduler {
   /**
    * Planifie automatiquement les tâches selon leur priorité et deadline
    */
-  scheduleTasks(tasks: Task[]): Task[] {
+  scheduleTasks(tasks: Task[], isRescheduling: boolean = false): Task[] {
     console.log('🤖 Début de la planification algorithmique pour', tasks.length, 'tâches');
     
-    // Filtrer les tâches non programmées et non complétées
-    const unscheduledTasks = tasks.filter(task => !task.scheduledStart && !task.completed);
-    const scheduledTasks = tasks.filter(task => task.scheduledStart || task.completed);
+    const now = new Date();
     
-    console.log('📋 Tâches à programmer:', unscheduledTasks.length);
-    console.log('✅ Tâches déjà programmées/complétées:', scheduledTasks.length);
+    // Séparer les tâches selon leur statut
+    let completedTasks: Task[] = [];
+    let scheduledTasks: Task[] = [];
+    let unscheduledTasks: Task[] = [];
+
+    if (isRescheduling) {
+      // En mode replanification, figer les tâches terminées
+      completedTasks = tasks.filter(task => task.completed);
+      
+      // Les tâches non terminées perdent leur planification sauf si elles sont dans le passé
+      const incompleteTasks = tasks.filter(task => !task.completed);
+      
+      incompleteTasks.forEach(task => {
+        if (task.scheduledStart && task.scheduledEnd) {
+          // Si la tâche est planifiée dans le passé, on la garde planifiée
+          if (task.scheduledStart < now) {
+            scheduledTasks.push(task);
+            console.log('📌 Tâche conservée (planifiée dans le passé):', task.title);
+          } else {
+            // Sinon, on la remet à planifier
+            unscheduledTasks.push({
+              ...task,
+              scheduledStart: undefined,
+              scheduledEnd: undefined
+            });
+          }
+        } else {
+          unscheduledTasks.push(task);
+        }
+      });
+      
+      console.log('🔒 Tâches figées (terminées):', completedTasks.length);
+      console.log('📌 Tâches conservées (passé):', scheduledTasks.filter(t => !t.completed).length);
+      console.log('🔄 Tâches à replanifier:', unscheduledTasks.length);
+    } else {
+      // Mode planification normale
+      unscheduledTasks = tasks.filter(task => !task.scheduledStart && !task.completed);
+      scheduledTasks = tasks.filter(task => task.scheduledStart || task.completed);
+      
+      console.log('📋 Tâches à programmer:', unscheduledTasks.length);
+      console.log('✅ Tâches déjà programmées/complétées:', scheduledTasks.length);
+    }
 
     // Trier les tâches par priorité et deadline
     const sortedTasks = this.prioritizeTasks(unscheduledTasks);
     
-    // Programmer chaque tâche
+    // Programmer chaque tâche à partir de maintenant
     const newlyScheduledTasks: Task[] = [];
-    const startDate = new Date();
+    const startDate = now; // Commencer à partir de maintenant
     const endDate = addDays(startDate, 30); // Planifier sur 30 jours
 
     for (const task of sortedTasks) {
-      const scheduledTask = this.scheduleTask(task, startDate, endDate, [...scheduledTasks, ...newlyScheduledTasks]);
+      const scheduledTask = this.scheduleTask(task, startDate, endDate, [...scheduledTasks, ...newlyScheduledTasks, ...completedTasks]);
       if (scheduledTask) {
         newlyScheduledTasks.push(scheduledTask);
         console.log('✅ Tâche programmée:', task.title, 'à', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm'));
@@ -70,7 +107,7 @@ export class AlgorithmicScheduler {
       }
     }
 
-    return [...scheduledTasks, ...newlyScheduledTasks];
+    return [...completedTasks, ...scheduledTasks, ...newlyScheduledTasks];
   }
 
   /**
@@ -100,7 +137,18 @@ export class AlgorithmicScheduler {
   private scheduleTask(task: Task, startDate: Date, endDate: Date, existingTasks: Task[]): Task | null {
     console.log('🔍 Recherche de créneau pour:', task.title, '(durée:', task.estimatedDuration, 'min)');
     
-    let currentDate = new Date(Math.max(startDate.getTime(), task.canStartFrom?.getTime() || startDate.getTime()));
+    const now = new Date();
+    
+    // S'assurer que la tâche ne peut pas commencer avant maintenant
+    let earliestStart = Math.max(
+      startDate.getTime(), 
+      task.canStartFrom?.getTime() || startDate.getTime(),
+      now.getTime() // ← Contrainte : jamais avant maintenant
+    );
+    
+    let currentDate = new Date(earliestStart);
+    
+    console.log('⏰ Recherche à partir de:', format(currentDate, 'dd/MM HH:mm'));
     
     // Chercher jour par jour
     while (currentDate <= endDate && currentDate <= task.deadline) {
@@ -115,11 +163,19 @@ export class AlgorithmicScheduler {
       
       // Chercher un créneau assez long
       for (const slot of availableSlots) {
-        const slotDuration = (slot.end.getTime() - slot.start.getTime()) / (1000 * 60);
+        // S'assurer que le créneau commence au plus tôt maintenant
+        const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), now.getTime()));
+        
+        if (adjustedSlotStart >= slot.end) {
+          continue; // Le créneau est entièrement dans le passé
+        }
+        
+        const availableSlotEnd = slot.end;
+        const slotDuration = (availableSlotEnd.getTime() - adjustedSlotStart.getTime()) / (1000 * 60);
         
         if (slotDuration >= task.estimatedDuration) {
           // Créneau trouvé !
-          const scheduledStart = slot.start;
+          const scheduledStart = adjustedSlotStart;
           const scheduledEnd = addMinutes(scheduledStart, task.estimatedDuration);
           
           console.log('✅ Créneau trouvé:', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
@@ -261,14 +317,8 @@ export class AlgorithmicScheduler {
     console.log('🔄 Replanification complète des tâches');
     const scheduler = new AlgorithmicScheduler(events, options);
     
-    // Enlever la planification existante des tâches
-    const unscheduledTasks = tasks.map(task => ({
-      ...task,
-      scheduledStart: undefined,
-      scheduledEnd: undefined
-    }));
-    
-    return scheduler.scheduleTasks(unscheduledTasks);
+    // Utiliser le mode replanification pour respecter les contraintes
+    return scheduler.scheduleTasks(tasks, true);
   }
 }
 
@@ -281,7 +331,7 @@ export function scheduleTasksAutomatically(
   options?: Partial<SchedulingOptions>
 ): Task[] {
   const scheduler = new AlgorithmicScheduler(events, options);
-  return scheduler.scheduleTasks(tasks);
+  return scheduler.scheduleTasks(tasks, false);
 }
 
 /**
