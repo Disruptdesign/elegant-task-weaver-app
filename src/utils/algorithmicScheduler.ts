@@ -38,6 +38,30 @@ export class AlgorithmicScheduler {
   }
 
   /**
+   * Vérifie si une tâche est actuellement en cours d'exécution
+   */
+  private isTaskInProgress(task: Task): boolean {
+    if (!task.scheduledStart || task.completed) {
+      return false;
+    }
+    
+    const now = new Date();
+    const taskStart = new Date(task.scheduledStart);
+    const taskEnd = task.scheduledEnd ? new Date(task.scheduledEnd) : addMinutes(taskStart, task.estimatedDuration);
+    
+    // Une tâche est en cours si elle a commencé mais n'est pas finie
+    const inProgress = taskStart <= now && taskEnd > now;
+    
+    if (inProgress) {
+      console.log('🔒 Tâche en cours détectée (PROTÉGÉE):', task.title, 
+        'démarrée à', format(taskStart, 'dd/MM HH:mm'),
+        'fin prévue à', format(taskEnd, 'HH:mm'));
+    }
+    
+    return inProgress;
+  }
+
+  /**
    * Planifie automatiquement les tâches selon leur priorité et deadline
    */
   scheduleTasks(tasks: Task[], isRescheduling: boolean = false): Task[] {
@@ -46,29 +70,42 @@ export class AlgorithmicScheduler {
     const now = new Date();
     console.log('⏰ Heure actuelle de référence:', format(now, 'dd/MM/yyyy HH:mm:ss'));
     
-    // Séparer les tâches selon leur statut
-    let completedTasks: Task[] = [];
+    // Séparer les tâches selon leur statut avec protection des tâches en cours
+    let protectedTasks: Task[] = [];
     let tasksToSchedule: Task[] = [];
 
     if (isRescheduling) {
-      console.log('🔄 MODE REPLANIFICATION AGGRESSIVE - Toutes les tâches non terminées seront replanifiées');
+      console.log('🔄 MODE REPLANIFICATION AGGRESSIVE avec protection des tâches en cours');
       
-      // Figer les tâches terminées
-      completedTasks = tasks.filter(task => task.completed);
+      // PROTECTION ABSOLUE : Figer les tâches terminées ET les tâches en cours
+      protectedTasks = tasks.filter(task => task.completed || this.isTaskInProgress(task));
       
-      // TOUTES les tâches non terminées seront replanifiées pour optimisation
-      const incompleteTasks = tasks.filter(task => !task.completed);
+      // Séparer les tâches en cours pour un traitement spécial
+      const completedTasks = protectedTasks.filter(task => task.completed);
+      const tasksInProgress = protectedTasks.filter(task => this.isTaskInProgress(task));
       
-      tasksToSchedule = incompleteTasks.map(task => ({
+      // TOUTES les autres tâches seront replanifiées
+      const otherTasks = tasks.filter(task => !task.completed && !this.isTaskInProgress(task));
+      
+      tasksToSchedule = otherTasks.map(task => ({
         ...task,
         scheduledStart: undefined,
         scheduledEnd: undefined
       }));
       
-      console.log('🔒 Tâches figées (terminées):', completedTasks.length);
-      console.log('🔄 Tâches à replanifier (optimisation globale):', tasksToSchedule.length);
+      console.log('🔒 Tâches protégées (terminées):', completedTasks.length);
+      console.log('🔒 Tâches protégées (EN COURS - INTOUCHABLES):', tasksInProgress.length);
+      console.log('🔄 Tâches à replanifier:', tasksToSchedule.length);
+      
+      // Afficher les détails des tâches en cours protégées
+      tasksInProgress.forEach(task => {
+        const taskStart = new Date(task.scheduledStart!);
+        const taskEnd = task.scheduledEnd ? new Date(task.scheduledEnd) : addMinutes(taskStart, task.estimatedDuration);
+        console.log(`   🔒 "${task.title}" : ${format(taskStart, 'dd/MM HH:mm')} - ${format(taskEnd, 'HH:mm')} (EN COURS)`);
+      });
+      
     } else {
-      // Mode planification normale
+      // Mode planification normale avec protection des tâches en cours
       tasksToSchedule = tasks.filter(task => !task.scheduledStart && !task.completed);
       
       // Vérifier les tâches déjà programmées pour les conflits ou problèmes
@@ -76,9 +113,16 @@ export class AlgorithmicScheduler {
       const validScheduledTasks: Task[] = [];
       
       alreadyScheduled.forEach(task => {
+        // PROTECTION ABSOLUE : Ne jamais toucher aux tâches en cours
+        if (this.isTaskInProgress(task)) {
+          console.log('🔒 Tâche en cours PROTÉGÉE (ne sera pas replanifiée):', task.title);
+          validScheduledTasks.push(task);
+          return;
+        }
+        
         const taskStart = new Date(task.scheduledStart!);
         
-        // RÈGLE 1: Vérifier si la tâche est dans le passé
+        // RÈGLE 1: Vérifier si la tâche est dans le passé (sauf si en cours)
         if (taskStart < now) {
           console.log('⏰ Tâche dépassée détectée:', task.title, 'était à', format(taskStart, 'dd/MM HH:mm'));
           tasksToSchedule.push({
@@ -110,13 +154,10 @@ export class AlgorithmicScheduler {
       });
       
       // Ajouter les tâches déjà terminées
-      completedTasks = tasks.filter(task => task.completed);
+      protectedTasks = [...tasks.filter(task => task.completed), ...validScheduledTasks];
       
       console.log('📋 Tâches à programmer:', tasksToSchedule.length);
-      console.log('✅ Tâches déjà programmées/complétées (sans conflit):', validScheduledTasks.length + completedTasks.length);
-      
-      // En mode planification normale, on garde les tâches déjà bien programmées
-      completedTasks = [...completedTasks, ...validScheduledTasks];
+      console.log('✅ Tâches protégées (complétées/programmées sans conflit):', protectedTasks.length);
     }
 
     // Trier les tâches par priorité et deadline
@@ -130,7 +171,7 @@ export class AlgorithmicScheduler {
     console.log(`🎯 Planification de ${sortedTasks.length} tâche(s) par ordre de priorité...`);
 
     for (const task of sortedTasks) {
-      const scheduledTask = this.scheduleTask(task, startDate, endDate, [...completedTasks, ...newlyScheduledTasks]);
+      const scheduledTask = this.scheduleTask(task, startDate, endDate, [...protectedTasks, ...newlyScheduledTasks]);
       if (scheduledTask) {
         newlyScheduledTasks.push(scheduledTask);
         console.log('✅ Tâche programmée:', task.title, 'à', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm'));
@@ -140,13 +181,14 @@ export class AlgorithmicScheduler {
       }
     }
 
-    const result = [...completedTasks, ...newlyScheduledTasks];
+    const result = [...protectedTasks, ...newlyScheduledTasks];
     
-    console.log('📊 Résumé de la planification:');
+    console.log('📊 Résumé de la planification avec protection:');
     console.log(`   - Tâches traitées: ${result.length}`);
     console.log(`   - Tâches programmées: ${result.filter(t => t.scheduledStart && !t.completed).length}`);
     console.log(`   - Tâches non programmées: ${result.filter(t => !t.scheduledStart && !t.completed).length}`);
     console.log(`   - Tâches terminées: ${result.filter(t => t.completed).length}`);
+    console.log(`   - Tâches en cours (protégées): ${result.filter(t => this.isTaskInProgress(t)).length}`);
 
     return result;
   }
@@ -411,7 +453,7 @@ export class AlgorithmicScheduler {
    * Replanifie toutes les tâches (utile après ajout/suppression d'événement)
    */
   static rescheduleAll(tasks: Task[], events: Event[], options?: Partial<SchedulingOptions>): Task[] {
-    console.log('🔄 Replanification complète des tâches avec gestion des conflits');
+    console.log('🔄 Replanification complète des tâches avec protection des tâches en cours');
     const scheduler = new AlgorithmicScheduler(events, options);
     
     // Utiliser le mode replanification pour respecter les contraintes
