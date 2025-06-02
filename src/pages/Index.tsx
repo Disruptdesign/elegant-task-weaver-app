@@ -6,7 +6,6 @@ import { TaskList } from '../components/TaskList';
 import { CalendarView } from '../components/CalendarView';
 import { Inbox } from '../components/Inbox';
 import { ProjectList } from '../components/ProjectList';
-import { ProjectTemplates } from '../components/ProjectTemplates';
 import { TaskTypeSettings } from '../components/TaskTypeSettings';
 import { AddItemForm } from '../components/AddItemForm';
 import { QuickInbox } from '../components/QuickInbox';
@@ -157,12 +156,7 @@ const Index = () => {
             onUpdateProject={updateProject}
             onDeleteProject={deleteProject}
             onEditTask={updateTask}
-          />
-        );
-      case 'templates':
-        return (
-          <ProjectTemplates
-            templates={projectTemplates}
+            projectTemplates={projectTemplates}
             onAddTemplate={addProjectTemplate}
             onUpdateTemplate={updateProjectTemplate}
             onDeleteTemplate={deleteProjectTemplate}

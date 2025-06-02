@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, Calendar, Clock, CheckCircle2, Edit3, Trash2, FolderOpen, Link, Settings } from 'lucide-react';
-import { Project, Task } from '../types/task';
-import { format, isPast, differenceInDays } from 'date-fns';
+import { Plus, Calendar, Clock, FolderOpen, Users, Edit3, Trash2, BookTemplate, FolderPlus } from 'lucide-react';
+import { Project, Task, ProjectTemplate, TemplateTask } from '../types/task';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface ProjectListProps {
@@ -10,14 +10,37 @@ interface ProjectListProps {
   onAddProject: (project: Omit<Project, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateProject: (id: string, updates: Partial<Project>) => void;
   onDeleteProject: (id: string) => void;
-  onEditTask?: (id: string, updates: Partial<Task>) => void;
+  onEditTask: (id: string, updates: Partial<Task>) => void;
+  // Nouvelles props pour les modèles
+  projectTemplates?: ProjectTemplate[];
+  onAddTemplate?: (template: Omit<ProjectTemplate, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onUpdateTemplate?: (id: string, updates: Partial<ProjectTemplate>) => void;
+  onDeleteTemplate?: (id: string) => void;
+  onCreateProjectFromTemplate?: (templateId: string, projectData: { title: string; description?: string; startDate: Date; deadline: Date }) => void;
 }
 
-export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, onDeleteProject, onEditTask }: ProjectListProps) {
+export function ProjectList({ 
+  projects, 
+  tasks, 
+  onAddProject, 
+  onUpdateProject, 
+  onDeleteProject, 
+  onEditTask,
+  projectTemplates = [],
+  onAddTemplate,
+  onUpdateTemplate,
+  onDeleteTemplate,
+  onCreateProjectFromTemplate
+}: ProjectListProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>();
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [managingDependencies, setManagingDependencies] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'projects' | 'templates'>('projects');
+  
+  // États pour les modèles
+  const [isTemplateFormOpen, setIsTemplateFormOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<ProjectTemplate | undefined>();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -27,9 +50,33 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
     color: '#3B82F6',
   });
 
+  // États pour les modèles
+  const [templateFormData, setTemplateFormData] = useState({
+    name: '',
+    description: '',
+    color: '#3B82F6',
+    defaultDuration: 30,
+    tasks: [] as TemplateTask[],
+  });
+
+  const [projectFormData, setProjectFormData] = useState({
+    title: '',
+    description: '',
+    startDate: '',
+    deadline: '',
+  });
+
+  const [taskFormData, setTaskFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as const,
+    estimatedDuration: 60,
+    dayOffset: 0,
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.startDate || !formData.deadline) return;
+    if (!formData.title.trim()) return;
 
     const projectData = {
       title: formData.title.trim(),
@@ -72,65 +119,127 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
     setIsFormOpen(true);
   };
 
-  const toggleProjectExpansion = (projectId: string) => {
-    const newExpanded = new Set(expandedProjects);
-    if (newExpanded.has(projectId)) {
-      newExpanded.delete(projectId);
-    } else {
-      newExpanded.add(projectId);
-    }
-    setExpandedProjects(newExpanded);
-  };
-
   const getProjectTasks = (projectId: string) => {
     return tasks.filter(task => task.projectId === projectId);
   };
 
-  const getProjectProgress = (project: Project) => {
-    const projectTasks = getProjectTasks(project.id);
-    if (projectTasks.length === 0) return 0;
-    const completedTasks = projectTasks.filter(task => task.completed);
-    return Math.round((completedTasks.length / projectTasks.length) * 100);
-  };
+  // Fonctions pour les modèles
+  const handleSubmitTemplate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!templateFormData.name.trim() || !onAddTemplate || !onUpdateTemplate) return;
 
-  const getProjectStatus = (project: Project) => {
-    if (project.completed) return 'completed';
-    if (isPast(project.deadline)) return 'overdue';
-    const daysLeft = differenceInDays(project.deadline, new Date());
-    if (daysLeft <= 3) return 'urgent';
-    if (daysLeft <= 7) return 'warning';
-    return 'normal';
-  };
+    const templateData = {
+      name: templateFormData.name.trim(),
+      description: templateFormData.description.trim() || undefined,
+      color: templateFormData.color,
+      defaultDuration: templateFormData.defaultDuration,
+      tasks: templateFormData.tasks,
+    };
 
-  const getStatusColors = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-50 border-green-200 text-green-800';
-      case 'overdue':
-        return 'bg-red-50 border-red-200 text-red-800';
-      case 'urgent':
-        return 'bg-orange-50 border-orange-200 text-orange-800';
-      case 'warning':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-800';
-      default:
-        return 'bg-gray-50 border-gray-200 text-gray-800';
+    if (editingTemplate) {
+      onUpdateTemplate(editingTemplate.id, templateData);
+    } else {
+      onAddTemplate(templateData);
     }
+
+    handleCloseTemplateForm();
   };
 
-  const handleTaskDependencyChange = (taskId: string, dependencies: string[]) => {
-    if (onEditTask) {
-      onEditTask(taskId, { dependencies });
-    }
+  const handleCloseTemplateForm = () => {
+    setIsTemplateFormOpen(false);
+    setEditingTemplate(undefined);
+    setTemplateFormData({
+      name: '',
+      description: '',
+      color: '#3B82F6',
+      defaultDuration: 30,
+      tasks: [],
+    });
   };
 
-  const getTaskDependencyName = (dependencyId: string): string => {
-    const task = tasks.find(t => t.id === dependencyId);
-    return task ? task.title : 'Tâche inconnue';
+  const handleEditTemplate = (template: ProjectTemplate) => {
+    setEditingTemplate(template);
+    setTemplateFormData({
+      name: template.name,
+      description: template.description || '',
+      color: template.color || '#3B82F6',
+      defaultDuration: template.defaultDuration,
+      tasks: template.tasks,
+    });
+    setIsTemplateFormOpen(true);
+  };
+
+  const handleAddTask = () => {
+    if (!taskFormData.title.trim()) return;
+
+    const newTask: TemplateTask = {
+      id: `template-task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title: taskFormData.title.trim(),
+      description: taskFormData.description.trim() || undefined,
+      priority: taskFormData.priority,
+      estimatedDuration: taskFormData.estimatedDuration,
+      dayOffset: taskFormData.dayOffset,
+    };
+
+    setTemplateFormData(prev => ({
+      ...prev,
+      tasks: [...prev.tasks, newTask],
+    }));
+
+    setTaskFormData({
+      title: '',
+      description: '',
+      priority: 'medium',
+      estimatedDuration: 60,
+      dayOffset: 0,
+    });
+  };
+
+  const handleRemoveTask = (taskId: string) => {
+    setTemplateFormData(prev => ({
+      ...prev,
+      tasks: prev.tasks.filter(task => task.id !== taskId),
+    }));
+  };
+
+  const handleCreateProject = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTemplate || !projectFormData.title.trim() || !onCreateProjectFromTemplate) return;
+
+    onCreateProjectFromTemplate(selectedTemplate.id, {
+      title: projectFormData.title.trim(),
+      description: projectFormData.description.trim() || undefined,
+      startDate: new Date(projectFormData.startDate),
+      deadline: new Date(projectFormData.deadline),
+    });
+
+    setIsCreateProjectOpen(false);
+    setSelectedTemplate(null);
+    setProjectFormData({
+      title: '',
+      description: '',
+      startDate: '',
+      deadline: '',
+    });
+  };
+
+  const openCreateProject = (template: ProjectTemplate) => {
+    setSelectedTemplate(template);
+    const now = new Date();
+    const defaultEnd = new Date(now.getTime() + template.defaultDuration * 24 * 60 * 60 * 1000);
+    
+    setProjectFormData({
+      title: `Nouveau ${template.name}`,
+      description: '',
+      startDate: now.toISOString().slice(0, 16),
+      deadline: defaultEnd.toISOString().slice(0, 16),
+    });
+    setIsCreateProjectOpen(true);
   };
 
   return (
     <div className="space-y-6">
-      {/* En-tête */}
+      {/* En-tête avec onglets */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
@@ -138,291 +247,226 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
             Projets
           </h1>
           <p className="text-gray-600 mt-2">
-            Gérez vos projets et leurs tâches associées
+            Gérez vos projets et leurs modèles
           </p>
         </div>
         
         <button
-          onClick={() => setIsFormOpen(true)}
+          onClick={() => activeTab === 'projects' ? setIsFormOpen(true) : setIsTemplateFormOpen(true)}
           className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center gap-2"
         >
           <Plus size={16} />
-          Nouveau projet
+          {activeTab === 'projects' ? 'Nouveau projet' : 'Nouveau modèle'}
         </button>
       </div>
 
-      {/* Liste des projets */}
-      <div className="space-y-4">
-        {projects.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
-            <FolderOpen className="mx-auto text-gray-400 mb-4" size={48} />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Aucun projet
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Commencez par créer votre premier projet
-            </p>
-            <button
-              onClick={() => setIsFormOpen(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Créer un projet
-            </button>
-          </div>
-        ) : (
-          projects.map(project => {
-            const progress = getProjectProgress(project);
-            const status = getProjectStatus(project);
-            const projectTasks = getProjectTasks(project.id);
-            const isExpanded = expandedProjects.has(project.id);
+      {/* Onglets */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('projects')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'projects'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FolderOpen size={16} />
+              Projets ({projects.length})
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('templates')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'templates'
+                ? 'border-purple-500 text-purple-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <BookTemplate size={16} />
+              Modèles ({projectTemplates.length})
+            </div>
+          </button>
+        </nav>
+      </div>
 
-            return (
-              <div
-                key={project.id}
-                className={`bg-white rounded-2xl shadow-sm border transition-all ${getStatusColors(status)}`}
+      {/* Contenu des onglets */}
+      {activeTab === 'projects' ? (
+        // Liste des projets
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projects.length === 0 ? (
+            <div className="col-span-full text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
+              <FolderOpen className="mx-auto text-gray-400 mb-4" size={48} />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Aucun projet
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Créez votre premier projet pour commencer à organiser vos tâches
+              </p>
+              <button
+                onClick={() => setIsFormOpen(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <div className="p-6">
+                Créer un projet
+              </button>
+            </div>
+          ) : (
+            projects.map(project => {
+              const projectTasks = getProjectTasks(project.id);
+              const completedTasks = projectTasks.filter(task => task.completed);
+              const progress = projectTasks.length > 0 ? (completedTasks.length / projectTasks.length) * 100 : 0;
+
+              return (
+                <div
+                  key={project.id}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+                >
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: project.color }}
-                        />
-                        <h3 className="text-xl font-semibold text-gray-900">
-                          {project.title}
-                        </h3>
-                        {project.completed && (
-                          <CheckCircle2 className="text-green-600" size={20} />
-                        )}
-                      </div>
-                      {project.description && (
-                        <p className="text-gray-600 mb-3">{project.description}</p>
-                      )}
-                      
-                      <div className="flex items-center gap-6 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Calendar size={16} />
-                          Début: {format(project.startDate, 'dd/MM/yyyy')}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock size={16} />
-                          Échéance: {format(project.deadline, 'dd/MM/yyyy')}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span>{projectTasks.length} tâche{projectTasks.length > 1 ? 's' : ''}</span>
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: project.color }}
+                      />
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {project.title}
+                      </h3>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setManagingDependencies(managingDependencies === project.id ? null : project.id)}
-                        className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                        title="Gérer les dépendances"
-                      >
-                        <Link size={16} />
-                      </button>
-                      <button
-                        onClick={() => toggleProjectExpansion(project.id)}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        {isExpanded ? '−' : '+'}
-                      </button>
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleEditProject(project)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                       >
-                        <Edit3 size={16} />
+                        <Edit3 size={14} />
                       </button>
                       <button
                         onClick={() => onDeleteProject(project.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Barre de progression */}
+                  {project.description && (
+                    <p className="text-gray-600 text-sm mb-4">{project.description}</p>
+                  )}
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Calendar size={14} />
+                      <span>
+                        Échéance: {format(project.deadline, 'dd MMM yyyy', { locale: fr })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Users size={14} />
+                      <span>{projectTasks.length} tâche{projectTasks.length > 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+
                   <div className="mb-4">
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
                       <span>Progression</span>
-                      <span>{progress}%</span>
+                      <span>{Math.round(progress)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-gradient-to-r from-blue-400 to-purple-600 h-2 rounded-full transition-all duration-500"
+                        className="bg-blue-600 h-2 rounded-full transition-all"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
                   </div>
 
-                  {/* Gestion des dépendances */}
-                  {managingDependencies === project.id && (
-                    <div className="border-t border-gray-200 pt-4 mb-4">
-                      <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-                        <Settings size={16} />
-                        Gestion des dépendances du projet
-                      </h4>
-                      <div className="space-y-3">
-                        {projectTasks.map(task => (
-                          <div key={task.id} className="bg-gray-50 p-3 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium text-gray-900">{task.title}</span>
-                              <span className={`px-2 py-1 text-xs rounded-full ${
-                                task.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {task.completed ? 'Terminée' : 'En cours'}
-                              </span>
-                            </div>
-                            
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-2">
-                                Dépendances (cette tâche dépend de):
-                              </label>
-                              <div className="space-y-2">
-                                {projectTasks
-                                  .filter(t => t.id !== task.id)
-                                  .map(potentialDep => (
-                                    <label key={potentialDep.id} className="flex items-center space-x-2">
-                                      <input
-                                        type="checkbox"
-                                        checked={task.dependencies?.includes(potentialDep.id) || false}
-                                        onChange={(e) => {
-                                          const currentDeps = task.dependencies || [];
-                                          let newDeps;
-                                          
-                                          if (e.target.checked) {
-                                            newDeps = [...currentDeps, potentialDep.id];
-                                          } else {
-                                            newDeps = currentDeps.filter(id => id !== potentialDep.id);
-                                          }
-                                          
-                                          handleTaskDependencyChange(task.id, newDeps);
-                                        }}
-                                        className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                      />
-                                      <span className="text-sm text-gray-700">{potentialDep.title}</span>
-                                      {potentialDep.completed && (
-                                        <CheckCircle2 className="text-green-500" size={14} />
-                                      )}
-                                    </label>
-                                  ))}
-                                
-                                {/* Dépendances vers des tâches d'autres projets */}
-                                <div className="border-t pt-2 mt-2">
-                                  <label className="block text-xs font-medium text-gray-700 mb-2">
-                                    Tâches d'autres projets:
-                                  </label>
-                                  {tasks
-                                    .filter(t => t.projectId !== project.id && t.projectId)
-                                    .map(externalTask => (
-                                      <label key={externalTask.id} className="flex items-center space-x-2">
-                                        <input
-                                          type="checkbox"
-                                          checked={task.dependencies?.includes(externalTask.id) || false}
-                                          onChange={(e) => {
-                                            const currentDeps = task.dependencies || [];
-                                            let newDeps;
-                                            
-                                            if (e.target.checked) {
-                                              newDeps = [...currentDeps, externalTask.id];
-                                            } else {
-                                              newDeps = currentDeps.filter(id => id !== externalTask.id);
-                                            }
-                                            
-                                            handleTaskDependencyChange(task.id, newDeps);
-                                          }}
-                                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                        />
-                                        <span className="text-sm text-gray-700">
-                                          {externalTask.title}
-                                          <span className="text-xs text-gray-500 ml-1">
-                                            ({projects.find(p => p.id === externalTask.projectId)?.title})
-                                          </span>
-                                        </span>
-                                        {externalTask.completed && (
-                                          <CheckCircle2 className="text-green-500" size={14} />
-                                        )}
-                                      </label>
-                                    ))}
-                                </div>
-                              </div>
-                              
-                              {/* Afficher les dépendances actuelles */}
-                              {task.dependencies && task.dependencies.length > 0 && (
-                                <div className="mt-2 p-2 bg-blue-50 rounded">
-                                  <span className="text-xs font-medium text-blue-800">Dépendances actives:</span>
-                                  <ul className="text-xs text-blue-700 mt-1">
-                                    {task.dependencies.map(depId => (
-                                      <li key={depId}>• {getTaskDependencyName(depId)}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tâches du projet (si étendu) */}
-                  {isExpanded && (
-                    <div className="border-t border-gray-200 pt-4">
-                      <h4 className="text-sm font-medium text-gray-900 mb-3">
-                        Tâches du projet
-                      </h4>
-                      {projectTasks.length === 0 ? (
-                        <p className="text-sm text-gray-500 italic">
-                          Aucune tâche associée à ce projet
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {projectTasks.map(task => (
-                            <div
-                              key={task.id}
-                              className={`flex items-center justify-between p-3 rounded-lg ${
-                                task.completed ? 'bg-green-50' : 'bg-gray-50'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <input
-                                  type="checkbox"
-                                  checked={task.completed}
-                                  onChange={() => onEditTask?.(task.id, { completed: !task.completed })}
-                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                />
-                                <div className="flex flex-col">
-                                  <span className={`${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                                    {task.title}
-                                  </span>
-                                  {task.dependencies && task.dependencies.length > 0 && (
-                                    <div className="flex items-center gap-1 mt-1">
-                                      <Link size={12} className="text-purple-500" />
-                                      <span className="text-xs text-purple-600">
-                                        {task.dependencies.length} dépendance{task.dependencies.length > 1 ? 's' : ''}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {format(task.deadline, 'dd/MM')}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="text-xs text-gray-500">
+                    Créé le {format(project.createdAt, 'dd MMM yyyy', { locale: fr })}
+                  </div>
                 </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        // Liste des modèles
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projectTemplates.length === 0 ? (
+            <div className="col-span-full text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
+              <BookTemplate className="mx-auto text-gray-400 mb-4" size={48} />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Aucun modèle
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Créez votre premier modèle de projet pour gagner du temps
+              </p>
+              <button
+                onClick={() => setIsTemplateFormOpen(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Créer un modèle
+              </button>
+            </div>
+          ) : (
+            projectTemplates.map(template => (
+              <div
+                key={template.id}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: template.color }}
+                    />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {template.name}
+                    </h3>
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleEditTemplate(template)}
+                      className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                    >
+                      <Edit3 size={14} />
+                    </button>
+                    <button
+                      onClick={() => onDeleteTemplate && onDeleteTemplate(template.id)}
+                      className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {template.description && (
+                  <p className="text-gray-600 text-sm mb-4">{template.description}</p>
+                )}
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar size={14} />
+                    <span>Durée par défaut: {template.defaultDuration} jours</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Clock size={14} />
+                    <span>{template.tasks.length} tâche{template.tasks.length > 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => openCreateProject(template)}
+                  className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <FolderPlus size={16} />
+                  Créer un projet
+                </button>
               </div>
-            );
-          })
-        )}
-      </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Formulaire de projet */}
       {isFormOpen && (
@@ -449,7 +493,7 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Nom du projet"
+                  placeholder="Ex: Refonte du site web"
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -457,7 +501,7 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (optionnel)
+                  Description
                 </label>
                 <textarea
                   value={formData.description}
@@ -521,6 +565,294 @@ export function ProjectList({ projects, tasks, onAddProject, onUpdateProject, on
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
                 >
                   {editingProject ? 'Modifier' : 'Créer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Formulaire de modèle */}
+      {isTemplateFormOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editingTemplate ? 'Modifier le modèle' : 'Nouveau modèle'}
+              </h2>
+              <button
+                onClick={handleCloseTemplateForm}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitTemplate} className="p-6 space-y-6">
+              {/* Informations du modèle */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Informations du modèle</h3>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nom du modèle
+                  </label>
+                  <input
+                    type="text"
+                    value={templateFormData.name}
+                    onChange={(e) => setTemplateFormData({ ...templateFormData, name: e.target.value })}
+                    placeholder="Ex: Site web e-commerce"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={templateFormData.description}
+                    onChange={(e) => setTemplateFormData({ ...templateFormData, description: e.target.value })}
+                    placeholder="Description du modèle"
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Couleur
+                    </label>
+                    <input
+                      type="color"
+                      value={templateFormData.color}
+                      onChange={(e) => setTemplateFormData({ ...templateFormData, color: e.target.value })}
+                      className="w-full h-12 border border-gray-200 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Durée par défaut (jours)
+                    </label>
+                    <input
+                      type="number"
+                      value={templateFormData.defaultDuration}
+                      onChange={(e) => setTemplateFormData({ ...templateFormData, defaultDuration: parseInt(e.target.value) || 30 })}
+                      min="1"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tâches du modèle */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Tâches du modèle</h3>
+                
+                {/* Ajouter une tâche */}
+                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                  <h4 className="text-sm font-medium text-gray-700">Ajouter une tâche</h4>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={taskFormData.title}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
+                      placeholder="Titre de la tâche"
+                      className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    />
+                    
+                    <select
+                      value={taskFormData.priority}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, priority: e.target.value as any })}
+                      className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    >
+                      <option value="low">Basse</option>
+                      <option value="medium">Moyenne</option>
+                      <option value="high">Haute</option>
+                      <option value="urgent">Urgente</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Durée (minutes)</label>
+                      <input
+                        type="number"
+                        value={taskFormData.estimatedDuration}
+                        onChange={(e) => setTaskFormData({ ...taskFormData, estimatedDuration: parseInt(e.target.value) || 60 })}
+                        min="15"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Jour de début (après début projet)</label>
+                      <input
+                        type="number"
+                        value={taskFormData.dayOffset}
+                        onChange={(e) => setTaskFormData({ ...taskFormData, dayOffset: parseInt(e.target.value) || 0 })}
+                        min="0"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddTask}
+                    className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                  >
+                    Ajouter la tâche
+                  </button>
+                </div>
+
+                {/* Liste des tâches */}
+                {templateFormData.tasks.length > 0 && (
+                  <div className="space-y-2">
+                    {templateFormData.tasks.map(task => (
+                      <div key={task.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                        <div>
+                          <div className="font-medium text-sm text-gray-900">{task.title}</div>
+                          <div className="text-xs text-gray-500">
+                            {task.priority} • {task.estimatedDuration}min • Jour {task.dayOffset}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTask(task.id)}
+                          className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseTemplateForm}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+                >
+                  {editingTemplate ? 'Modifier' : 'Créer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Formulaire de création de projet depuis modèle */}
+      {isCreateProjectOpen && selectedTemplate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Créer un projet à partir du modèle "{selectedTemplate.name}"
+              </h2>
+              <button
+                onClick={() => setIsCreateProjectOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProject} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom du projet
+                </label>
+                <input
+                  type="text"
+                  value={projectFormData.title}
+                  onChange={(e) => setProjectFormData({ ...projectFormData, title: e.target.value })}
+                  placeholder="Nom du nouveau projet"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={projectFormData.description}
+                  onChange={(e) => setProjectFormData({ ...projectFormData, description: e.target.value })}
+                  placeholder="Description du projet"
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date de début
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={projectFormData.startDate}
+                    onChange={(e) => setProjectFormData({ ...projectFormData, startDate: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date limite
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={projectFormData.deadline}
+                    onChange={(e) => setProjectFormData({ ...projectFormData, deadline: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <h4 className="text-sm font-medium text-purple-900 mb-2">
+                  Ce projet sera créé avec {selectedTemplate.tasks.length} tâches
+                </h4>
+                <ul className="text-sm text-purple-700 space-y-1">
+                  {selectedTemplate.tasks.slice(0, 3).map(task => (
+                    <li key={task.id}>• {task.title}</li>
+                  ))}
+                  {selectedTemplate.tasks.length > 3 && (
+                    <li>... et {selectedTemplate.tasks.length - 3} autres tâches</li>
+                  )}
+                </ul>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateProjectOpen(false)}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+                >
+                  Créer le projet
                 </button>
               </div>
             </form>
