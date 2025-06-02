@@ -78,6 +78,7 @@ export function ProjectList({
 
   // État pour l'édition de tâche de projet
   const [editingTaskId, setEditingTaskId] = useState<string>('');
+  const [editingTaskProjectId, setEditingTaskProjectId] = useState<string>('');
   const [editTaskFormData, setEditTaskFormData] = useState({
     title: '',
     description: '',
@@ -218,6 +219,7 @@ export function ProjectList({
 
   const handleEditTaskInProject = (task: Task) => {
     setEditingTaskId(task.id);
+    setEditingTaskProjectId(task.projectId || '');
     setEditTaskFormData({
       title: task.title,
       description: task.description || '',
@@ -239,6 +241,7 @@ export function ProjectList({
     });
 
     setEditingTaskId('');
+    setEditingTaskProjectId('');
     setEditTaskFormData({
       title: '',
       description: '',
@@ -455,7 +458,7 @@ export function ProjectList({
                                 {task.priority} • {task.estimatedDuration}min
                                 {task.dependencies && task.dependencies.length > 0 && (
                                   <div className="mt-1">
-                                    Dépend de: {task.dependencies.map(depId => 
+                                    <span className="font-medium">Dépend de:</span> {task.dependencies.map(depId => 
                                       getTaskNameById(depId, projectTasks)
                                     ).join(', ')}
                                   </div>
@@ -556,15 +559,24 @@ export function ProjectList({
                     <div className="space-y-1 max-h-32 overflow-y-auto">
                       {template.tasks.slice(0, 3).map(task => (
                         <div key={task.id} className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                          <div className="flex items-center gap-1">
-                            <span>{task.title}</span>
-                            {task.dependencies && task.dependencies.length > 0 && (
-                              <div className="flex items-center gap-1 text-blue-600">
-                                <Link size={10} />
-                                <span>({task.dependencies.length})</span>
-                              </div>
-                            )}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">{task.title}</span>
+                              {task.dependencies && task.dependencies.length > 0 && (
+                                <div className="flex items-center gap-1 text-blue-600">
+                                  <Link size={10} />
+                                  <span>({task.dependencies.length})</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
+                          {task.dependencies && task.dependencies.length > 0 && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              Dépend de: {task.dependencies.map(depId => 
+                                getTaskNameById(depId, template.tasks)
+                              ).join(', ')}
+                            </div>
+                          )}
                         </div>
                       ))}
                       {template.tasks.length > 3 && (
@@ -887,7 +899,7 @@ export function ProjectList({
                             {task.priority} • {task.estimatedDuration}min • Jour {task.dayOffset}
                             {task.dependencies && task.dependencies.length > 0 && (
                               <div className="mt-1">
-                                Dépend de: {task.dependencies.map(depId => 
+                                <span className="font-medium">Dépend de:</span> {task.dependencies.map(depId => 
                                   getTaskNameById(depId, templateFormData.tasks)
                                 ).join(', ')}
                               </div>
@@ -1119,7 +1131,7 @@ export function ProjectList({
                   Dépendances (tâches qui doivent être terminées avant)
                 </label>
                 <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-2">
-                  {selectedProjectId && getProjectTasks(selectedProjectId)
+                  {editingTaskProjectId && getProjectTasks(editingTaskProjectId)
                     .filter(task => task.id !== editingTaskId)
                     .map(task => (
                     <label key={task.id} className="flex items-center gap-2 text-sm">
@@ -1144,6 +1156,9 @@ export function ProjectList({
                       <span>{task.title}</span>
                     </label>
                   ))}
+                  {(!editingTaskProjectId || getProjectTasks(editingTaskProjectId).filter(task => task.id !== editingTaskId).length === 0) && (
+                    <p className="text-sm text-gray-500">Aucune autre tâche disponible dans ce projet</p>
+                  )}
                 </div>
               </div>
 
