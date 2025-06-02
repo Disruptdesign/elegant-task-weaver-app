@@ -120,8 +120,8 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0 mr-3">
             <div className="flex items-start gap-2 mb-1 flex-wrap">
-              <h3 className={`font-semibold text-gray-900 leading-tight break-words ${
-                task.completed ? 'line-through' : ''
+              <h3 className={`font-semibold leading-tight break-words ${
+                task.completed ? 'line-through text-gray-500' : statusColors.text
               }`}>
                 {task.title}
               </h3>
@@ -130,7 +130,9 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
               </span>
             </div>
             {task.description && (
-              <p className="text-sm text-gray-600 mt-1 line-clamp-2 break-words">{task.description}</p>
+              <p className={`text-sm mt-1 line-clamp-2 break-words ${
+                task.completed ? 'text-gray-500' : statusColors.text
+              }`}>{task.description}</p>
             )}
           </div>
           
@@ -174,21 +176,27 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
         {/* Informations temporelles - améliorées pour la lisibilité */}
         <div className="space-y-3 mb-4">
           <div className="flex items-center gap-4 text-sm flex-wrap">
-            <div className="flex items-center gap-1.5 text-gray-600">
-              <Calendar size={14} />
-              <span className={`${isPast(task.deadline) && !task.completed ? 'text-red-600 font-medium' : ''} whitespace-nowrap`}>
+            <div className="flex items-center gap-1.5">
+              <Calendar size={14} className={task.completed ? 'text-gray-500' : statusColors.text} />
+              <span className={`${
+                isPast(task.deadline) && !task.completed ? 'font-medium' : ''
+              } whitespace-nowrap ${task.completed ? 'text-gray-500' : statusColors.text}`}>
                 {format(task.deadline, 'dd MMM', { locale: fr })}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-gray-600">
-              <Clock size={14} />
-              <span className="whitespace-nowrap">{formatDuration(task.estimatedDuration)}</span>
+            <div className="flex items-center gap-1.5">
+              <Clock size={14} className={task.completed ? 'text-gray-500' : statusColors.text} />
+              <span className={`whitespace-nowrap ${task.completed ? 'text-gray-500' : statusColors.text}`}>
+                {formatDuration(task.estimatedDuration)}
+              </span>
             </div>
           </div>
 
           {/* Planification */}
           {task.scheduledStart && (
-            <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${statusColors.accent}`}>
+            <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${
+              task.completed ? 'bg-gray-100' : statusColors.accent
+            }`}>
               <Calendar size={14} />
               <span className="font-medium break-words">
                 {formatScheduledTime()}
@@ -200,12 +208,12 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick }: TaskCa
         {/* Statuts et actions - améliorés pour mobile */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
-            {isOverdue && (
+            {isOverdue && !task.completed && (
               <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded-md border border-red-200 flex items-center gap-1 whitespace-nowrap">
                 ⚠️ En retard
               </span>
             )}
-            {isApproaching && !isOverdue && (
+            {isApproaching && !isOverdue && !task.completed && (
               <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-1 rounded-md border border-orange-200 flex items-center gap-1 whitespace-nowrap">
                 ⏰ Échéance proche
               </span>
