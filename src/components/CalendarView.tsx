@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Task, Event } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, GripVertical, ArrowUpDown } from 'lucide-react';
 import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
 import { AddItemForm } from './AddItemForm';
+import { useTaskDragAndDrop } from '../hooks/useTaskDragAndDrop';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -23,6 +24,8 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i); // 9h à 18h
 
   console.log('CalendarView: Events received:', events);
+
+  const { dragState, startDrag } = useTaskDragAndDrop(onUpdateTask || (() => {}));
 
   const getWeekDays = () => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -89,7 +92,10 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
     return { top: Math.max(0, top), height };
   };
 
-  const handleTaskClick = (task: Task) => {
+  const handleTaskClick = (task: Task, e: React.MouseEvent) => {
+    // Ne pas ouvrir le formulaire si on est en train de drag & drop
+    if (dragState.isDragging || dragState.isResizing) return;
+    
     setSelectedTask(task);
     setIsFormOpen(true);
   };
@@ -320,30 +326,67 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
 
                       const taskStatus = getTaskStatus(task);
                       const statusColors = getTaskStatusColors(taskStatus);
+                      const isBeingDragged = dragState.taskId === task.id;
 
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-md transition-all z-20 ${
+                          className={`absolute left-1 right-1 rounded-lg border cursor-pointer transition-all z-20 group ${
                             statusColors.bg
-                          } ${statusColors.border} hover:scale-105`}
+                          } ${statusColors.border} ${
+                            isBeingDragged ? 'opacity-80 shadow-lg scale-105' : 'hover:shadow-md hover:scale-105'
+                          }`}
                           style={{
                             top: `${position.top}px`,
                             height: `${position.height}px`,
                           }}
-                          onClick={() => handleTaskClick(task)}
-                          title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}`}
+                          onClick={(e) => handleTaskClick(task, e)}
+                          title={`${task.title}\nDurée: ${task.estimatedDuration}min\n${task.description || ''}\nGlisser pour déplacer, redimensionner par les bords`}
                         >
-                          <div className="text-xs font-medium line-clamp-2 text-gray-900 mb-1">
-                            {task.title}
+                          {/* Handle de redimensionnement haut */}
+                          {onUpdateTask && position.height > 40 && (
+                            <div
+                              className="absolute top-0 left-0 right-0 h-2 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              onMouseDown={(e) => startDrag(e, task, 'resize', 'top')}
+                            >
+                              <div className="w-8 h-1 bg-gray-400 rounded"></div>
+                            </div>
+                          )}
+
+                          {/* Contenu de la tâche avec handle de déplacement */}
+                          <div
+                            className="p-2 h-full flex flex-col justify-between"
+                            onMouseDown={onUpdateTask ? (e) => startDrag(e, task, 'move') : undefined}
+                          >
+                            <div className="flex items-start gap-1">
+                              {onUpdateTask && (
+                                <GripVertical 
+                                  size={12} 
+                                  className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5 cursor-move" 
+                                />
+                              )}
+                              <div className="text-xs font-medium line-clamp-2 text-gray-900 flex-1">
+                                {task.title}
+                              </div>
+                            </div>
+                            {position.height > 40 && (
+                              <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+                                <Clock size={10} />
+                                <span>
+                                  {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
+                                  {' '}({task.estimatedDuration}min)
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          {position.height > 40 && (
-                            <div className="flex items-center gap-1 text-xs text-gray-600">
-                              <Clock size={10} />
-                              <span>
-                                {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
-                                {' '}({task.estimatedDuration}min)
-                              </span>
+
+                          {/* Handle de redimensionnement bas */}
+                          {onUpdateTask && position.height > 40 && (
+                            <div
+                              className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              onMouseDown={(e) => startDrag(e, task, 'resize', 'bottom')}
+                            >
+                              <div className="w-8 h-1 bg-gray-400 rounded"></div>
                             </div>
                           )}
                         </div>
@@ -404,7 +447,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                         <div
                           key={`month-task-${task.id}`}
                           className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 ${statusColors.bg} ${statusColors.text} truncate`}
-                          onClick={() => handleTaskClick(task)}
+                          onClick={() => handleTaskClick(task, e)}
                           title={`${task.title}\n${task.estimatedDuration}min\n${task.description || ''}`}
                         >
                           ✓ {task.title}
@@ -426,26 +469,46 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
         </div>
       )}
 
-      {/* Légende */}
+      {/* Légende mise à jour */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-sm font-medium text-gray-900 mb-4">Légende</h3>
-        <div className="flex flex-wrap gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded border bg-purple-100 border-purple-300" />
-            <span className="text-sm text-gray-600">Événements</span>
+        <h3 className="text-sm font-medium text-gray-900 mb-4">Légende et Instructions</h3>
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border bg-purple-100 border-purple-300" />
+              <span className="text-sm text-gray-600">Événements</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border bg-green-50 border-green-200" />
+              <span className="text-sm text-gray-600">Tâches dans les temps</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border bg-orange-50 border-orange-200" />
+              <span className="text-sm text-gray-600">Échéance proche</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border bg-red-50 border-red-200" />
+              <span className="text-sm text-gray-600">En retard</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded border bg-green-50 border-green-200" />
-            <span className="text-sm text-gray-600">Tâches dans les temps</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded border bg-orange-50 border-orange-200" />
-            <span className="text-sm text-gray-600">Échéance proche</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded border bg-red-50 border-red-200" />
-            <span className="text-sm text-gray-600">En retard</span>
-          </div>
+          
+          {onUpdateTask && (
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Interactions avec les tâches :</h4>
+              <div className="text-xs text-gray-600 space-y-1">
+                <div className="flex items-center gap-2">
+                  <GripVertical size={12} className="text-gray-400" />
+                  <span>Glisser pour déplacer la tâche dans le temps</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown size={12} className="text-gray-400" />
+                  <span>Redimensionner en tirant les bords haut/bas pour ajuster la durée</span>
+                </div>
+                <div>• Cliquer pour éditer les détails de la tâche</div>
+                <div>• Les modifications maintiennent l'auto-planification pour les autres tâches</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
