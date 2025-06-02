@@ -88,15 +88,21 @@ export class AlgorithmicScheduler {
           });
         } else {
           // RÈGLE 2: Vérifier les conflits avec les événements
-          const hasConflictWithEvents = this.checkEventConflict(task, this.events);
+          const conflictingEvent = this.findConflictingEvent(task, this.events);
           
-          if (hasConflictWithEvents) {
+          if (conflictingEvent) {
             console.log('⚠️ Tâche programmée en conflit avec un événement:', task.title);
-            tasksToSchedule.push({
+            console.log('🔄 La tâche sera replanifiée après l\'événement:', conflictingEvent.title);
+            
+            // Ajouter la tâche à replanifier avec une contrainte pour commencer après l'événement
+            const taskToReschedule = {
               ...task,
               scheduledStart: undefined,
-              scheduledEnd: undefined
-            });
+              scheduledEnd: undefined,
+              canStartFrom: addMinutes(new Date(conflictingEvent.endDate), this.options.bufferBetweenTasks)
+            };
+            
+            tasksToSchedule.push(taskToReschedule);
           } else {
             validScheduledTasks.push(task);
           }
@@ -146,16 +152,16 @@ export class AlgorithmicScheduler {
   }
 
   /**
-   * Vérifie si une tâche est en conflit avec des événements
+   * Trouve l'événement qui entre en conflit avec une tâche
    */
-  private checkEventConflict(task: Task, events: Event[]): boolean {
-    if (!task.scheduledStart || !task.scheduledEnd) return false;
+  private findConflictingEvent(task: Task, events: Event[]): Event | null {
+    if (!task.scheduledStart || !task.scheduledEnd) return null;
     
     const taskStart = new Date(task.scheduledStart);
     const taskEnd = new Date(task.scheduledEnd);
     
-    return events.some(event => {
-      if (event.allDay) return false; // Ignorer les événements toute la journée
+    for (const event of events) {
+      if (event.allDay) continue; // Ignorer les événements toute la journée
       
       const eventStart = new Date(event.startDate);
       const eventEnd = new Date(event.endDate);
@@ -167,10 +173,18 @@ export class AlgorithmicScheduler {
         console.log('🚫 Conflit détecté entre tâche', task.title, 'et événement', event.title);
         console.log('   Tâche:', format(taskStart, 'dd/MM HH:mm'), '-', format(taskEnd, 'HH:mm'));
         console.log('   Événement:', format(eventStart, 'dd/MM HH:mm'), '-', format(eventEnd, 'HH:mm'));
+        return event;
       }
-      
-      return hasOverlap;
-    });
+    }
+    
+    return null;
+  }
+
+  /**
+   * Vérifie si une tâche est en conflit avec des événements (version simplifiée pour validation)
+   */
+  private checkEventConflict(task: Task, events: Event[]): boolean {
+    return this.findConflictingEvent(task, events) !== null;
   }
 
   /**
@@ -203,15 +217,22 @@ export class AlgorithmicScheduler {
     const now = new Date();
     
     // RÈGLE ABSOLUE : S'assurer que la tâche ne peut pas commencer avant maintenant
+    // MAIS si la tâche a une contrainte canStartFrom (par ex. après un événement), respecter cette contrainte
     let earliestStart = Math.max(
       startDate.getTime(), 
       task.canStartFrom?.getTime() || startDate.getTime(),
       now.getTime() // ← Contrainte absolue : jamais avant maintenant
     );
     
+    // Si canStartFrom est défini et est après maintenant, l'utiliser comme référence
+    if (task.canStartFrom && task.canStartFrom.getTime() > now.getTime()) {
+      earliestStart = task.canStartFrom.getTime();
+      console.log('📅 Tâche contrainte à commencer après:', format(task.canStartFrom, 'dd/MM HH:mm'), '(probablement après un événement)');
+    }
+    
     let currentDate = new Date(earliestStart);
     
-    console.log('⏰ Recherche à partir de:', format(currentDate, 'dd/MM HH:mm'), '(contraint par l\'heure actuelle)');
+    console.log('⏰ Recherche à partir de:', format(currentDate, 'dd/MM HH:mm'));
     
     // Chercher jour par jour
     while (currentDate <= endDate && currentDate <= task.deadline) {
@@ -226,11 +247,11 @@ export class AlgorithmicScheduler {
       
       // Chercher un créneau assez long
       for (const slot of availableSlots) {
-        // RÈGLE ABSOLUE : S'assurer que le créneau commence au plus tôt maintenant
-        const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), now.getTime()));
+        // RÈGLE ABSOLUE : S'assurer que le créneau commence au plus tôt à l'heure de contrainte
+        const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), earliestStart));
         
         if (adjustedSlotStart >= slot.end) {
-          continue; // Le créneau est entièrement dans le passé
+          continue; // Le créneau est entièrement avant notre contrainte
         }
         
         const availableSlotEnd = slot.end;
@@ -258,7 +279,8 @@ export class AlgorithmicScheduler {
           return {
             ...task,
             scheduledStart,
-            scheduledEnd
+            scheduledEnd,
+            canStartFrom: undefined // Nettoyer la contrainte une fois la tâche programmée
           };
         }
       }
