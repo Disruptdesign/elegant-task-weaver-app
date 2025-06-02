@@ -432,7 +432,7 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements - Style Notion minimaliste sans zoom */}
+                  {/* Événements - Style Notion avec contenu aligné en haut */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -441,6 +441,13 @@ export function CalendarView({
                         if (!position) return null;
 
                         const isBeingDragged = dragState.itemId === event.id && dragState.itemType === 'event';
+                        
+                        // Calculer le nombre de lignes possible pour le titre
+                        const lineHeight = 14; // hauteur d'une ligne en pixels
+                        const padding = 8; // padding vertical total
+                        const timeHeight = position.height > 35 ? 14 : 0; // hauteur de l'heure si affichée
+                        const availableHeight = position.height - padding - timeHeight;
+                        const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
 
                         return (
                           <div
@@ -474,12 +481,22 @@ export function CalendarView({
                             {/* Zone de redimensionnement haut */}
                             <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                             
-                            <div className="h-full px-2 py-1 flex flex-col justify-center">
-                              <div className="text-xs font-medium text-sky-800 leading-tight truncate">
+                            {/* Contenu aligné en haut */}
+                            <div className="h-full px-2 py-1 flex flex-col justify-start">
+                              <div 
+                                className="text-xs font-medium text-sky-800 leading-tight"
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: maxLines,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  wordBreak: 'break-word',
+                                }}
+                              >
                                 {event.title}
                               </div>
                               {position.height > 35 && (
-                                <div className="text-xs text-sky-600 leading-tight mt-0.5 opacity-75">
+                                <div className="text-xs text-sky-600 leading-tight mt-0.5 opacity-75 flex-shrink-0">
                                   {format(new Date(event.startDate), 'HH:mm')}
                                 </div>
                               )}
@@ -492,7 +509,7 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches - Style Notion minimaliste sans zoom */}
+                  {/* Tâches - Style Notion avec contenu aligné en haut */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -503,6 +520,14 @@ export function CalendarView({
 
                       const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
                       const isCompleted = task.completed;
+                      
+                      // Calculer le nombre de lignes possible pour le titre
+                      const lineHeight = 14; // hauteur d'une ligne en pixels
+                      const padding = 8; // padding vertical total
+                      const checkboxWidth = 20; // largeur du checkbox + gap
+                      const timeHeight = position.height > 35 ? 14 : 0; // hauteur de l'heure si affichée
+                      const availableHeight = position.height - padding - timeHeight;
+                      const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
 
                       return (
                         <div
@@ -536,11 +561,12 @@ export function CalendarView({
                           {/* Zone de redimensionnement haut */}
                           <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                           
-                          <div className="h-full px-2 py-1 flex items-center gap-1.5">
+                          {/* Contenu aligné en haut */}
+                          <div className="h-full px-2 py-1 flex items-start gap-1.5">
                             {/* Checkbox minimaliste style Notion */}
                             {onUpdateTask && (
                               <button
-                                className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all ${
+                                className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 ${
                                   isCompleted 
                                     ? 'bg-gray-400 border-gray-400' 
                                     : 'bg-white border-amber-300 hover:border-amber-400'
@@ -554,16 +580,25 @@ export function CalendarView({
                             )}
                             
                             {/* Contenu */}
-                            <div className="flex-1 min-w-0">
-                              <div className={`text-xs font-medium leading-tight truncate ${
-                                isCompleted 
-                                  ? 'text-gray-500 line-through' 
-                                  : 'text-amber-800'
-                              }`}>
+                            <div className="flex-1 min-w-0 flex flex-col justify-start">
+                              <div 
+                                className={`text-xs font-medium leading-tight ${
+                                  isCompleted 
+                                    ? 'text-gray-500 line-through' 
+                                    : 'text-amber-800'
+                                }`}
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: maxLines,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  wordBreak: 'break-word',
+                                }}
+                              >
                                 {task.title}
                               </div>
                               {position.height > 35 && (
-                                <div className={`text-xs leading-tight mt-0.5 opacity-75 ${
+                                <div className={`text-xs leading-tight mt-0.5 opacity-75 flex-shrink-0 ${
                                   isCompleted ? 'text-gray-400' : 'text-amber-600'
                                 }`}>
                                   {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
@@ -702,7 +737,7 @@ export function CalendarView({
               <h4 className="text-sm font-medium text-gray-900 mb-2">Design Notion Calendar :</h4>
               <div className="text-xs text-gray-600 space-y-1">
                 <div>• Cartes minimalistes avec bordures subtiles</div>
-                <div>• Coins arrondis et ombres douces</div>
+                <div>• Contenu aligné en haut avec titres sur plusieurs lignes</div>
                 <div>• Checkbox circulaire pour les tâches</div>
                 <div>• Animations fluides au survol et lors du drag</div>
                 <div>• Palette de couleurs épurée et moderne</div>
