@@ -32,7 +32,6 @@ export function CalendarView({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [testDataAdded, setTestDataAdded] = useState(false);
-  const [isDragInProgress, setIsDragInProgress] = useState(false);
   
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i);
 
@@ -175,11 +174,9 @@ export function CalendarView({
   };
 
   const handleTaskClick = (task: Task, e: React.MouseEvent) => {
-    // Empêcher l'ouverture si on est en train de faire du drag & drop ou du redimensionnement
-    if (isDragInProgress) {
+    // Empêcher l'ouverture seulement si on vient de terminer une opération de drag
+    if (dragState.isDragging || dragState.isResizing) {
       console.log('Task click ignored: drag operation in progress');
-      e.preventDefault();
-      e.stopPropagation();
       return;
     }
     
@@ -190,11 +187,9 @@ export function CalendarView({
   };
 
   const handleEventClick = (event: Event, e: React.MouseEvent) => {
-    // Empêcher l'ouverture si on est en train de faire du drag & drop ou du redimensionnement
-    if (isDragInProgress) {
+    // Empêcher l'ouverture seulement si on vient de terminer une opération de drag
+    if (dragState.isDragging || dragState.isResizing) {
       console.log('Event click ignored: drag operation in progress');
-      e.preventDefault();
-      e.stopPropagation();
       return;
     }
     
@@ -267,7 +262,7 @@ export function CalendarView({
       return;
     }
     
-    // Empêcher la propagation du clic pour éviter l'ouverture de la fenêtre
+    // Empêcher la propagation seulement pour les actions de drag
     e.preventDefault();
     e.stopPropagation();
     
@@ -291,7 +286,7 @@ export function CalendarView({
       return;
     }
     
-    // Empêcher la propagation du clic pour éviter l'ouverture de la fenêtre
+    // Empêcher la propagation seulement pour les actions de drag
     e.preventDefault();
     e.stopPropagation();
     
@@ -364,7 +359,6 @@ export function CalendarView({
           {events.filter(e => !e.allDay).length > 0 && ` - ${events.filter(e => !e.allDay).length} événement(s) avec horaire`}
           {dragState.isDragging && ' - 🎯 DRAGGING'}
           {dragState.isResizing && ' - 📏 RESIZING'}
-          {isDragInProgress && ' - ⛔ CLICK DISABLED'}
         </p>
       </div>
 
