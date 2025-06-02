@@ -35,7 +35,7 @@ export function CalendarView({
   
   // Gestion des clics avec délai pour éviter l'ouverture pendant le drag
   const clickTimerRef = useRef<number | null>(null);
-  const pendingClickRef = useRef<{ item: Task | Event; type: 'task' | 'event' } | null>(null);
+  const dragStartedRef = useRef(false);
   
   const workingHours = Array.from({ length: 10 }, (_, i) => 9 + i);
 
@@ -59,12 +59,17 @@ export function CalendarView({
   // Nettoyer le timer de clic quand un drag commence
   useEffect(() => {
     if (dragState.isDragging || dragState.isResizing) {
+      dragStartedRef.current = true;
       if (clickTimerRef.current) {
         console.log('Drag started - cancelling pending click');
         clearTimeout(clickTimerRef.current);
         clickTimerRef.current = null;
-        pendingClickRef.current = null;
       }
+    } else if (dragStartedRef.current) {
+      // Reset du flag après la fin du drag
+      setTimeout(() => {
+        dragStartedRef.current = false;
+      }, 100);
     }
   }, [dragState.isDragging, dragState.isResizing]);
 
@@ -193,8 +198,13 @@ export function CalendarView({
     return { top: Math.max(0, top), height };
   };
 
-  // Gestionnaires de clic simplifiés
+  // Gestionnaires de clic avec protection contre le drag
   const handleTaskClick = (task: Task) => {
+    if (dragStartedRef.current) {
+      console.log('Ignoring task click during drag operation');
+      return;
+    }
+    
     console.log('Task clicked for editing:', task.id);
     setSelectedTask(task);
     setSelectedEvent(undefined);
@@ -202,6 +212,11 @@ export function CalendarView({
   };
 
   const handleEventClick = (event: Event) => {
+    if (dragStartedRef.current) {
+      console.log('Ignoring event click during drag operation');
+      return;
+    }
+    
     console.log('Event clicked for editing:', event.id);
     setSelectedEvent(event);
     setSelectedTask(undefined);
@@ -211,6 +226,11 @@ export function CalendarView({
   const handleTaskCompletion = (task: Task, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (dragStartedRef.current) {
+      console.log('Ignoring task completion during drag operation');
+      return;
+    }
     
     console.log('Completing task:', task.id, 'current completed:', task.completed);
     if (onUpdateTask) {
@@ -274,6 +294,7 @@ export function CalendarView({
     e.preventDefault();
     e.stopPropagation();
     
+    dragStartedRef.current = true;
     startTaskDrag(e, task, action, resizeHandle);
   };
 
@@ -297,6 +318,7 @@ export function CalendarView({
     e.preventDefault();
     e.stopPropagation();
     
+    dragStartedRef.current = true;
     startEventDrag(e, event, action, resizeHandle);
   };
 
@@ -429,7 +451,7 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements - Style Notion minimaliste */}
+                  {/* Événements - Style Notion minimaliste sans zoom */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -444,8 +466,8 @@ export function CalendarView({
                             key={`event-${event.id}`}
                             className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm ${
                               isBeingDragged 
-                                ? 'opacity-80 shadow-lg z-50 scale-105' 
-                                : 'hover:shadow-md hover:scale-[1.02]'
+                                ? 'opacity-80 shadow-lg z-50' 
+                                : 'hover:shadow-md'
                             }`}
                             style={{
                               top: `${position.top}px`,
@@ -484,7 +506,7 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches - Style Notion minimaliste */}
+                  {/* Tâches - Style Notion minimaliste sans zoom */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -501,8 +523,8 @@ export function CalendarView({
                           key={`task-${task.id}`}
                           className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm ${
                             isBeingDragged 
-                              ? 'opacity-80 shadow-lg z-50 scale-105' 
-                              : 'hover:shadow-md hover:scale-[1.02]'
+                              ? 'opacity-80 shadow-lg z-50' 
+                              : 'hover:shadow-md'
                           } ${isCompleted ? 'opacity-60' : ''}`}
                           style={{
                             top: `${position.top}px`,
