@@ -290,15 +290,6 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
         </div>
       )}
 
-      {/* Debug drag state */}
-      {dragState.isDragging && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-          <p className="text-sm text-yellow-800">
-            🔄 Déplacement en cours... Déplacez horizontalement pour changer de jour.
-          </p>
-        </div>
-      )}
-
       {/* Calendrier */}
       {viewMode === 'week' ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -359,8 +350,8 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
               {getWeekDays().map((day, dayIndex) => (
                 <div 
                   key={dayIndex} 
-                  className="relative border-l border-gray-200"
-                  style={{ minWidth: '200px' }} // Assurer une largeur minimum pour le calcul du drag
+                  className="relative border-l border-gray-200 overflow-hidden"
+                  style={{ minWidth: '150px' }} // Largeur fixe pour éviter les débordements
                 >
                   {/* Lignes horaires */}
                   {workingHours.map(hour => (
@@ -381,10 +372,12 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className="absolute left-1 right-1 rounded-lg border p-2 cursor-pointer hover:shadow-lg transition-all z-30 bg-purple-100 border-purple-300 hover:bg-purple-200"
+                            className="absolute rounded-lg border p-1 cursor-pointer hover:shadow-lg transition-all z-30 bg-purple-100 border-purple-300 hover:bg-purple-200 overflow-hidden"
                             style={{
                               top: `${position.top}px`,
                               height: `${position.height}px`,
+                              left: '2px',
+                              right: '2px',
                             }}
                             title={`${event.title}\n${format(new Date(event.startDate), 'HH:mm')} - ${format(new Date(event.endDate), 'HH:mm')}\n${event.location || ''}`}
                           >
@@ -410,7 +403,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                       return (
                         <div
                           key={`task-${task.id}`}
-                          className={`absolute left-1 right-1 rounded-lg border transition-all z-20 group select-none ${
+                          className={`absolute rounded-lg border transition-all z-20 group select-none overflow-hidden ${
                             statusColors.bg
                           } ${statusColors.border} ${
                             isBeingDragged ? 'opacity-80 shadow-lg scale-105 ring-2 ring-blue-400 z-50' : 'hover:shadow-md hover:scale-105'
@@ -418,6 +411,8 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                           style={{
                             top: `${position.top}px`,
                             height: `${position.height}px`,
+                            left: '2px',
+                            right: '2px',
                             pointerEvents: isBeingDragged ? 'none' : 'auto',
                           }}
                           onClick={(e) => !isBeingDragged && handleTaskClick(task, e)}
@@ -445,14 +440,14 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                                   className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
                                 />
                               )}
-                              <div className="text-xs font-medium line-clamp-2 text-gray-900 flex-1">
+                              <div className="text-xs font-medium line-clamp-2 text-gray-900 flex-1 overflow-hidden">
                                 {task.title}
                               </div>
                             </div>
                             {position.height > 40 && (
                               <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
                                 <Clock size={10} />
-                                <span>
+                                <span className="truncate">
                                   {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
                                   {' '}({task.estimatedDuration}min)
                                 </span>

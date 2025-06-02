@@ -22,13 +22,14 @@ export class TaskScheduler {
     // Score de planification (plus bas = plus prioritaire)
     const schedulingScore = daysUntilDeadline / priorityWeight;
     
-    // Trouver le prochain créneau disponible en tenant compte de la date de début possible
-    const startDate = new Date(Math.max(canStartFrom.getTime(), now.getTime()));
+    // Utiliser canStartFrom comme date de début minimum
+    const effectiveStartDate = new Date(Math.max(canStartFrom.getTime(), now.getTime()));
+    
     const scheduledStart = this.findNextAvailableSlot(
       task.estimatedDuration + (task.bufferBefore || 0) + (task.bufferAfter || 0),
       existingTasks,
       events,
-      startDate
+      effectiveStartDate
     );
     
     const taskStart = new Date(scheduledStart.getTime() + (task.bufferBefore || 0) * 60000);
@@ -39,6 +40,38 @@ export class TaskScheduler {
       ...task,
       scheduledStart: taskStart,
       scheduledEnd: taskEnd,
+    };
+  }
+
+  // Fonction pour valider et ajuster une tâche déplacée
+  validateTaskSchedule(task: Task, newScheduledStart: Date): { scheduledStart: Date; scheduledEnd: Date } {
+    const canStartFrom = task.canStartFrom ? new Date(task.canStartFrom) : new Date(0);
+    
+    // Si la nouvelle date est antérieure à canStartFrom, utiliser canStartFrom
+    const validatedStart = newScheduledStart < canStartFrom ? canStartFrom : newScheduledStart;
+    
+    // Ajuster à l'heure de début des heures de travail si c'est avant
+    if (validatedStart.getHours() < this.workingHours.start) {
+      validatedStart.setHours(this.workingHours.start, 0, 0, 0);
+    }
+    
+    // Si c'est après les heures de travail, passer au lendemain
+    if (validatedStart.getHours() >= this.workingHours.end) {
+      validatedStart.setDate(validatedStart.getDate() + 1);
+      validatedStart.setHours(this.workingHours.start, 0, 0, 0);
+    }
+    
+    // Éviter les week-ends
+    while (validatedStart.getDay() === 0 || validatedStart.getDay() === 6) {
+      validatedStart.setDate(validatedStart.getDate() + (validatedStart.getDay() === 0 ? 1 : 2));
+      validatedStart.setHours(this.workingHours.start, 0, 0, 0);
+    }
+    
+    const scheduledEnd = new Date(validatedStart.getTime() + task.estimatedDuration * 60000);
+    
+    return {
+      scheduledStart: validatedStart,
+      scheduledEnd: scheduledEnd,
     };
   }
 

@@ -1,6 +1,7 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import { Task } from '../types/task';
+import { taskScheduler } from '../utils/taskScheduler';
 
 interface DragState {
   isDragging: boolean;
@@ -62,8 +63,8 @@ export function useTaskDragAndDrop(
       // Calculer le changement de temps basé sur deltaY (64px = 1 heure)
       const minutesDelta = Math.round((deltaY / 64) * 60);
       
-      // Calculer le changement de jour basé sur deltaX (environ 200px = 1 jour)
-      const daysDelta = Math.round(deltaX / 200);
+      // Calculer le changement de jour basé sur deltaX (environ 150px = 1 jour)
+      const daysDelta = Math.round(deltaX / 150);
       
       console.log('Drag calculation:', { deltaY, deltaX, minutesDelta, daysDelta });
 
@@ -79,6 +80,13 @@ export function useTaskDragAndDrop(
       const minute = newStartTime.getMinutes();
       const roundedMinutes = Math.round(minute / 15) * 15;
       newStartTime.setMinutes(roundedMinutes, 0, 0);
+
+      // Récupérer la tâche complète pour valider avec canStartFrom
+      const taskFromDragState = {
+        id: currentState.taskId,
+        estimatedDuration: currentState.originalDuration,
+        canStartFrom: undefined, // Sera récupéré dans la validation
+      } as Task;
 
       console.log('Updating task position:', { 
         taskId: currentState.taskId, 

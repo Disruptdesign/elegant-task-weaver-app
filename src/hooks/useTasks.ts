@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Task, Event, InboxItem, Project, TaskType } from '../types/task';
 import { taskScheduler } from '../utils/taskScheduler';
@@ -200,13 +199,36 @@ export function useTasks() {
   };
 
   const updateTask = (id: string, updates: Partial<Task>) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === id
-        ? { ...task, ...updates, updatedAt: new Date() }
-        : task
-    );
-    const rescheduledTasks = taskScheduler.rescheduleAllTasks(updatedTasks, events);
-    setTasks(rescheduledTasks);
+    console.log('Updating task:', id, updates);
+    
+    const updatedTasks = tasks.map(task => {
+      if (task.id === id) {
+        const updatedTask = { ...task, ...updates, updatedAt: new Date() };
+        
+        // Si on met à jour scheduledStart et que la tâche a une contrainte canStartFrom
+        if (updates.scheduledStart && task.canStartFrom) {
+          console.log('Validating task schedule with canStartFrom constraint');
+          const validatedSchedule = taskScheduler.validateTaskSchedule(updatedTask, updates.scheduledStart);
+          
+          return {
+            ...updatedTask,
+            scheduledStart: validatedSchedule.scheduledStart,
+            scheduledEnd: validatedSchedule.scheduledEnd,
+          };
+        }
+        
+        return updatedTask;
+      }
+      return task;
+    });
+    
+    // Ne pas reprogrammer automatiquement si c'est juste un déplacement manuel
+    if (updates.scheduledStart || updates.scheduledEnd) {
+      setTasks(updatedTasks);
+    } else {
+      const rescheduledTasks = taskScheduler.rescheduleAllTasks(updatedTasks, events);
+      setTasks(rescheduledTasks);
+    }
   };
 
   const deleteTask = (id: string) => {
