@@ -691,6 +691,8 @@ export function CalendarView({
 
                       const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
                       const isCompleted = task.completed;
+                      const taskStatus = getTaskStatus(task);
+                      const statusColors = getTaskStatusColors(taskStatus);
                       
                       // Calculer le nombre de lignes possible pour le titre
                       const lineHeight = 14; // hauteur d'une ligne en pixels
@@ -713,8 +715,8 @@ export function CalendarView({
                             height: `${position.height}px`,
                             left: '2px',
                             right: '2px',
-                            backgroundColor: isCompleted ? '#f8f8f8' : '#fef7ed',
-                            border: isCompleted ? '1px solid #e5e5e5' : '1px solid #fed7aa',
+                            backgroundColor: isCompleted ? '#f8f8f8' : statusColors.bg,
+                            border: isCompleted ? '1px solid #e5e5e5' : `1px solid ${statusColors.border.replace('border-', '#')}`,
                           }}
                           onMouseDown={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
@@ -740,7 +742,7 @@ export function CalendarView({
                                 className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 ${
                                   isCompleted 
                                     ? 'bg-gray-400 border-gray-400' 
-                                    : 'bg-white border-amber-300 hover:border-amber-400'
+                                    : `bg-white ${statusColors.border} hover:${statusColors.border.replace('border-', 'border-')}-400`
                                 }`}
                                 onClick={(e) => handleTaskCompletion(task, e)}
                               >
@@ -756,7 +758,7 @@ export function CalendarView({
                                 className={`text-xs font-medium leading-tight ${
                                   isCompleted 
                                     ? 'text-gray-500 line-through' 
-                                    : 'text-amber-800'
+                                    : statusColors.text
                                 }`}
                                 style={{
                                   display: '-webkit-box',
@@ -770,7 +772,7 @@ export function CalendarView({
                               </div>
                               {position.height > 35 && (
                                 <div className={`text-xs leading-tight mt-0.5 opacity-75 flex-shrink-0 ${
-                                  isCompleted ? 'text-gray-400' : 'text-amber-600'
+                                  isCompleted ? 'text-gray-400' : statusColors.text
                                 }`}>
                                   {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
                                 </div>
@@ -834,9 +836,39 @@ export function CalendarView({
                       </div>
                     ))}
                     
-                    {/* Tâches avec style Google Calendar */}
+                    {/* Tâches avec couleurs contextuelles */}
                     {dayTasks.slice(0, dayEvents.length > 0 ? 1 : 3).map(task => {
                       const isCompleted = task.completed;
+                      const taskStatus = getTaskStatus(task);
+                      const statusColors = getTaskStatusColors(taskStatus);
+                      
+                      // Convertir les couleurs Tailwind en couleurs CSS
+                      const getBgColor = () => {
+                        if (isCompleted) return '#f5f5f5';
+                        switch (taskStatus) {
+                          case 'overdue': return '#fef2f2';
+                          case 'approaching': return '#fff7ed';
+                          default: return '#f0fdf4';
+                        }
+                      };
+                      
+                      const getBorderColor = () => {
+                        if (isCompleted) return '#9e9e9e';
+                        switch (taskStatus) {
+                          case 'overdue': return '#dc2626';
+                          case 'approaching': return '#ea580c';
+                          default: return '#16a34a';
+                        }
+                      };
+                      
+                      const getTextColor = () => {
+                        if (isCompleted) return '#757575';
+                        switch (taskStatus) {
+                          case 'overdue': return '#991b1b';
+                          case 'approaching': return '#c2410c';
+                          default: return '#166534';
+                        }
+                      };
                       
                       return (
                         <div
@@ -846,9 +878,9 @@ export function CalendarView({
                           }`}
                           onClick={() => handleTaskClick(task)}
                           style={{
-                            backgroundColor: isCompleted ? '#f5f5f5' : '#fff3e0',
-                            borderLeftColor: isCompleted ? '#9e9e9e' : '#ff9800',
-                            color: isCompleted ? '#757575' : '#f57c00'
+                            backgroundColor: getBgColor(),
+                            borderLeftColor: getBorderColor(),
+                            color: getTextColor()
                           }}
                           title={`${task.title}\n${task.estimatedDuration}min\n${task.description || ''}`}
                         >
@@ -858,8 +890,11 @@ export function CalendarView({
                               className={`w-2.5 h-2.5 rounded-sm border flex-shrink-0 ${
                                 isCompleted 
                                   ? 'bg-gray-500 border-gray-500' 
-                                  : 'bg-white border-orange-400'
+                                  : 'bg-white'
                               }`}
+                              style={{
+                                borderColor: isCompleted ? '#6b7280' : getBorderColor()
+                              }}
                               title={task.completed ? "Marquer comme non terminé" : "Marquer comme terminé"}
                             >
                               {isCompleted && <Check size={6} className="text-white m-auto" />}
@@ -872,6 +907,7 @@ export function CalendarView({
                       );
                     })}
                     
+                    {/* Indicateur d'overflow */}
                     {(dayEvents.length + dayTasks.length) > 3 && (
                       <div className="text-xs text-gray-500">
                         +{(dayEvents.length + dayTasks.length) - 3} autres
