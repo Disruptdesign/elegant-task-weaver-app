@@ -438,7 +438,7 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements avec zones d'interaction séparées */}
+                  {/* Événements avec zones d'interaction optimisées */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
@@ -473,24 +473,24 @@ export function CalendarView({
                               </div>
                             )}
 
-                            {/* Contenu principal cliquable */}
+                            {/* Contenu principal avec meilleure répartition de l'espace */}
                             <div 
                               className="flex h-full overflow-hidden pointer-events-auto cursor-pointer"
                               onClick={() => handleEventClick(event)}
                             >
-                              {/* Zone de drag (poignée) */}
+                              {/* Zone de drag compacte */}
                               {onUpdateEvent && (
                                 <div
-                                  className="flex-shrink-0 w-6 cursor-grab active:cursor-grabbing bg-purple-200 hover:bg-purple-300 flex items-center justify-center"
+                                  className="flex-shrink-0 w-4 cursor-grab active:cursor-grabbing bg-purple-200 hover:bg-purple-300 flex items-center justify-center"
                                   onMouseDown={(e) => handleEventMouseDown(e, event, 'move')}
-                                  onClick={(e) => e.stopPropagation()} // Empêcher le clic d'édition sur la poignée
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  <GripVertical size={12} className="text-purple-600" />
+                                  <GripVertical size={10} className="text-purple-600" />
                                 </div>
                               )}
 
-                              {/* Contenu de l'événement */}
-                              <div className="flex-1 p-2 min-w-0 overflow-hidden">
+                              {/* Contenu de l'événement - zone élargie */}
+                              <div className="flex-1 px-2 py-1 min-w-0 overflow-hidden">
                                 <div className="flex items-center gap-1 text-xs font-bold text-purple-900">
                                   <Users size={10} className="flex-shrink-0" />
                                   <span className="truncate leading-tight">{event.title}</span>
@@ -502,10 +502,10 @@ export function CalendarView({
                                 )}
                               </div>
 
-                              {/* Icône d'édition */}
+                              {/* Icône d'édition compacte */}
                               {onUpdateEvent && (
-                                <div className="flex-shrink-0 w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Edit size={10} className="text-purple-700" />
+                                <div className="flex-shrink-0 w-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Edit size={8} className="text-purple-700" />
                                 </div>
                               )}
                             </div>
@@ -524,7 +524,7 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches avec zones d'interaction séparées */}
+                  {/* Tâches avec zones d'interaction optimisées */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day).map(task => {
                       const position = getTaskPosition(task);
@@ -564,41 +564,41 @@ export function CalendarView({
                             </div>
                           )}
 
-                          {/* Contenu principal cliquable */}
+                          {/* Contenu principal avec meilleure répartition de l'espace */}
                           <div 
                             className="flex h-full overflow-hidden pointer-events-auto cursor-pointer"
                             onClick={() => handleTaskClick(task)}
                           >
-                            {/* Checkbox */}
+                            {/* Checkbox compacte */}
                             {onUpdateTask && (
                               <div 
-                                className="flex-shrink-0 w-6 flex items-center justify-center bg-white bg-opacity-80"
+                                className="flex-shrink-0 w-4 flex items-center justify-center bg-white bg-opacity-80"
                                 onClick={(e) => {
-                                  e.stopPropagation(); // Empêcher le clic d'édition
+                                  e.stopPropagation();
                                   handleTaskCompletion(task, e);
                                 }}
                               >
                                 {task.completed ? (
-                                  <Check size={10} className="text-green-600" />
+                                  <Check size={8} className="text-green-600" />
                                 ) : (
-                                  <Square size={10} className="text-gray-500" />
+                                  <Square size={8} className="text-gray-500" />
                                 )}
                               </div>
                             )}
 
-                            {/* Zone de drag (poignée) */}
+                            {/* Zone de drag compacte */}
                             {onUpdateTask && (
                               <div
-                                className="flex-shrink-0 w-6 cursor-grab active:cursor-grabbing bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+                                className="flex-shrink-0 w-4 cursor-grab active:cursor-grabbing bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
                                 onMouseDown={(e) => handleTaskMouseDown(e, task, 'move')}
-                                onClick={(e) => e.stopPropagation()} // Empêcher le clic d'édition sur la poignée
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <GripVertical size={10} className="text-gray-500" />
+                                <GripVertical size={8} className="text-gray-500" />
                               </div>
                             )}
                             
-                            {/* Contenu de la tâche */}
-                            <div className="flex-1 p-2 min-w-0 overflow-hidden">
+                            {/* Contenu de la tâche - zone élargie pour la lisibilité */}
+                            <div className="flex-1 px-2 py-1 min-w-0 overflow-hidden">
                               <div className={`text-xs font-medium text-gray-900 truncate leading-tight ${task.completed ? 'line-through' : ''}`}>
                                 {task.title}
                               </div>
@@ -613,10 +613,10 @@ export function CalendarView({
                               )}
                             </div>
 
-                            {/* Icône d'édition */}
+                            {/* Icône d'édition compacte */}
                             {onUpdateTask && (
-                              <div className="flex-shrink-0 w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Edit size={10} className="text-gray-700" />
+                              <div className="flex-shrink-0 w-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Edit size={8} className="text-gray-700" />
                               </div>
                             )}
                           </div>
