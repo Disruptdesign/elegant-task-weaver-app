@@ -1,12 +1,14 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { AppContent } from '../components/AppContent';
 import { AddItemForm } from '../components/AddItemForm';
 import { QuickInbox } from '../components/QuickInbox';
-import { useTasks } from '../hooks/useTasks';
+import { useOptimizedTasks } from '../hooks/useOptimizedTasks';
 import { useAppState } from '../hooks/useAppState';
 import { useAppHandlers } from '../hooks/useAppHandlers';
+import { usePerformanceCache } from '../hooks/usePerformanceCache';
+import { useOptimizedCallbacks } from '../hooks/useOptimizedCallbacks';
 
 const Index = () => {
   const {
@@ -43,7 +45,10 @@ const Index = () => {
     updateProjectTemplate,
     deleteProjectTemplate,
     createProjectFromTemplate,
-  } = useTasks();
+    tasksByProject,
+    completedTasksCount,
+    pendingTasksCount,
+  } = useOptimizedTasks();
 
   const {
     handleConvertInboxItem,
@@ -52,14 +57,50 @@ const Index = () => {
     handleTaskSubmit,
   } = useAppHandlers();
 
-  console.log('Index: Current data state:', {
+  const { clearExpiredEntries } = usePerformanceCache();
+
+  // Nettoyage périodique du cache
+  useEffect(() => {
+    const interval = setInterval(() => {
+      clearExpiredEntries();
+    }, 60000); // Nettoyage toutes les minutes
+
+    return () => clearInterval(interval);
+  }, [clearExpiredEntries]);
+
+  // Optimisation des callbacks
+  const optimizedHandlers = useOptimizedCallbacks({
+    onEditTask: updateTask,
+    onEditEvent: updateEvent,
+    onAddTask: addTask,
+    onUpdateTask: updateTask,
+    onDeleteTask: deleteTask,
+    onAddEvent: addEvent,
+    onUpdateEvent: updateEvent,
+    onAddInboxItem: addInboxItem,
+    onDeleteInboxItem: deleteInboxItem,
+    onAddProject: addProject,
+    onUpdateProject: updateProject,
+    onDeleteProject: deleteProject,
+    onAddTaskType: addTaskType,
+    onUpdateTaskType: updateTaskType,
+    onDeleteTaskType: deleteTaskType,
+    onAddTemplate: addProjectTemplate,
+    onUpdateTemplate: updateProjectTemplate,
+    onDeleteTemplate: deleteProjectTemplate,
+    onCreateProjectFromTemplate: createProjectFromTemplate,
+    onCompleteTask: handleCompleteTask,
+    onReschedule: handleRescheduleAllTasks,
+  });
+
+  console.log('Index: Performance metrics:', {
     tasks: tasks.length,
     events: events.length,
     projects: projects.length,
     taskTypes: taskTypes.length,
+    completedTasks: completedTasksCount,
+    pendingTasks: pendingTasksCount,
     isAddFormOpen,
-    projectsDetailed: projects.map(p => ({ id: p.id, title: p.title })),
-    taskTypesDetailed: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
 
   const handleConvertItem = (item: any) => {
@@ -69,12 +110,6 @@ const Index = () => {
   const handleTaskFormSubmit = (taskData: any) => {
     handleTaskSubmit(taskData, taskFormData, closeAddForm);
   };
-
-  console.log('Index: Before rendering AddItemForm with props:', {
-    projects: projects.length,
-    taskTypes: taskTypes.length,
-    isAddFormOpen
-  });
 
   return (
     <>
@@ -91,28 +126,8 @@ const Index = () => {
           projects={projects}
           taskTypes={taskTypes}
           projectTemplates={projectTemplates}
-          onEditTask={updateTask}
-          onEditEvent={updateEvent}
-          onAddTask={addTask}
-          onUpdateTask={updateTask}
-          onDeleteTask={deleteTask}
-          onAddEvent={addEvent}
-          onUpdateEvent={updateEvent}
-          onAddInboxItem={addInboxItem}
-          onDeleteInboxItem={deleteInboxItem}
           onConvertToTask={handleConvertItem}
-          onAddProject={addProject}
-          onUpdateProject={updateProject}
-          onDeleteProject={deleteProject}
-          onAddTaskType={addTaskType}
-          onUpdateTaskType={updateTaskType}
-          onDeleteTaskType={deleteTaskType}
-          onAddTemplate={addProjectTemplate}
-          onUpdateTemplate={updateProjectTemplate}
-          onDeleteTemplate={deleteProjectTemplate}
-          onCreateProjectFromTemplate={createProjectFromTemplate}
-          onCompleteTask={handleCompleteTask}
-          onReschedule={handleRescheduleAllTasks}
+          {...optimizedHandlers}
         />
       </Layout>
       

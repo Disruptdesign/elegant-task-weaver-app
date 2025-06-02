@@ -1,11 +1,13 @@
-
 import React from 'react';
-import { Dashboard } from './Dashboard';
-import { TaskList } from './TaskList';
-import { CalendarView } from './CalendarView';
-import { Inbox } from './Inbox';
-import { ProjectList } from './ProjectList';
-import { TaskTypeSettings } from './TaskTypeSettings';
+import { 
+  LazyDashboard,
+  LazyTaskList,
+  LazyCalendarView,
+  LazyInbox,
+  LazyProjectList,
+  LazyTaskTypeSettings,
+  withLazySuspense
+} from './LazyComponents';
 
 interface AppContentProps {
   currentView: string;
@@ -70,6 +72,14 @@ export const AppContent: React.FC<AppContentProps> = ({
   onCompleteTask,
   onReschedule,
 }) => {
+  // Wrapping des composants avec lazy suspense
+  const Dashboard = withLazySuspense(LazyDashboard);
+  const TaskList = withLazySuspense(LazyTaskList);
+  const CalendarView = withLazySuspense(LazyCalendarView);
+  const Inbox = withLazySuspense(LazyInbox);
+  const ProjectList = withLazySuspense(LazyProjectList);
+  const TaskTypeSettings = withLazySuspense(LazyTaskTypeSettings);
+
   switch (currentView) {
     case 'dashboard':
       return (
