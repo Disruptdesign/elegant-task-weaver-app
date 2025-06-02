@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Plus, Calendar, Clock, FolderOpen, Users, Edit3, Trash2, BookTemplate, FolderPlus } from 'lucide-react';
+import { Plus, Calendar, Clock, FolderOpen, Users, Edit3, Trash2, BookTemplate, FolderPlus, Link } from 'lucide-react';
 import { Project, Task, ProjectTemplate, TemplateTask } from '../types/task';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -35,6 +36,7 @@ export function ProjectList({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>();
   const [activeTab, setActiveTab] = useState<'projects' | 'templates'>('projects');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   
   // États pour les modèles
   const [isTemplateFormOpen, setIsTemplateFormOpen] = useState(false);
@@ -72,6 +74,17 @@ export function ProjectList({
     priority: 'medium' as const,
     estimatedDuration: 60,
     dayOffset: 0,
+    dependencies: [] as string[],
+  });
+
+  // État pour l'édition de tâche de projet
+  const [editingTaskId, setEditingTaskId] = useState<string>('');
+  const [editTaskFormData, setEditTaskFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as const,
+    estimatedDuration: 60,
+    dependencies: [] as string[],
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -179,6 +192,7 @@ export function ProjectList({
       priority: taskFormData.priority,
       estimatedDuration: taskFormData.estimatedDuration,
       dayOffset: taskFormData.dayOffset,
+      dependencies: taskFormData.dependencies,
     };
 
     setTemplateFormData(prev => ({
@@ -192,6 +206,7 @@ export function ProjectList({
       priority: 'medium',
       estimatedDuration: 60,
       dayOffset: 0,
+      dependencies: [],
     });
   };
 
@@ -200,6 +215,38 @@ export function ProjectList({
       ...prev,
       tasks: prev.tasks.filter(task => task.id !== taskId),
     }));
+  };
+
+  const handleEditTaskInProject = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditTaskFormData({
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority,
+      estimatedDuration: task.estimatedDuration,
+      dependencies: task.dependencies || [],
+    });
+  };
+
+  const handleSaveTaskEdit = () => {
+    if (!editingTaskId) return;
+
+    onEditTask(editingTaskId, {
+      title: editTaskFormData.title,
+      description: editTaskFormData.description || undefined,
+      priority: editTaskFormData.priority,
+      estimatedDuration: editTaskFormData.estimatedDuration,
+      dependencies: editTaskFormData.dependencies,
+    });
+
+    setEditingTaskId('');
+    setEditTaskFormData({
+      title: '',
+      description: '',
+      priority: 'medium',
+      estimatedDuration: 60,
+      dependencies: [],
+    });
   };
 
   const handleCreateProject = (e: React.FormEvent) => {
@@ -235,6 +282,12 @@ export function ProjectList({
       deadline: defaultEnd.toISOString().slice(0, 16),
     });
     setIsCreateProjectOpen(true);
+  };
+
+  // Fonction pour obtenir le nom d'une tâche par son ID (pour les dépendances)
+  const getTaskNameById = (taskId: string, tasksList: (Task | TemplateTask)[]) => {
+    const task = tasksList.find(t => t.id === taskId);
+    return task ? task.title : `Tâche ${taskId.slice(0, 8)}...`;
   };
 
   return (
@@ -295,9 +348,9 @@ export function ProjectList({
       {/* Contenu des onglets */}
       {activeTab === 'projects' ? (
         // Liste des projets
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
           {projects.length === 0 ? (
-            <div className="col-span-full text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
+            <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
               <FolderOpen className="mx-auto text-gray-400 mb-4" size={48} />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 Aucun projet
@@ -321,7 +374,7 @@ export function ProjectList({
               return (
                 <div
                   key={project.id}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -380,7 +433,49 @@ export function ProjectList({
                     </div>
                   </div>
 
-                  <div className="text-xs text-gray-500">
+                  {/* Tâches du projet avec dépendances */}
+                  {projectTasks.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <h4 className="font-medium text-gray-900">Tâches du projet :</h4>
+                      {projectTasks.map(task => (
+                        <div key={task.id} className="bg-gray-50 p-3 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-sm font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                  {task.title}
+                                </span>
+                                {task.dependencies && task.dependencies.length > 0 && (
+                                  <div className="flex items-center gap-1 text-xs text-blue-600">
+                                    <Link size={12} />
+                                    <span>{task.dependencies.length} dép.</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {task.priority} • {task.estimatedDuration}min
+                                {task.dependencies && task.dependencies.length > 0 && (
+                                  <div className="mt-1">
+                                    Dépend de: {task.dependencies.map(depId => 
+                                      getTaskNameById(depId, projectTasks)
+                                    ).join(', ')}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleEditTaskInProject(task)}
+                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            >
+                              <Edit3 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="text-xs text-gray-500 mt-4">
                     Créé le {format(project.createdAt, 'dd MMM yyyy', { locale: fr })}
                   </div>
                 </div>
@@ -454,6 +549,33 @@ export function ProjectList({
                     <span>{template.tasks.length} tâche{template.tasks.length > 1 ? 's' : ''}</span>
                   </div>
                 </div>
+
+                {/* Aperçu des tâches du modèle avec dépendances */}
+                {template.tasks.length > 0 && (
+                  <div className="mb-4">
+                    <h5 className="text-xs font-medium text-gray-700 mb-2">Tâches du modèle :</h5>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {template.tasks.slice(0, 3).map(task => (
+                        <div key={task.id} className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                          <div className="flex items-center gap-1">
+                            <span>{task.title}</span>
+                            {task.dependencies && task.dependencies.length > 0 && (
+                              <div className="flex items-center gap-1 text-blue-600">
+                                <Link size={10} />
+                                <span>({task.dependencies.length})</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {template.tasks.length > 3 && (
+                        <div className="text-xs text-gray-500">
+                          ... et {template.tasks.length - 3} autres tâches
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={() => openCreateProject(template)}
@@ -572,7 +694,7 @@ export function ProjectList({
         </div>
       )}
 
-      {/* Formulaire de modèle */}
+      {/* Formulaire de modèle avec dépendances */}
       {isTemplateFormOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -648,7 +770,7 @@ export function ProjectList({
                 </div>
               </div>
 
-              {/* Tâches du modèle */}
+              {/* Tâches du modèle avec dépendances */}
               <div className="space-y-4">
                 <h3 className="font-medium text-gray-900">Tâches du modèle</h3>
                 
@@ -701,6 +823,43 @@ export function ProjectList({
                     </div>
                   </div>
 
+                  {/* Dépendances */}
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Dépendances (tâches qui doivent être terminées avant)</label>
+                    <div className="space-y-2">
+                      {templateFormData.tasks.length > 0 && (
+                        <div className="max-h-24 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                          {templateFormData.tasks.map(task => (
+                            <label key={task.id} className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={taskFormData.dependencies.includes(task.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setTaskFormData({
+                                      ...taskFormData,
+                                      dependencies: [...taskFormData.dependencies, task.id]
+                                    });
+                                  } else {
+                                    setTaskFormData({
+                                      ...taskFormData,
+                                      dependencies: taskFormData.dependencies.filter(id => id !== task.id)
+                                    });
+                                  }
+                                }}
+                                className="rounded"
+                              />
+                              <span>{task.title}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                      {templateFormData.tasks.length === 0 && (
+                        <p className="text-xs text-gray-500">Ajoutez d'abord une tâche pour pouvoir créer des dépendances</p>
+                      )}
+                    </div>
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleAddTask}
@@ -710,15 +869,30 @@ export function ProjectList({
                   </button>
                 </div>
 
-                {/* Liste des tâches */}
+                {/* Liste des tâches avec dépendances */}
                 {templateFormData.tasks.length > 0 && (
                   <div className="space-y-2">
                     {templateFormData.tasks.map(task => (
                       <div key={task.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
                         <div>
-                          <div className="font-medium text-sm text-gray-900">{task.title}</div>
+                          <div className="font-medium text-sm text-gray-900 flex items-center gap-2">
+                            {task.title}
+                            {task.dependencies && task.dependencies.length > 0 && (
+                              <div className="flex items-center gap-1 text-xs text-blue-600">
+                                <Link size={12} />
+                                <span>{task.dependencies.length}</span>
+                              </div>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-500">
                             {task.priority} • {task.estimatedDuration}min • Jour {task.dayOffset}
+                            {task.dependencies && task.dependencies.length > 0 && (
+                              <div className="mt-1">
+                                Dépend de: {task.dependencies.map(depId => 
+                                  getTaskNameById(depId, templateFormData.tasks)
+                                ).join(', ')}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <button
@@ -832,7 +1006,15 @@ export function ProjectList({
                 </h4>
                 <ul className="text-sm text-purple-700 space-y-1">
                   {selectedTemplate.tasks.slice(0, 3).map(task => (
-                    <li key={task.id}>• {task.title}</li>
+                    <li key={task.id} className="flex items-center gap-2">
+                      <span>• {task.title}</span>
+                      {task.dependencies && task.dependencies.length > 0 && (
+                        <div className="flex items-center gap-1 text-xs">
+                          <Link size={10} />
+                          <span>({task.dependencies.length} dép.)</span>
+                        </div>
+                      )}
+                    </li>
                   ))}
                   {selectedTemplate.tasks.length > 3 && (
                     <li>... et {selectedTemplate.tasks.length - 3} autres tâches</li>
@@ -856,6 +1038,133 @@ export function ProjectList({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Formulaire d'édition de tâche de projet */}
+      {editingTaskId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Modifier la tâche
+              </h2>
+              <button
+                onClick={() => setEditingTaskId('')}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Titre de la tâche
+                </label>
+                <input
+                  type="text"
+                  value={editTaskFormData.title}
+                  onChange={(e) => setEditTaskFormData({ ...editTaskFormData, title: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={editTaskFormData.description}
+                  onChange={(e) => setEditTaskFormData({ ...editTaskFormData, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Priorité
+                  </label>
+                  <select
+                    value={editTaskFormData.priority}
+                    onChange={(e) => setEditTaskFormData({ ...editTaskFormData, priority: e.target.value as any })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="low">Basse</option>
+                    <option value="medium">Moyenne</option>
+                    <option value="high">Haute</option>
+                    <option value="urgent">Urgente</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Durée (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={editTaskFormData.estimatedDuration}
+                    onChange={(e) => setEditTaskFormData({ ...editTaskFormData, estimatedDuration: parseInt(e.target.value) || 60 })}
+                    min="15"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Dépendances */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Dépendances (tâches qui doivent être terminées avant)
+                </label>
+                <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-2">
+                  {selectedProjectId && getProjectTasks(selectedProjectId)
+                    .filter(task => task.id !== editingTaskId)
+                    .map(task => (
+                    <label key={task.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={editTaskFormData.dependencies.includes(task.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditTaskFormData({
+                              ...editTaskFormData,
+                              dependencies: [...editTaskFormData.dependencies, task.id]
+                            });
+                          } else {
+                            setEditTaskFormData({
+                              ...editTaskFormData,
+                              dependencies: editTaskFormData.dependencies.filter(id => id !== task.id)
+                            });
+                          }
+                        }}
+                        className="rounded"
+                      />
+                      <span>{task.title}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingTaskId('')}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveTaskEdit}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Sauvegarder
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
