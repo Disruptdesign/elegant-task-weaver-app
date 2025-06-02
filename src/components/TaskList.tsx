@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Task } from '../types/task';
 import { TaskCard } from './TaskCard';
@@ -76,10 +75,15 @@ export function TaskList({
   const pendingTasks = filteredTasks.filter(task => !task.completed);
   const completedTasks = filteredTasks.filter(task => task.completed);
 
+  // Calculer les compteurs sur la base de TOUTES les tâches, pas seulement les filtrées
+  const totalPendingTasks = tasks.filter(task => !task.completed).length;
+  const totalCompletedTasks = tasks.filter(task => task.completed).length;
+  const totalTasks = tasks.length;
+
   const statusFilterOptions = [
-    { value: 'all', label: 'Toutes', count: filteredTasks.length },
-    { value: 'pending', label: 'En cours', count: pendingTasks.length },
-    { value: 'completed', label: 'Terminées', count: completedTasks.length },
+    { value: 'all', label: 'Toutes', count: totalTasks },
+    { value: 'pending', label: 'En cours', count: totalPendingTasks },
+    { value: 'completed', label: 'Terminées', count: totalCompletedTasks },
   ];
 
   return (
@@ -94,11 +98,11 @@ export function TaskList({
           <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
             <span className="flex items-center gap-1 whitespace-nowrap">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              {pendingTasks.length} en cours
+              {totalPendingTasks} en cours
             </span>
             <span className="flex items-center gap-1 whitespace-nowrap">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              {completedTasks.length} terminée{completedTasks.length > 1 ? 's' : ''}
+              {totalCompletedTasks} terminée{totalCompletedTasks > 1 ? 's' : ''}
             </span>
           </div>
         </div>
