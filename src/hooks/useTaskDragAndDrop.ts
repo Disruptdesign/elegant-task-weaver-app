@@ -1,5 +1,5 @@
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Task } from '../types/task';
 
 interface DragState {
@@ -25,29 +25,35 @@ export function useTaskDragAndDrop(
     resizeHandle: null,
   });
 
-  const dragRef = useRef<HTMLDivElement>(null);
+  const currentDragState = useRef(dragState);
+  
+  // Maintenir une référence à jour du state
+  useEffect(() => {
+    currentDragState.current = dragState;
+  }, [dragState]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    console.log('Mouse move event triggered', dragState);
+    const state = currentDragState.current;
+    console.log('Mouse move event triggered', state);
     
-    if (!dragState.taskId || !dragState.startTime || !onUpdateTask) {
+    if (!state.taskId || !state.startTime || !onUpdateTask) {
       console.log('Early return from mousemove - missing data', { 
-        taskId: dragState.taskId, 
-        startTime: dragState.startTime,
+        taskId: state.taskId, 
+        startTime: state.startTime,
         hasUpdateFunction: !!onUpdateTask 
       });
       return;
     }
 
-    const deltaY = e.clientY - dragState.startY;
+    const deltaY = e.clientY - state.startY;
     const minutesDelta = Math.round((deltaY / 64) * 60); // 64px = 1 heure
     
     console.log('Delta calculation:', { deltaY, minutesDelta });
 
-    if (dragState.isDragging) {
+    if (state.isDragging) {
       console.log('Processing drag movement');
       // Déplacer la tâche
-      const newStartTime = new Date(dragState.startTime.getTime() + minutesDelta * 60000);
+      const newStartTime = new Date(state.startTime.getTime() + minutesDelta * 60000);
       
       // Contraindre aux heures de travail (9h-18h)
       const hour = newStartTime.getHours();
@@ -64,34 +70,34 @@ export function useTaskDragAndDrop(
       newStartTime.setMinutes(roundedMinutes, 0, 0);
 
       console.log('Updating task position:', { 
-        taskId: dragState.taskId, 
+        taskId: state.taskId, 
         newStartTime, 
-        originalDuration: dragState.originalDuration 
+        originalDuration: state.originalDuration 
       });
 
-      onUpdateTask(dragState.taskId, {
+      onUpdateTask(state.taskId, {
         scheduledStart: newStartTime,
-        scheduledEnd: new Date(newStartTime.getTime() + dragState.originalDuration * 60000),
+        scheduledEnd: new Date(newStartTime.getTime() + state.originalDuration * 60000),
       });
-    } else if (dragState.isResizing) {
+    } else if (state.isResizing) {
       console.log('Processing resize');
       // Redimensionner la tâche
-      let newDuration = dragState.originalDuration;
+      let newDuration = state.originalDuration;
       
-      if (dragState.resizeHandle === 'bottom') {
-        newDuration = Math.max(15, dragState.originalDuration + minutesDelta);
-      } else if (dragState.resizeHandle === 'top') {
-        newDuration = Math.max(15, dragState.originalDuration - minutesDelta);
-        if (newDuration !== dragState.originalDuration) {
-          const newStartTime = new Date(dragState.startTime.getTime() + (dragState.originalDuration - newDuration) * 60000);
+      if (state.resizeHandle === 'bottom') {
+        newDuration = Math.max(15, state.originalDuration + minutesDelta);
+      } else if (state.resizeHandle === 'top') {
+        newDuration = Math.max(15, state.originalDuration - minutesDelta);
+        if (newDuration !== state.originalDuration) {
+          const newStartTime = new Date(state.startTime.getTime() + (state.originalDuration - newDuration) * 60000);
           
           console.log('Updating task resize (top):', { 
-            taskId: dragState.taskId, 
+            taskId: state.taskId, 
             newStartTime, 
             newDuration 
           });
           
-          onUpdateTask(dragState.taskId, {
+          onUpdateTask(state.taskId, {
             scheduledStart: newStartTime,
             scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
             estimatedDuration: newDuration,
@@ -100,19 +106,19 @@ export function useTaskDragAndDrop(
         }
       }
 
-      if (newDuration !== dragState.originalDuration) {
+      if (newDuration !== state.originalDuration) {
         console.log('Updating task resize (bottom):', { 
-          taskId: dragState.taskId, 
+          taskId: state.taskId, 
           newDuration 
         });
         
-        onUpdateTask(dragState.taskId, {
+        onUpdateTask(state.taskId, {
           estimatedDuration: newDuration,
-          scheduledEnd: new Date(dragState.startTime.getTime() + newDuration * 60000),
+          scheduledEnd: new Date(state.startTime.getTime() + newDuration * 60000),
         });
       }
     }
-  }, [dragState, onUpdateTask]);
+  }, [onUpdateTask]);
 
   const handleMouseUp = useCallback(() => {
     console.log('Mouse up event triggered, cleaning up drag state');
@@ -127,13 +133,14 @@ export function useTaskDragAndDrop(
       resizeHandle: null,
     });
 
+    // Supprimer les event listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
     
     console.log('Event listeners removed');
   }, [handleMouseMove]);
 
-  const startDrag = (
+  const startDrag = useCallback((
     e: React.MouseEvent,
     task: Task,
     action: 'move' | 'resize',
@@ -167,22 +174,23 @@ export function useTaskDragAndDrop(
     console.log('Setting drag state:', newDragState);
     setDragState(newDragState);
 
-    // Ajouter les event listeners
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    // Ajouter les event listeners immédiatement
+    document.addEventListener('mousemove', handleMouseMove, { passive: false });
+    document.addEventListener('mouseup', handleMouseUp, { passive: false });
     
     console.log('Event listeners added');
-  };
+  }, [handleMouseMove, handleMouseUp, onUpdateTask]);
 
-  // Cleanup sur unmount
-  const cleanup = useCallback(() => {
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+  // Cleanup automatique sur unmount
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
   }, [handleMouseMove, handleMouseUp]);
 
   return {
     dragState,
     startDrag,
-    cleanup,
   };
 }

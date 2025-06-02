@@ -27,7 +27,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
   console.log('CalendarView: onUpdateTask function provided:', !!onUpdateTask);
 
   // Utiliser le hook de drag & drop seulement si onUpdateTask est fourni
-  const { dragState, startDrag, cleanup } = useTaskDragAndDrop(
+  const { dragState, startDrag } = useTaskDragAndDrop(
     onUpdateTask || (() => {
       console.log('No update function provided, drag & drop disabled');
     })
@@ -35,8 +35,10 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
 
   // Cleanup lors du démontage du composant
   useEffect(() => {
-    return cleanup;
-  }, [cleanup]);
+    return () => {
+      console.log('Cleanup called');
+    };
+  }, []);
 
   const getWeekDays = () => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -151,6 +153,7 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
       return;
     }
     
+    console.log('Calling startDrag with:', { taskId: task.id, action, resizeHandle });
     startDrag(e, task, action, resizeHandle);
   };
 
@@ -381,23 +384,29 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                           {/* Handle de redimensionnement haut */}
                           {onUpdateTask && position.height > 40 && (
                             <div
-                              className="absolute top-0 left-0 right-0 h-2 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                              onMouseDown={(e) => handleTaskDragStart(e, task, 'resize', 'top')}
+                              className="absolute top-0 left-0 right-0 h-2 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-200 hover:bg-gray-300"
+                              onMouseDown={(e) => {
+                                console.log('Top resize handle clicked');
+                                handleTaskDragStart(e, task, 'resize', 'top');
+                              }}
                             >
-                              <div className="w-8 h-1 bg-gray-400 rounded"></div>
+                              <div className="w-8 h-0.5 bg-gray-500 rounded"></div>
                             </div>
                           )}
 
                           {/* Contenu de la tâche avec handle de déplacement */}
                           <div
-                            className="p-2 h-full flex flex-col justify-between"
-                            onMouseDown={onUpdateTask ? (e) => handleTaskDragStart(e, task, 'move') : undefined}
+                            className="p-2 h-full flex flex-col justify-between cursor-move"
+                            onMouseDown={onUpdateTask ? (e) => {
+                              console.log('Task content clicked for drag');
+                              handleTaskDragStart(e, task, 'move');
+                            } : undefined}
                           >
                             <div className="flex items-start gap-1">
                               {onUpdateTask && (
                                 <GripVertical 
                                   size={12} 
-                                  className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5 cursor-move" 
+                                  className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" 
                                 />
                               )}
                               <div className="text-xs font-medium line-clamp-2 text-gray-900 flex-1">
@@ -418,10 +427,13 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
                           {/* Handle de redimensionnement bas */}
                           {onUpdateTask && position.height > 40 && (
                             <div
-                              className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                              onMouseDown={(e) => handleTaskDragStart(e, task, 'resize', 'bottom')}
+                              className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-gray-200 hover:bg-gray-300"
+                              onMouseDown={(e) => {
+                                console.log('Bottom resize handle clicked');
+                                handleTaskDragStart(e, task, 'resize', 'bottom');
+                              }}
                             >
-                              <div className="w-8 h-1 bg-gray-400 rounded"></div>
+                              <div className="w-8 h-0.5 bg-gray-500 rounded"></div>
                             </div>
                           )}
                         </div>
@@ -533,11 +545,11 @@ export function CalendarView({ tasks, events, onUpdateTask }: CalendarViewProps)
               <div className="text-xs text-gray-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <GripVertical size={12} className="text-gray-400" />
-                  <span>Glisser pour déplacer la tâche dans le temps</span>
+                  <span>Glisser le contenu pour déplacer la tâche dans le temps</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ArrowUpDown size={12} className="text-gray-400" />
-                  <span>Redimensionner en tirant les bords haut/bas pour ajuster la durée</span>
+                  <span>Glisser les bords gris haut/bas pour ajuster la durée</span>
                 </div>
                 <div>• Cliquer pour éditer les détails de la tâche</div>
                 <div>• Les modifications maintiennent l'auto-planification pour les autres tâches</div>
