@@ -8,6 +8,7 @@ import { AddItemForm } from './AddItemForm';
 import { useCalendarDragAndDrop } from '../hooks/useCalendarDragAndDrop';
 import { useAlgorithmicScheduler } from '../hooks/useAlgorithmicScheduler';
 import { Button } from './ui/button';
+import { ScrollArea } from './ui/scroll-area';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -597,7 +598,7 @@ export function CalendarView({
 
       {viewMode === 'week' ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* En-tête des jours - Alignement corrigé */}
+          {/* En-tête des jours - Alignement parfait avec ScrollArea */}
           <div className="grid grid-cols-8 border-b border-gray-200">
             <div className="p-3 text-center text-xs font-medium text-gray-500 border-r border-gray-200 bg-gray-50/30">
               GMT+1
@@ -627,77 +628,160 @@ export function CalendarView({
             })}
           </div>
 
-          {/* Grille horaire - Alignement corrigé */}
-          <div className="relative max-h-[80vh] overflow-y-auto">
-            <div className="grid grid-cols-8">
-              {/* Colonne des heures - Largeur fixe et alignement parfait */}
-              <div className="bg-gray-50/30 border-r border-gray-200">
-                {allDayHours.map(hour => (
-                  <div key={hour} className="h-16 border-b border-gray-100 flex items-start justify-center pt-1">
-                    <span className="text-xs font-medium text-gray-400">
-                      {hour.toString().padStart(2, '0')}:00
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Colonnes des jours - Alignement parfait */}
-              {getWeekDays().map((day, dayIndex) => (
-                <div 
-                  key={dayIndex} 
-                  className="relative border-r border-gray-200 last:border-r-0 bg-white hover:bg-gray-50/30 transition-colors"
-                >
-                  {/* Lignes horaires */}
+          {/* Grille horaire avec ScrollArea pour gérer parfaitement la scrollbar */}
+          <div className="relative">
+            <ScrollArea className="h-[80vh]">
+              <div className="grid grid-cols-8">
+                {/* Colonne des heures - Largeur et alignement parfaits */}
+                <div className="bg-gray-50/30 border-r border-gray-200">
                   {allDayHours.map(hour => (
-                    <div
-                      key={hour}
-                      className="h-16 border-b border-gray-100"
-                    />
+                    <div key={hour} className="h-16 border-b border-gray-100 flex items-start justify-center pt-1">
+                      <span className="text-xs font-medium text-gray-400">
+                        {hour.toString().padStart(2, '0')}:00
+                      </span>
+                    </div>
                   ))}
+                </div>
 
-                  {/* Événements - Style Notion avec contenu aligné en haut */}
-                  <div className="absolute inset-0 p-1 pointer-events-none">
-                    {getEventsForDay(day)
-                      .filter(event => !event.allDay)
-                      .map(event => {
-                        const position = getEventPosition(event);
-                        if (!position) return null;
+                {/* Colonnes des jours - Alignement parfait garanti */}
+                {getWeekDays().map((day, dayIndex) => (
+                  <div 
+                    key={dayIndex} 
+                    className="relative border-r border-gray-200 last:border-r-0 bg-white hover:bg-gray-50/30 transition-colors"
+                  >
+                    {/* Lignes horaires */}
+                    {allDayHours.map(hour => (
+                      <div
+                        key={hour}
+                        className="h-16 border-b border-gray-100"
+                      />
+                    ))}
 
-                        const isBeingDragged = dragState.itemId === event.id && dragState.itemType === 'event';
+                    {/* Événements - Style Notion avec contenu aligné en haut */}
+                    <div className="absolute inset-0 p-1 pointer-events-none">
+                      {getEventsForDay(day)
+                        .filter(event => !event.allDay)
+                        .map(event => {
+                          const position = getEventPosition(event);
+                          if (!position) return null;
+
+                          const isBeingDragged = dragState.itemId === event.id && dragState.itemType === 'event';
+                          
+                          // Calculer le nombre de lignes possible pour le titre
+                          const lineHeight = 14; // hauteur d'une ligne en pixels
+                          const padding = 8; // padding vertical total
+                          const timeHeight = position.height > 35 ? 14 : 0; // hauteur de l'heure si affichée
+                          const availableHeight = position.height - padding - timeHeight;
+                          const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
+
+                          return (
+                            <div
+                              key={`event-${event.id}`}
+                              className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm group ${
+                                isBeingDragged 
+                                  ? 'opacity-80 shadow-lg z-50' 
+                                  : 'hover:shadow-md'
+                              }`}
+                              style={{
+                                top: `${position.top}px`,
+                                height: `${position.height}px`,
+                                left: '2px',
+                                right: '2px',
+                                backgroundColor: '#f0f9ff',
+                                border: '1px solid #e0f2fe',
+                              }}
+                              onMouseDown={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const relativeY = e.clientY - rect.top;
+                                
+                                if (relativeY <= 4 && onUpdateEvent) {
+                                  handleEventMouseDown(e, event, 'resize', 'top');
+                                } else if (relativeY >= rect.height - 4 && onUpdateEvent) {
+                                  handleEventMouseDown(e, event, 'resize', 'bottom');
+                                } else if (onUpdateEvent) {
+                                  handleEventMouseDown(e, event, 'move');
+                                }
+                              }}
+                            >
+                              {/* Zone de redimensionnement haut */}
+                              <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
+                              
+                              {/* Contenu aligné en haut */}
+                              <div className="h-full px-2 py-1 flex flex-col justify-start">
+                                <div 
+                                  className="text-xs font-medium text-sky-800 leading-tight"
+                                  style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: maxLines,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                    wordBreak: 'break-word',
+                                  }}
+                                >
+                                  {event.title}
+                                </div>
+                                {position.height > 35 && (
+                                  <div className="text-xs text-sky-600 leading-tight mt-0.5 opacity-75 flex-shrink-0">
+                                    {format(new Date(event.startDate), 'HH:mm')}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Zone de redimensionnement bas */}
+                              <div className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {/* Tâches - Style Notion avec couleurs de fond corrigées */}
+                    <div className="absolute inset-0 p-1 pointer-events-none">
+                      {getTasksForDay(day).map(task => {
+                        const position = getTaskPosition(task);
+                        if (!position) {
+                          console.log('No position calculated for task:', task.title);
+                          return null;
+                        }
+
+                        const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
+                        const isCompleted = task.completed;
+                        const taskStatus = getTaskStatus(task);
+                        const statusColors = getTaskStatusColors(taskStatus);
                         
                         // Calculer le nombre de lignes possible pour le titre
-                        const lineHeight = 14; // hauteur d'une ligne en pixels
-                        const padding = 8; // padding vertical total
-                        const timeHeight = position.height > 35 ? 14 : 0; // hauteur de l'heure si affichée
+                        const lineHeight = 14;
+                        const padding = 8;
+                        const checkboxWidth = 20;
+                        const timeHeight = position.height > 35 ? 14 : 0;
                         const availableHeight = position.height - padding - timeHeight;
                         const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
 
                         return (
                           <div
-                            key={`event-${event.id}`}
+                            key={`task-${task.id}`}
                             className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm group ${
                               isBeingDragged 
                                 ? 'opacity-80 shadow-lg z-50' 
                                 : 'hover:shadow-md'
-                            }`}
+                            } ${isCompleted ? 'opacity-60' : ''}`}
                             style={{
                               top: `${position.top}px`,
                               height: `${position.height}px`,
                               left: '2px',
                               right: '2px',
-                              backgroundColor: '#f0f9ff',
-                              border: '1px solid #e0f2fe',
+                              backgroundColor: isCompleted ? '#f8f8f8' : statusColors.bgColor,
+                              border: `1px solid ${isCompleted ? '#e5e5e5' : statusColors.borderColor}`,
                             }}
                             onMouseDown={(e) => {
                               const rect = e.currentTarget.getBoundingClientRect();
                               const relativeY = e.clientY - rect.top;
                               
-                              if (relativeY <= 4 && onUpdateEvent) {
-                                handleEventMouseDown(e, event, 'resize', 'top');
-                              } else if (relativeY >= rect.height - 4 && onUpdateEvent) {
-                                handleEventMouseDown(e, event, 'resize', 'bottom');
-                              } else if (onUpdateEvent) {
-                                handleEventMouseDown(e, event, 'move');
+                              if (relativeY <= 4 && onUpdateTask) {
+                                handleTaskMouseDown(e, task, 'resize', 'top');
+                              } else if (relativeY >= rect.height - 4 && onUpdateTask) {
+                                handleTaskMouseDown(e, task, 'resize', 'bottom');
+                              } else if (onUpdateTask) {
+                                handleTaskMouseDown(e, task, 'move');
                               }
                             }}
                           >
@@ -705,24 +789,49 @@ export function CalendarView({
                             <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
                             
                             {/* Contenu aligné en haut */}
-                            <div className="h-full px-2 py-1 flex flex-col justify-start">
-                              <div 
-                                className="text-xs font-medium text-sky-800 leading-tight"
-                                style={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: maxLines,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  wordBreak: 'break-word',
-                                }}
-                              >
-                                {event.title}
-                              </div>
-                              {position.height > 35 && (
-                                <div className="text-xs text-sky-600 leading-tight mt-0.5 opacity-75 flex-shrink-0">
-                                  {format(new Date(event.startDate), 'HH:mm')}
-                                </div>
+                            <div className="h-full px-2 py-1 flex items-start gap-1.5">
+                              {/* Checkbox minimaliste style Notion */}
+                              {onUpdateTask && (
+                                <button
+                                  className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 ${
+                                    isCompleted 
+                                      ? 'bg-gray-400 border-gray-400' 
+                                      : 'bg-white border-gray-300 hover:border-gray-400'
+                                  }`}
+                                  onClick={(e) => handleTaskCompletion(task, e)}
+                                >
+                                  {isCompleted && (
+                                    <Check size={10} className="text-white m-auto" />
+                                  )}
+                                </button>
                               )}
+                              
+                              {/* Contenu */}
+                              <div className="flex-1 min-w-0 flex flex-col justify-start">
+                                <div 
+                                  className={`text-xs font-medium leading-tight ${
+                                    isCompleted 
+                                      ? 'text-gray-500 line-through' 
+                                      : statusColors.text
+                                  }`}
+                                  style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: maxLines,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                    wordBreak: 'break-word',
+                                  }}
+                                >
+                                  {task.title}
+                                </div>
+                                {position.height > 35 && (
+                                  <div className={`text-xs leading-tight mt-0.5 opacity-75 flex-shrink-0 ${
+                                    isCompleted ? 'text-gray-400' : statusColors.text
+                                  }`}>
+                                    {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                             
                             {/* Zone de redimensionnement bas */}
@@ -730,117 +839,11 @@ export function CalendarView({
                           </div>
                         );
                       })}
+                    </div>
                   </div>
-
-                  {/* Tâches - Style Notion avec couleurs de fond corrigées */}
-                  <div className="absolute inset-0 p-1 pointer-events-none">
-                    {getTasksForDay(day).map(task => {
-                      const position = getTaskPosition(task);
-                      if (!position) {
-                        console.log('No position calculated for task:', task.title);
-                        return null;
-                      }
-
-                      const isBeingDragged = dragState.itemId === task.id && dragState.itemType === 'task';
-                      const isCompleted = task.completed;
-                      const taskStatus = getTaskStatus(task);
-                      const statusColors = getTaskStatusColors(taskStatus);
-                      
-                      // Calculer le nombre de lignes possible pour le titre
-                      const lineHeight = 14;
-                      const padding = 8;
-                      const checkboxWidth = 20;
-                      const timeHeight = position.height > 35 ? 14 : 0;
-                      const availableHeight = position.height - padding - timeHeight;
-                      const maxLines = Math.min(3, Math.floor(availableHeight / lineHeight));
-
-                      return (
-                        <div
-                          key={`task-${task.id}`}
-                          className={`absolute rounded-lg transition-all duration-200 cursor-pointer pointer-events-auto select-none shadow-sm group ${
-                            isBeingDragged 
-                              ? 'opacity-80 shadow-lg z-50' 
-                              : 'hover:shadow-md'
-                          } ${isCompleted ? 'opacity-60' : ''}`}
-                          style={{
-                            top: `${position.top}px`,
-                            height: `${position.height}px`,
-                            left: '2px',
-                            right: '2px',
-                            backgroundColor: isCompleted ? '#f8f8f8' : statusColors.bgColor,
-                            border: `1px solid ${isCompleted ? '#e5e5e5' : statusColors.borderColor}`,
-                          }}
-                          onMouseDown={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const relativeY = e.clientY - rect.top;
-                            
-                            if (relativeY <= 4 && onUpdateTask) {
-                              handleTaskMouseDown(e, task, 'resize', 'top');
-                            } else if (relativeY >= rect.height - 4 && onUpdateTask) {
-                              handleTaskMouseDown(e, task, 'resize', 'bottom');
-                            } else if (onUpdateTask) {
-                              handleTaskMouseDown(e, task, 'move');
-                            }
-                          }}
-                        >
-                          {/* Zone de redimensionnement haut */}
-                          <div className="absolute top-0 left-0 right-0 h-1 cursor-n-resize opacity-0 group-hover:opacity-100 transition-opacity" />
-                          
-                          {/* Contenu aligné en haut */}
-                          <div className="h-full px-2 py-1 flex items-start gap-1.5">
-                            {/* Checkbox minimaliste style Notion */}
-                            {onUpdateTask && (
-                              <button
-                                className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 ${
-                                  isCompleted 
-                                    ? 'bg-gray-400 border-gray-400' 
-                                    : 'bg-white border-gray-300 hover:border-gray-400'
-                                }`}
-                                onClick={(e) => handleTaskCompletion(task, e)}
-                              >
-                                {isCompleted && (
-                                  <Check size={10} className="text-white m-auto" />
-                                )}
-                              </button>
-                            )}
-                            
-                            {/* Contenu */}
-                            <div className="flex-1 min-w-0 flex flex-col justify-start">
-                              <div 
-                                className={`text-xs font-medium leading-tight ${
-                                  isCompleted 
-                                    ? 'text-gray-500 line-through' 
-                                    : statusColors.text
-                                }`}
-                                style={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: maxLines,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  wordBreak: 'break-word',
-                                }}
-                              >
-                                {task.title}
-                              </div>
-                              {position.height > 35 && (
-                                <div className={`text-xs leading-tight mt-0.5 opacity-75 flex-shrink-0 ${
-                                  isCompleted ? 'text-gray-400' : statusColors.text
-                                }`}>
-                                  {task.scheduledStart && format(new Date(task.scheduledStart), 'HH:mm')}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Zone de redimensionnement bas */}
-                          <div className="absolute bottom-0 left-0 right-0 h-1 cursor-s-resize opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         </div>
       ) : (
