@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { Dashboard } from '../components/Dashboard';
@@ -9,7 +8,9 @@ import { ProjectList } from '../components/ProjectList';
 import { TaskTypeSettings } from '../components/TaskTypeSettings';
 import { AddItemForm } from '../components/AddItemForm';
 import { QuickInbox } from '../components/QuickInbox';
+import { SchedulerControls } from '../components/SchedulerControls';
 import { useTasks } from '../hooks/useTasks';
+import { Task } from '../types/task';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -89,10 +90,35 @@ const Index = () => {
     }
   };
 
+  const handleTasksUpdate = (updatedTasks: Task[]) => {
+    console.log('🔄 Mise à jour des tâches depuis le planificateur');
+    updatedTasks.forEach(task => {
+      const existingTask = tasks.find(t => t.id === task.id);
+      if (existingTask && (
+        task.scheduledStart?.getTime() !== existingTask.scheduledStart?.getTime() ||
+        task.scheduledEnd?.getTime() !== existingTask.scheduledEnd?.getTime()
+      )) {
+        updateTask(task.id, {
+          scheduledStart: task.scheduledStart,
+          scheduledEnd: task.scheduledEnd
+        });
+      }
+    });
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard tasks={tasks} events={events} onEditTask={updateTask} onEditEvent={updateEvent} />;
+        return (
+          <div className="space-y-6">
+            <SchedulerControls 
+              tasks={tasks} 
+              events={events} 
+              onTasksUpdate={handleTasksUpdate}
+            />
+            <Dashboard tasks={tasks} events={events} onEditTask={updateTask} onEditEvent={updateEvent} />
+          </div>
+        );
       case 'tasks':
         return (
           <TaskList

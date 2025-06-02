@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Task, Event, InboxItem, Project, TaskType } from '../types/task';
+import { useAlgorithmicScheduler } from './useAlgorithmicScheduler';
 
 export interface UseTasksReturn {
   tasks: Task[];
@@ -110,6 +111,9 @@ export function useTasks(): UseTasksReturn {
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Ajouter le planificateur algorithmique
+  const { scheduleAllTasks, rescheduleAllTasks, isScheduling } = useAlgorithmicScheduler();
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -286,7 +290,38 @@ export function useTasks(): UseTasksReturn {
     }
   }, [filter, isInitialized]);
 
-  // Enhanced task creation with better ID generation
+  // Fonction pour déclencher la planification automatique
+  const triggerAutoScheduling = useCallback(async () => {
+    if (!isInitialized || isScheduling) return;
+    
+    console.log('🎯 Déclenchement de la planification automatique');
+    const scheduledTasks = await scheduleAllTasks(tasks, events);
+    
+    // Mettre à jour uniquement si il y a des changements
+    const hasChanges = scheduledTasks.some((task, index) => {
+      const originalTask = tasks[index];
+      return originalTask && (
+        task.scheduledStart?.getTime() !== originalTask.scheduledStart?.getTime() ||
+        task.scheduledEnd?.getTime() !== originalTask.scheduledEnd?.getTime()
+      );
+    });
+
+    if (hasChanges) {
+      console.log('📅 Mise à jour des tâches avec nouvelle planification');
+      setTasks(scheduledTasks);
+    }
+  }, [tasks, events, isInitialized, isScheduling, scheduleAllTasks]);
+
+  // Déclencher la planification quand les tâches ou événements changent
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      triggerAutoScheduling();
+    }, 1000); // Délai pour éviter trop d'appels
+
+    return () => clearTimeout(timeoutId);
+  }, [triggerAutoScheduling]);
+
+  // Enhanced task creation with automatic scheduling
   const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
     const newTask: Task = {
       ...taskData,
@@ -296,7 +331,7 @@ export function useTasks(): UseTasksReturn {
       updatedAt: new Date(),
     };
     
-    console.log('➕ Ajout nouvelle tâche:', newTask.title);
+    console.log('➕ Ajout nouvelle tâche:', newTask.title, '- Planification automatique va se déclencher');
     setTasks(prev => {
       const updated = [...prev, newTask];
       console.log('📊 Total tâches après ajout:', updated.length);
@@ -314,7 +349,7 @@ export function useTasks(): UseTasksReturn {
   };
 
   const deleteTask = (id: string) => {
-    console.log('🗑️ Suppression tâche:', id);
+    console.log('🗑️ Suppression tâche:', id, '- Replanification va se déclencher');
     setTasks(prev => {
       const updated = prev.filter(task => task.id !== id);
       console.log('📊 Total tâches après suppression:', updated.length);
@@ -330,7 +365,7 @@ export function useTasks(): UseTasksReturn {
       updatedAt: new Date(),
     };
     
-    console.log('➕ Ajout nouvel événement:', newEvent.title);
+    console.log('➕ Ajout nouvel événement:', newEvent.title, '- Replanification va se déclencher');
     setEvents(prev => {
       const updated = [...prev, newEvent];
       console.log('📊 Total événements après ajout:', updated.length);
@@ -339,7 +374,7 @@ export function useTasks(): UseTasksReturn {
   };
 
   const updateEvent = (id: string, updates: Partial<Event>) => {
-    console.log('✏️ Mise à jour événement:', id, updates);
+    console.log('✏️ Mise à jour événement:', id, updates, '- Replanification va se déclencher');
     setEvents(prev => prev.map(event => 
       event.id === id 
         ? { ...event, ...updates, updatedAt: new Date() }
@@ -348,7 +383,7 @@ export function useTasks(): UseTasksReturn {
   };
 
   const deleteEvent = (id: string) => {
-    console.log('🗑️ Suppression événement:', id);
+    console.log('🗑️ Suppression événement:', id, '- Replanification va se déclencher');
     setEvents(prev => {
       const updated = prev.filter(event => event.id !== id);
       console.log('📊 Total événements après suppression:', updated.length);
@@ -425,13 +460,14 @@ export function useTasks(): UseTasksReturn {
     setTaskTypes(prev => prev.filter(taskType => taskType.id !== id));
   };
 
-  // Debug final state
+  // Debug final state with scheduling info
   console.log('🔍 État final useTasks:', { 
     tasks: tasks.length, 
     events: events.length,
     tasksWithSchedule: tasks.filter(t => t.scheduledStart).length,
     eventsToday: events.filter(e => new Date(e.startDate).toDateString() === new Date().toDateString()).length,
-    isInitialized
+    isInitialized,
+    isScheduling
   });
 
   return {
