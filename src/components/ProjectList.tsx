@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Calendar, Clock, FolderOpen, Users, Edit3, Trash2, BookTemplate, FolderPlus, Link } from 'lucide-react';
+import { Plus, Calendar, Clock, FolderOpen, Users, Edit3, Trash2, BookTemplate, FolderPlus, Link, ChevronDown, ChevronRight } from 'lucide-react';
 import { Project, Task, ProjectTemplate, TemplateTask, Priority } from '../types/task';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 interface ProjectListProps {
   projects: Project[];
@@ -36,6 +37,7 @@ export function ProjectList({
   const [editingProject, setEditingProject] = useState<Project | undefined>();
   const [activeTab, setActiveTab] = useState<'projects' | 'templates'>('projects');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   
   // États pour les modèles
   const [isTemplateFormOpen, setIsTemplateFormOpen] = useState(false);
@@ -134,6 +136,18 @@ export function ProjectList({
 
   const getProjectTasks = (projectId: string) => {
     return tasks.filter(task => task.projectId === projectId);
+  };
+
+  const toggleProjectTasks = (projectId: string) => {
+    setExpandedProjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectId)) {
+        newSet.delete(projectId);
+      } else {
+        newSet.add(projectId);
+      }
+      return newSet;
+    });
   };
 
   // Fonctions pour les modèles
@@ -372,6 +386,7 @@ export function ProjectList({
               const projectTasks = getProjectTasks(project.id);
               const completedTasks = projectTasks.filter(task => task.completed);
               const progress = projectTasks.length > 0 ? (completedTasks.length / projectTasks.length) * 100 : 0;
+              const isExpanded = expandedProjects.has(project.id);
 
               return (
                 <div
@@ -435,46 +450,61 @@ export function ProjectList({
                     </div>
                   </div>
 
-                  {/* Tâches du projet avec dépendances */}
+                  {/* Bouton pour afficher/masquer les tâches */}
                   {projectTasks.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <h4 className="font-medium text-gray-900">Tâches du projet :</h4>
-                      {projectTasks.map(task => (
-                        <div key={task.id} className="bg-gray-50 p-3 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className={`text-sm font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                                  {task.title}
-                                </span>
-                                {task.dependencies && task.dependencies.length > 0 && (
-                                  <div className="flex items-center gap-1 text-xs text-blue-600">
-                                    <Link size={12} />
-                                    <span>{task.dependencies.length} dép.</span>
+                    <Collapsible open={isExpanded} onOpenChange={() => toggleProjectTasks(project.id)}>
+                      <CollapsibleTrigger asChild>
+                        <button className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors mb-2">
+                          {isExpanded ? (
+                            <ChevronDown size={16} />
+                          ) : (
+                            <ChevronRight size={16} />
+                          )}
+                          {isExpanded ? 'Masquer les tâches' : 'Afficher les tâches'}
+                          <span className="text-gray-500">({projectTasks.length})</span>
+                        </button>
+                      </CollapsibleTrigger>
+
+                      <CollapsibleContent className="space-y-2">
+                        <div className="mt-2 space-y-2">
+                          {projectTasks.map(task => (
+                            <div key={task.id} className="bg-gray-50 p-3 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-sm font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                      {task.title}
+                                    </span>
+                                    {task.dependencies && task.dependencies.length > 0 && (
+                                      <div className="flex items-center gap-1 text-xs text-blue-600">
+                                        <Link size={12} />
+                                        <span>{task.dependencies.length} dép.</span>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                {task.priority} • {task.estimatedDuration}min
-                                {task.dependencies && task.dependencies.length > 0 && (
-                                  <div className="mt-1">
-                                    <span className="font-medium">Dépend de:</span> {task.dependencies.map(depId => 
-                                      getTaskNameById(depId, projectTasks)
-                                    ).join(', ')}
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {task.priority} • {task.estimatedDuration}min
+                                    {task.dependencies && task.dependencies.length > 0 && (
+                                      <div className="mt-1">
+                                        <span className="font-medium">Dépend de:</span> {task.dependencies.map(depId => 
+                                          getTaskNameById(depId, projectTasks)
+                                        ).join(', ')}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
+                                </div>
+                                <button
+                                  onClick={() => handleEditTaskInProject(task)}
+                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                >
+                                  <Edit3 size={12} />
+                                </button>
                               </div>
                             </div>
-                            <button
-                              onClick={() => handleEditTaskInProject(task)}
-                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            >
-                              <Edit3 size={12} />
-                            </button>
-                          </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
 
                   <div className="text-xs text-gray-500 mt-4">
