@@ -38,6 +38,17 @@ const Index = () => {
     deleteTaskType,
   } = useTasks();
 
+  // Debug logs to check data loading
+  console.log('Index: Current data state:', {
+    tasks: tasks.length,
+    events: events.length,
+    projects: projects.length,
+    taskTypes: taskTypes.length,
+    isAddFormOpen,
+    projectsDetailed: projects.map(p => ({ id: p.id, title: p.title })),
+    taskTypesDetailed: taskTypes.map(t => ({ id: t.id, name: t.name }))
+  });
+
   console.log('Index: Tasks loaded:', tasks.length);
   console.log('Index: Events loaded:', events.length);
   console.log('Index: Projects loaded:', projects.length);
@@ -151,6 +162,12 @@ const Index = () => {
         return <Dashboard tasks={tasks} events={events} onEditTask={updateTask} onEditEvent={updateEvent} />;
     }
   };
+
+  console.log('Index: Before rendering AddItemForm with props:', {
+    projects: projects.length,
+    taskTypes: taskTypes.length,
+    isAddFormOpen
+  });
 
   return (
     <>

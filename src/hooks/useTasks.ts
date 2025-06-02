@@ -181,8 +181,13 @@ export function useTasks(): UseTasksReturn {
         console.log('✅ Éléments inbox chargés:', parsedInboxItems.length);
       }
 
-      // Projects
+      // Projects - Enhanced debugging
       const savedProjects = parseStoredData<any>('projects', []);
+      console.log('🔍 Projects from localStorage:', {
+        found: savedProjects.length,
+        rawData: savedProjects
+      });
+      
       if (savedProjects.length > 0) {
         const parsedProjects = savedProjects.map((project: any) => ({
           ...project,
@@ -192,14 +197,29 @@ export function useTasks(): UseTasksReturn {
           updatedAt: parseDate(project.updatedAt),
         }));
         setProjects(parsedProjects);
-        console.log('✅ Projets chargés:', parsedProjects.length);
+        console.log('✅ Projets chargés et traités:', {
+          count: parsedProjects.length,
+          projects: parsedProjects.map(p => ({ id: p.id, title: p.title }))
+        });
+      } else {
+        console.log('❌ Aucun projet trouvé dans localStorage');
       }
 
-      // Task Types
+      // Task Types - Enhanced debugging
       const savedTaskTypes = parseStoredData<any>('taskTypes', []);
+      console.log('🔍 TaskTypes from localStorage:', {
+        found: savedTaskTypes.length,
+        rawData: savedTaskTypes
+      });
+      
       if (savedTaskTypes.length > 0) {
         setTaskTypes(savedTaskTypes);
-        console.log('✅ Types de tâches chargés:', savedTaskTypes.length);
+        console.log('✅ Types de tâches chargés et traités:', {
+          count: savedTaskTypes.length,
+          taskTypes: savedTaskTypes.map(t => ({ id: t.id, name: t.name }))
+        });
+      } else {
+        console.log('❌ Aucun type de tâche trouvé dans localStorage');
       }
 
       // Filter
@@ -460,10 +480,18 @@ export function useTasks(): UseTasksReturn {
     setTaskTypes(prev => prev.filter(taskType => taskType.id !== id));
   };
 
-  // Debug final state with scheduling info
-  console.log('🔍 État final useTasks:', { 
+  // Enhanced debug final state
+  console.log('🔍 État final useTasks (Enhanced):', { 
     tasks: tasks.length, 
     events: events.length,
+    projects: {
+      count: projects.length,
+      details: projects.map(p => ({ id: p.id, title: p.title }))
+    },
+    taskTypes: {
+      count: taskTypes.length,
+      details: taskTypes.map(t => ({ id: t.id, name: t.name }))
+    },
     tasksWithSchedule: tasks.filter(t => t.scheduledStart).length,
     eventsToday: events.filter(e => new Date(e.startDate).toDateString() === new Date().toDateString()).length,
     isInitialized,
