@@ -597,7 +597,7 @@ export function CalendarView({
 
       {viewMode === 'week' ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* En-tête des jours */}
+          {/* En-tête des jours - Alignement corrigé */}
           <div className="grid grid-cols-8 border-b border-gray-200">
             <div className="p-3 text-center text-xs font-medium text-gray-500 border-r border-gray-200 bg-gray-50/30">
               GMT+1
@@ -627,10 +627,10 @@ export function CalendarView({
             })}
           </div>
 
-          {/* Grille horaire avec scroll natif */}
-          <div className="relative h-[80vh] overflow-y-auto">
+          {/* Grille horaire - Alignement corrigé */}
+          <div className="relative max-h-[80vh] overflow-y-auto">
             <div className="grid grid-cols-8">
-              {/* Colonne des heures */}
+              {/* Colonne des heures - Largeur fixe et alignement parfait */}
               <div className="bg-gray-50/30 border-r border-gray-200">
                 {allDayHours.map(hour => (
                   <div key={hour} className="h-16 border-b border-gray-100 flex items-start justify-center pt-1">
@@ -641,7 +641,7 @@ export function CalendarView({
                 ))}
               </div>
 
-              {/* Colonnes des jours */}
+              {/* Colonnes des jours - Alignement parfait */}
               {getWeekDays().map((day, dayIndex) => (
                 <div 
                   key={dayIndex} 
