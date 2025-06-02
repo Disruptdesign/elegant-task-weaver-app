@@ -4,6 +4,7 @@ import { Task, Event } from '../types/task';
 import { format, isToday, isTomorrow, isThisWeek, isPast, isFuture } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { AddItemForm } from './AddItemForm';
+import { getTaskStatus } from '../utils/taskStatus';
 
 interface DashboardProps {
   tasks: Task[];
@@ -19,7 +20,10 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
 
   const completedTasks = tasks.filter(task => task.completed);
   const pendingTasks = tasks.filter(task => !task.completed);
-  const overdueTasks = pendingTasks.filter(task => isPast(new Date(task.deadline)));
+  
+  // Utiliser getTaskStatus pour les tâches en retard
+  const overdueTasks = pendingTasks.filter(task => getTaskStatus(task) === 'overdue');
+  
   const todayTasks = pendingTasks.filter(task => 
     task.scheduledStart && isToday(task.scheduledStart)
   );
@@ -254,7 +258,10 @@ export function Dashboard({ tasks, events, onEditTask, onEditEvent }: DashboardP
                     <div>
                       <span className="font-medium text-gray-900">{task.title}</span>
                       <div className="text-sm text-red-600 font-medium mt-1">
-                        Échéance dépassée: {format(task.deadline, 'dd/MM/yyyy à HH:mm')}
+                        {task.scheduledStart && task.scheduledStart > new Date(task.deadline) 
+                          ? `Planifiée après l'échéance: ${format(task.scheduledStart, 'dd/MM/yyyy à HH:mm')}`
+                          : `Échéance dépassée: ${format(task.deadline, 'dd/MM/yyyy à HH:mm')}`
+                        }
                       </div>
                     </div>
                   </div>

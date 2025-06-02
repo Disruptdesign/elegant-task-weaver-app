@@ -3,6 +3,7 @@ import { Task, Project, TaskType } from '../types/task';
 import { TaskCard } from './TaskCard';
 import { AddItemForm } from './AddItemForm';
 import { Plus, Search, Filter, RefreshCw, ListTodo, CheckCircle } from 'lucide-react';
+import { getTaskStatus } from '../utils/taskStatus';
 
 interface TaskListProps {
   tasks: Task[];
