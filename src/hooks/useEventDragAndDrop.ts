@@ -14,6 +14,32 @@ interface EventDragState {
   originalDay: Date | null;
 }
 
+// Fonction utilitaire pour normaliser les dates et préserver les timezones
+const normalizeEventDate = (date: Date | string): Date => {
+  if (typeof date === 'string') {
+    return new Date(date);
+  }
+  return date instanceof Date ? date : new Date(date);
+};
+
+// Fonction pour créer une nouvelle date en préservant la timezone originale
+const preserveTimezone = (originalDate: Date | string, newTime: number): Date => {
+  const original = normalizeEventDate(originalDate);
+  const newDate = new Date(newTime);
+  
+  // Préserver les informations de timezone en gardant le même offset
+  const originalOffset = original.getTimezoneOffset();
+  const newOffset = newDate.getTimezoneOffset();
+  
+  if (originalOffset !== newOffset) {
+    // Ajuster pour maintenir la même heure locale
+    const offsetDiff = (newOffset - originalOffset) * 60 * 1000;
+    return new Date(newTime + offsetDiff);
+  }
+  
+  return newDate;
+};
+
 export function useEventDragAndDrop(
   onUpdateEvent: (id: string, updates: Partial<Event>) => void
 ) {
@@ -56,26 +82,42 @@ export function useEventDragAndDrop(
       const minutesDelta = Math.round((deltaY / 64) * 60);
       const daysDelta = Math.round(deltaX / 150);
 
-      let newStartTime = new Date(currentState.startTime.getTime() + minutesDelta * 60000);
+      // Utiliser preserveTimezone pour maintenir la timezone originale
+      let newStartTime = preserveTimezone(
+        currentState.startTime, 
+        currentState.startTime.getTime() + minutesDelta * 60000
+      );
       
       if (daysDelta !== 0) {
-        newStartTime = new Date(newStartTime.getTime() + daysDelta * 24 * 60 * 60 * 1000);
+        newStartTime = preserveTimezone(
+          newStartTime, 
+          newStartTime.getTime() + daysDelta * 24 * 60 * 60 * 1000
+        );
       }
       
+      // Arrondir aux 15 minutes en préservant la timezone
       const minute = newStartTime.getMinutes();
       const roundedMinutes = Math.round(minute / 15) * 15;
-      newStartTime.setMinutes(roundedMinutes, 0, 0);
+      const adjustedTime = new Date(newStartTime);
+      adjustedTime.setMinutes(roundedMinutes, 0, 0);
+      
+      const finalStartTime = preserveTimezone(currentState.startTime, adjustedTime.getTime());
+      const newEndTime = preserveTimezone(
+        currentState.startTime, 
+        finalStartTime.getTime() + currentState.originalDuration * 60000
+      );
 
-      const newEndTime = new Date(newStartTime.getTime() + currentState.originalDuration * 60000);
-
-      console.log('Updating event position:', { 
+      console.log('Updating event position (timezone preserved):', { 
         eventId: currentState.eventId, 
-        newStartTime: newStartTime.toISOString(),
-        newEndTime: newEndTime.toISOString()
+        originalStart: currentState.startTime.toISOString(),
+        newStartTime: finalStartTime.toISOString(),
+        newEndTime: newEndTime.toISOString(),
+        minutesDelta,
+        daysDelta
       });
 
       updateEvent(currentState.eventId, {
-        startDate: newStartTime,
+        startDate: finalStartTime,
         endDate: newEndTime,
       });
       
@@ -91,9 +133,25 @@ export function useEventDragAndDrop(
       } else if (currentState.resizeHandle === 'top') {
         const rawDuration = currentState.originalDuration - minutesDelta;
         newDuration = Math.max(15, Math.round(rawDuration / 15) * 15);
+        
         if (newDuration !== currentState.originalDuration) {
-          const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
-          const newEndTime = new Date(newStartTime.getTime() + newDuration * 60000);
+          const adjustmentMs = (currentState.originalDuration - newDuration) * 60000;
+          const newStartTime = preserveTimezone(
+            currentState.startTime, 
+            currentState.startTime.getTime() + adjustmentMs
+          );
+          const newEndTime = preserveTimezone(
+            currentState.startTime, 
+            newStartTime.getTime() + newDuration * 60000
+          );
+          
+          console.log('Resizing event from top (timezone preserved):', {
+            eventId: currentState.eventId,
+            originalDuration: currentState.originalDuration,
+            newDuration,
+            newStartTime: newStartTime.toISOString(),
+            newEndTime: newEndTime.toISOString()
+          });
           
           updateEvent(currentState.eventId, {
             startDate: newStartTime,
@@ -104,7 +162,17 @@ export function useEventDragAndDrop(
       }
 
       if (newDuration !== currentState.originalDuration) {
-        const newEndTime = new Date(currentState.startTime.getTime() + newDuration * 60000);
+        const newEndTime = preserveTimezone(
+          currentState.startTime, 
+          currentState.startTime.getTime() + newDuration * 60000
+        );
+        
+        console.log('Resizing event from bottom (timezone preserved):', {
+          eventId: currentState.eventId,
+          originalDuration: currentState.originalDuration,
+          newDuration,
+          newEndTime: newEndTime.toISOString()
+        });
         
         updateEvent(currentState.eventId, {
           endDate: newEndTime,
@@ -145,11 +213,13 @@ export function useEventDragAndDrop(
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('Starting event drag operation:', { 
+    console.log('Starting event drag operation (timezone aware):', { 
       action, 
       eventId: event.id, 
       eventTitle: event.title,
       resizeHandle,
+      originalStartDate: event.startDate,
+      originalEndDate: event.endDate,
       mousePosition: { x: e.clientX, y: e.clientY }
     });
 
@@ -163,7 +233,18 @@ export function useEventDragAndDrop(
       return;
     }
 
-    const duration = (new Date(event.endDate).getTime() - new Date(event.startDate).getTime()) / (1000 * 60);
+    // Normaliser les dates en préservant la timezone
+    const startTime = normalizeEventDate(event.startDate);
+    const endTime = normalizeEventDate(event.endDate);
+    const duration = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+
+    console.log('Event drag setup (normalized):', {
+      originalStart: event.startDate,
+      originalEnd: event.endDate,
+      normalizedStart: startTime.toISOString(),
+      normalizedEnd: endTime.toISOString(),
+      duration
+    });
 
     const newDragState = {
       isDragging: action === 'move',
@@ -171,13 +252,13 @@ export function useEventDragAndDrop(
       eventId: event.id,
       startY: e.clientY,
       startX: e.clientX,
-      startTime: new Date(event.startDate),
+      startTime: startTime,
       originalDuration: duration,
       resizeHandle: resizeHandle || null,
-      originalDay: new Date(event.startDate),
+      originalDay: startTime,
     };
 
-    console.log('Setting event drag state:', newDragState);
+    console.log('Setting event drag state (timezone preserved):', newDragState);
     setDragState(newDragState);
 
     // Nettoyer les anciens listeners avant d'ajouter les nouveaux

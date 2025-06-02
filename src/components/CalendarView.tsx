@@ -18,6 +18,22 @@ interface CalendarViewProps {
 
 type ViewMode = 'week' | 'month';
 
+// Fonction utilitaire pour normaliser les dates et éviter les problèmes de timezone
+const normalizeDate = (date: Date | string): Date => {
+  if (typeof date === 'string') {
+    // Si c'est une chaîne ISO, la parser en préservant l'heure locale
+    return new Date(date);
+  }
+  return date instanceof Date ? date : new Date(date);
+};
+
+// Fonction pour comparer les dates en ignorant les millisecondes
+const isSameDayNormalized = (date1: Date | string, date2: Date | string): boolean => {
+  const d1 = normalizeDate(date1);
+  const d2 = normalizeDate(date2);
+  return isSameDay(d1, d2);
+};
+
 export function CalendarView({ 
   tasks, 
   events, 
@@ -46,15 +62,22 @@ export function CalendarView({
     hasUpdateEvent: !!onUpdateEvent
   });
 
-  // Debug des événements reçus
+  // Debug des événements reçus avec normalisation
   useEffect(() => {
-    console.log('🎭 CalendarView: Événements reçus:', events.map(e => ({
-      id: e.id,
-      title: e.title,
-      startDate: e.startDate,
-      startDateType: typeof e.startDate,
-      startDateString: e.startDate instanceof Date ? e.startDate.toISOString() : String(e.startDate)
-    })));
+    console.log('🎭 CalendarView: Événements reçus (normalisés):', events.map(e => {
+      const startDate = normalizeDate(e.startDate);
+      const endDate = normalizeDate(e.endDate);
+      return {
+        id: e.id,
+        title: e.title,
+        originalStartDate: e.startDate,
+        originalEndDate: e.endDate,
+        normalizedStartDate: startDate.toISOString(),
+        normalizedEndDate: endDate.toISOString(),
+        startHour: startDate.getHours(),
+        startMinute: startDate.getMinutes()
+      };
+    }));
   }, [events]);
 
   // Utiliser le hook unifié de drag & drop
@@ -145,44 +168,42 @@ export function CalendarView({
 
   const getTasksForDay = (date: Date) => {
     const dayTasks = tasks.filter(task => 
-      task.scheduledStart && isSameDay(new Date(task.scheduledStart), date)
+      task.scheduledStart && isSameDayNormalized(task.scheduledStart, date)
     );
     console.log(`Tasks for ${format(date, 'yyyy-MM-dd')}:`, dayTasks.length);
     return dayTasks;
   };
 
   const getEventsForDay = (date: Date) => {
-    console.log(`🔍 Filtrage événements pour ${format(date, 'yyyy-MM-dd')}:`);
+    console.log(`🔍 Filtrage événements pour ${format(date, 'yyyy-MM-dd')} (amélioré):`);
     
     const dayEvents = events.filter(event => {
-      // S'assurer que les dates sont bien des objets Date
-      const eventStart = event.startDate instanceof Date ? event.startDate : new Date(event.startDate);
-      const eventEnd = event.endDate instanceof Date ? event.endDate : new Date(event.endDate);
+      // Normaliser les dates avec gestion robuste des timezones
+      const eventStart = normalizeDate(event.startDate);
+      const eventEnd = normalizeDate(event.endDate);
       
-      // Normaliser les dates pour la comparaison (début de journée)
-      const targetDayStart = startOfDay(date);
-      const eventDayStart = startOfDay(eventStart);
-      const eventDayEnd = startOfDay(eventEnd);
+      // Utiliser isSameDay de date-fns qui est plus robuste
+      const isEventStartSameDay = isSameDay(eventStart, date);
+      const isEventEndSameDay = isSameDay(eventEnd, date);
+      
+      // Pour les événements multi-jours, vérifier si la date cible est dans la plage
+      const targetTime = date.getTime();
+      const eventStartTime = startOfDay(eventStart).getTime();
+      const eventEndTime = startOfDay(eventEnd).getTime();
+      const isInRange = targetTime >= eventStartTime && targetTime <= eventEndTime;
       
       console.log(`   - Événement "${event.title}":`, {
         eventStart: eventStart.toISOString(),
         eventEnd: eventEnd.toISOString(),
         targetDate: date.toISOString(),
-        targetDayStart: targetDayStart.toISOString(),
-        eventDayStart: eventDayStart.toISOString(),
-        eventDayEnd: eventDayEnd.toISOString(),
-        isSameStart: eventDayStart.getTime() === targetDayStart.getTime(),
-        isSameEnd: eventDayEnd.getTime() === targetDayStart.getTime(),
-        isInRange: targetDayStart >= eventDayStart && targetDayStart <= eventDayEnd
+        isEventStartSameDay,
+        isEventEndSameDay,
+        isInRange,
+        eventStartHour: eventStart.getHours(),
+        eventStartMinute: eventStart.getMinutes()
       });
       
-      // Un événement est affiché dans un jour si :
-      // 1. Il commence ce jour-là
-      // 2. Il finit ce jour-là  
-      // 3. Il est en cours ce jour-là (pour les événements multi-jours)
-      const matches = eventDayStart.getTime() === targetDayStart.getTime() || 
-                     eventDayEnd.getTime() === targetDayStart.getTime() ||
-                     (targetDayStart >= eventDayStart && targetDayStart <= eventDayEnd);
+      const matches = isEventStartSameDay || isEventEndSameDay || isInRange;
       
       if (matches) {
         console.log(`   ✅ Événement "${event.title}" correspond au jour ${format(date, 'yyyy-MM-dd')}`);
@@ -201,15 +222,17 @@ export function CalendarView({
       return null;
     }
     
-    const start = new Date(task.scheduledStart);
+    const start = normalizeDate(task.scheduledStart);
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
     const adjustedTop = ((startHour - 9) + startMinute / 60) * 64;
     const height = Math.max((task.estimatedDuration / 60) * 64, 28);
     
-    console.log('Task position:', { 
+    console.log('Task position (normalisée):', { 
       title: task.title, 
+      originalStart: task.scheduledStart,
+      normalizedStart: start.toISOString(),
       startHour, 
       startMinute, 
       top: adjustedTop, 
@@ -222,8 +245,8 @@ export function CalendarView({
   const getEventPosition = (event: Event) => {
     if (event.allDay) return null;
     
-    const start = new Date(event.startDate);
-    const end = new Date(event.endDate);
+    const start = normalizeDate(event.startDate);
+    const end = normalizeDate(event.endDate);
     const startHour = start.getHours();
     const startMinute = start.getMinutes();
     
@@ -231,10 +254,15 @@ export function CalendarView({
     const duration = (end.getTime() - start.getTime()) / (1000 * 60);
     const height = Math.max((duration / 60) * 64, 28);
     
-    console.log('Event position:', { 
+    console.log('Event position (normalisée):', { 
       title: event.title, 
+      originalStart: event.startDate,
+      originalEnd: event.endDate,
+      normalizedStart: start.toISOString(),
+      normalizedEnd: end.toISOString(),
       startHour, 
       startMinute, 
+      duration,
       top, 
       height 
     });
@@ -278,16 +306,32 @@ export function CalendarView({
   };
 
   const handleEventFormSubmit = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
-    console.log('📝 Event form submitted:', eventData);
+    console.log('📝 Event form submitted (dates normalisées):', {
+      ...eventData,
+      startDate: normalizeDate(eventData.startDate).toISOString(),
+      endDate: normalizeDate(eventData.endDate).toISOString()
+    });
     if (selectedEvent && onUpdateEvent) {
-      onUpdateEvent(selectedEvent.id, eventData);
+      // Normaliser les dates avant la mise à jour
+      const normalizedData = {
+        ...eventData,
+        startDate: normalizeDate(eventData.startDate),
+        endDate: normalizeDate(eventData.endDate)
+      };
+      onUpdateEvent(selectedEvent.id, normalizedData);
     } else if (addEvent) {
-      console.log('🎯 Ajout nouvel événement via CalendarView:', {
+      console.log('🎯 Ajout nouvel événement via CalendarView (normalisé):', {
         title: eventData.title,
-        startDate: eventData.startDate,
-        endDate: eventData.endDate
+        startDate: normalizeDate(eventData.startDate).toISOString(),
+        endDate: normalizeDate(eventData.endDate).toISOString()
       });
-      addEvent(eventData);
+      // Normaliser les dates avant l'ajout
+      const normalizedData = {
+        ...eventData,
+        startDate: normalizeDate(eventData.startDate),
+        endDate: normalizeDate(eventData.endDate)
+      };
+      addEvent(normalizedData);
     }
     setSelectedEvent(undefined);
   };
@@ -416,7 +460,7 @@ export function CalendarView({
         </div>
       </div>
 
-      {/* Debug info amélioré */}
+      {/* Debug info amélioré avec informations de timezone */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <p className="text-sm text-blue-800">
           📊 Debug: {tasks.length} tâche{tasks.length > 1 ? 's' : ''}, {events.length} événement{events.length > 1 ? 's' : ''}
@@ -427,7 +471,10 @@ export function CalendarView({
         </p>
         {events.length > 0 && (
           <div className="text-xs text-blue-600 mt-2">
-            Événements détectés: {events.map(e => `"${e.title}" (${e.startDate instanceof Date ? e.startDate.toLocaleDateString() : 'date invalide'})`).join(', ')}
+            Événements détectés: {events.map(e => {
+              const start = normalizeDate(e.startDate);
+              return `"${e.title}" (${format(start, 'dd/MM/yyyy HH:mm')})`;
+            }).join(', ')}
           </div>
         )}
       </div>
@@ -440,7 +487,7 @@ export function CalendarView({
               GMT+1
             </div>
             {getWeekDays().map((day, index) => {
-              const isToday = isSameDay(day, new Date());
+              const isToday = isSameDayNormalized(day, new Date());
               const dayTasks = getTasksForDay(day);
               const dayEvents = getEventsForDay(day);
               
@@ -689,7 +736,7 @@ export function CalendarView({
           </div>
           <div className="grid grid-cols-7 gap-px bg-gray-200">
             {getMonthDays().map((day, index) => {
-              const isToday = isSameDay(day, new Date());
+              const isToday = isSameDayNormalized(day, new Date());
               const dayTasks = getTasksForDay(day);
               const dayEvents = getEventsForDay(day);
               
