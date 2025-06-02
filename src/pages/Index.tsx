@@ -1,20 +1,22 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import { Layout } from '../components/Layout';
-import { Dashboard } from '../components/Dashboard';
-import { TaskList } from '../components/TaskList';
-import { CalendarView } from '../components/CalendarView';
-import { Inbox } from '../components/Inbox';
-import { ProjectList } from '../components/ProjectList';
-import { TaskTypeSettings } from '../components/TaskTypeSettings';
+import { AppContent } from '../components/AppContent';
 import { AddItemForm } from '../components/AddItemForm';
 import { QuickInbox } from '../components/QuickInbox';
 import { useTasks } from '../hooks/useTasks';
-import { Task } from '../types/task';
+import { useAppState } from '../hooks/useAppState';
+import { useAppHandlers } from '../hooks/useAppHandlers';
 
 const Index = () => {
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
-  const [taskFormData, setTaskFormData] = useState<{ title: string; description?: string } | undefined>();
+  const {
+    currentView,
+    setCurrentView,
+    isAddFormOpen,
+    taskFormData,
+    openAddForm,
+    closeAddForm,
+  } = useAppState();
   
   const {
     tasks,
@@ -43,6 +45,13 @@ const Index = () => {
     createProjectFromTemplate,
   } = useTasks();
 
+  const {
+    handleConvertInboxItem,
+    handleCompleteTask,
+    handleRescheduleAllTasks,
+    handleTaskSubmit,
+  } = useAppHandlers();
+
   console.log('Index: Current data state:', {
     tasks: tasks.length,
     events: events.length,
@@ -53,132 +62,12 @@ const Index = () => {
     taskTypesDetailed: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
 
-  console.log('Index: Tasks loaded:', tasks.length);
-  console.log('Index: Events loaded:', events.length);
-  console.log('Index: Projects loaded:', projects.length);
-  console.log('Index: TaskTypes loaded:', taskTypes.length);
-  console.log('Index: Update functions available:', {
-    addTask: !!addTask,
-    updateTask: !!updateTask,
-    addEvent: !!addEvent,
-    updateEvent: !!updateEvent
-  });
-
-  const handleConvertInboxItem = (item: any) => {
-    // Create task data from inbox item
-    const initialData = {
-      title: item.title,
-      description: item.description || '',
-    };
-    setTaskFormData(initialData);
-    setIsAddFormOpen(true);
+  const handleConvertItem = (item: any) => {
+    handleConvertInboxItem(item, openAddForm);
   };
 
-  const handleCompleteTask = (id: string) => {
-    console.log('Completing task:', id);
-    const task = tasks.find(t => t.id === id);
-    if (task) {
-      updateTask(id, { completed: !task.completed });
-    }
-  };
-
-  const handleRescheduleAllTasks = () => {
-    // Simple rescheduling logic - could be enhanced
-    console.log('Reschedule all tasks requested');
-  };
-
-  const handleAddFormClose = () => {
-    setIsAddFormOpen(false);
-    setTaskFormData(undefined);
-  };
-
-  const handleTaskSubmit = (taskData: any) => {
-    console.log('Submitting task with dependencies:', taskData);
-    addTask(taskData);
-    // Si c'était une conversion d'inbox, supprimer l'item maintenant
-    if (taskFormData) {
-      const inboxItem = inboxItems.find(item => 
-        item.title === taskFormData.title && item.description === taskFormData.description
-      );
-      if (inboxItem) {
-        deleteInboxItem(inboxItem.id);
-      }
-    }
-  };
-
-  const renderContent = () => {
-    switch (currentView) {
-      case 'dashboard':
-        return (
-          <Dashboard 
-            tasks={tasks} 
-            events={events} 
-            onEditTask={updateTask} 
-            onEditEvent={updateEvent}
-            projects={projects}
-          />
-        );
-      case 'tasks':
-        return (
-          <TaskList
-            tasks={tasks}
-            onAddTask={addTask}
-            onUpdateTask={updateTask}
-            onDeleteTask={deleteTask}
-            onCompleteTask={handleCompleteTask}
-            onReschedule={handleRescheduleAllTasks}
-            projects={projects}
-            taskTypes={taskTypes}
-          />
-        );
-      case 'calendar':
-        console.log('Rendering calendar with:', { tasks: tasks.length, events: events.length });
-        return (
-          <CalendarView 
-            tasks={tasks} 
-            events={events} 
-            onUpdateTask={updateTask} 
-            onUpdateEvent={updateEvent}
-            addTask={addTask}
-            addEvent={addEvent}
-            projects={projects}
-          />
-        );
-      case 'inbox':
-        return (
-          <Inbox
-            inboxItems={inboxItems}
-            onAddInboxItem={addInboxItem}
-            onDeleteInboxItem={deleteInboxItem}
-            onConvertToTask={handleConvertInboxItem}
-          />
-        );
-      case 'projects':
-        return (
-          <ProjectList
-            projects={projects}
-            tasks={tasks}
-            onAddProject={addProject}
-            onUpdateProject={updateProject}
-            onDeleteProject={deleteProject}
-            onEditTask={updateTask}
-            projectTemplates={projectTemplates}
-            onAddTemplate={addProjectTemplate}
-            onUpdateTemplate={updateProjectTemplate}
-            onDeleteTemplate={deleteProjectTemplate}
-            onCreateProjectFromTemplate={createProjectFromTemplate}
-          />
-        );
-      case 'settings':
-        return <TaskTypeSettings 
-          taskTypes={taskTypes}
-          onAddTaskType={addTaskType}
-          onUpdateTaskType={updateTaskType}
-          onDeleteTaskType={deleteTaskType}
-        />;
-      default:
-        return <Dashboard tasks={tasks} events={events} onEditTask={updateTask} onEditEvent={updateEvent} projects={projects} />;
-    }
+  const handleTaskFormSubmit = (taskData: any) => {
+    handleTaskSubmit(taskData, taskFormData, closeAddForm);
   };
 
   console.log('Index: Before rendering AddItemForm with props:', {
@@ -194,13 +83,43 @@ const Index = () => {
         onViewChange={setCurrentView}
         sidebarFooter={<QuickInbox onAddInboxItem={addInboxItem} />}
       >
-        {renderContent()}
+        <AppContent
+          currentView={currentView}
+          tasks={tasks}
+          events={events}
+          inboxItems={inboxItems}
+          projects={projects}
+          taskTypes={taskTypes}
+          projectTemplates={projectTemplates}
+          onEditTask={updateTask}
+          onEditEvent={updateEvent}
+          onAddTask={addTask}
+          onUpdateTask={updateTask}
+          onDeleteTask={deleteTask}
+          onAddEvent={addEvent}
+          onUpdateEvent={updateEvent}
+          onAddInboxItem={addInboxItem}
+          onDeleteInboxItem={deleteInboxItem}
+          onConvertToTask={handleConvertItem}
+          onAddProject={addProject}
+          onUpdateProject={updateProject}
+          onDeleteProject={deleteProject}
+          onAddTaskType={addTaskType}
+          onUpdateTaskType={updateTaskType}
+          onDeleteTaskType={deleteTaskType}
+          onAddTemplate={addProjectTemplate}
+          onUpdateTemplate={updateProjectTemplate}
+          onDeleteTemplate={deleteProjectTemplate}
+          onCreateProjectFromTemplate={createProjectFromTemplate}
+          onCompleteTask={handleCompleteTask}
+          onReschedule={handleRescheduleAllTasks}
+        />
       </Layout>
       
       <AddItemForm
         isOpen={isAddFormOpen}
-        onClose={handleAddFormClose}
-        onSubmitTask={handleTaskSubmit}
+        onClose={closeAddForm}
+        onSubmitTask={handleTaskFormSubmit}
         onSubmitEvent={addEvent}
         initialData={taskFormData}
         projects={projects}
