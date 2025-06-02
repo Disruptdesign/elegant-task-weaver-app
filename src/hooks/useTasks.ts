@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Task, Event, InboxItem, Project, TaskType } from '../types/task';
 
@@ -49,6 +48,59 @@ const parseDate = (date: any): Date => {
   }
 };
 
+// Helper function to create initial demo data
+const createInitialData = () => {
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
+  
+  const demoTasks: Task[] = [
+    {
+      id: 'demo-task-1',
+      title: 'Tâche de démonstration',
+      description: 'Cette tâche sert à tester l\'affichage',
+      deadline: tomorrow,
+      priority: 'medium',
+      estimatedDuration: 60,
+      scheduledStart: nextHour,
+      scheduledEnd: new Date(nextHour.getTime() + 60 * 60 * 1000),
+      completed: false,
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: 'demo-task-2',
+      title: 'Tâche urgente',
+      description: 'Une tâche avec priorité haute',
+      deadline: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
+      priority: 'high',
+      estimatedDuration: 90,
+      scheduledStart: new Date(nextHour.getTime() + 2 * 60 * 60 * 1000),
+      scheduledEnd: new Date(nextHour.getTime() + 3.5 * 60 * 60 * 1000),
+      completed: false,
+      createdAt: now,
+      updatedAt: now,
+    }
+  ];
+
+  const demoEvents: Event[] = [
+    {
+      id: 'demo-event-1',
+      title: 'Réunion de démonstration',
+      description: 'Événement pour tester l\'affichage',
+      startDate: new Date(nextHour.getTime() + 3 * 60 * 60 * 1000),
+      endDate: new Date(nextHour.getTime() + 4 * 60 * 60 * 1000),
+      allDay: false,
+      markAsBusy: true,
+      location: 'Bureau',
+      createdAt: now,
+      updatedAt: now,
+    }
+  ];
+
+  return { demoTasks, demoEvents };
+};
+
 export function useTasks(): UseTasksReturn {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -56,6 +108,7 @@ export function useTasks(): UseTasksReturn {
   const [projects, setProjects] = useState<Project[]>([]);
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
   const [filter, setFilter] = useState<string>('all');
+  const [dataInitialized, setDataInitialized] = useState(false);
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -75,7 +128,12 @@ export function useTasks(): UseTasksReturn {
           updatedAt: parseDate(task.updatedAt),
         }));
         setTasks(parsedTasks);
-        console.log('Loaded tasks:', parsedTasks.length);
+        console.log('Loaded tasks from localStorage:', parsedTasks.length);
+      } else {
+        // Si aucune tâche sauvegardée, créer des données de démonstration
+        console.log('No tasks in localStorage, creating demo data');
+        const { demoTasks } = createInitialData();
+        setTasks(demoTasks);
       }
 
       // Events
@@ -89,7 +147,12 @@ export function useTasks(): UseTasksReturn {
           updatedAt: parseDate(event.updatedAt),
         }));
         setEvents(parsedEvents);
-        console.log('Loaded events:', parsedEvents.length);
+        console.log('Loaded events from localStorage:', parsedEvents.length);
+      } else {
+        // Si aucun événement sauvegardé, créer des données de démonstration
+        console.log('No events in localStorage, creating demo data');
+        const { demoEvents } = createInitialData();
+        setEvents(demoEvents);
       }
 
       // Inbox Items
@@ -127,61 +190,78 @@ export function useTasks(): UseTasksReturn {
       // Filter
       const savedFilter = localStorage.getItem('taskFilter') || 'all';
       setFilter(savedFilter);
-      console.log('Data loading completed');
+      console.log('Data loading and initialization completed');
       
     } catch (error) {
       console.error('Error loading data from localStorage:', error);
+      // En cas d'erreur, créer quand même des données de démonstration
+      const { demoTasks, demoEvents } = createInitialData();
+      setTasks(demoTasks);
+      setEvents(demoEvents);
+      setDataInitialized(true);
     }
   }, []);
 
-  // Save data to localStorage when it changes
+  // Save data to localStorage when it changes - only after initialization
   useEffect(() => {
+    if (!dataInitialized) return;
     try {
       localStorage.setItem('tasks', JSON.stringify(tasks));
+      console.log('Tasks saved to localStorage:', tasks.length);
     } catch (error) {
       console.error('Error saving tasks to localStorage:', error);
     }
-  }, [tasks]);
+  }, [tasks, dataInitialized]);
 
   useEffect(() => {
+    if (!dataInitialized) return;
     try {
       localStorage.setItem('events', JSON.stringify(events));
+      console.log('Events saved to localStorage:', events.length);
     } catch (error) {
       console.error('Error saving events to localStorage:', error);
     }
-  }, [events]);
+  }, [events, dataInitialized]);
 
   useEffect(() => {
+    if (!dataInitialized) return;
     try {
       localStorage.setItem('inboxItems', JSON.stringify(inboxItems));
+      console.log('Inbox items saved to localStorage:', inboxItems.length);
     } catch (error) {
       console.error('Error saving inbox items to localStorage:', error);
     }
-  }, [inboxItems]);
+  }, [inboxItems, dataInitialized]);
 
   useEffect(() => {
+    if (!dataInitialized) return;
     try {
       localStorage.setItem('projects', JSON.stringify(projects));
+      console.log('Projects saved to localStorage:', projects.length);
     } catch (error) {
       console.error('Error saving projects to localStorage:', error);
     }
-  }, [projects]);
+  }, [projects, dataInitialized]);
 
   useEffect(() => {
+    if (!dataInitialized) return;
     try {
       localStorage.setItem('taskTypes', JSON.stringify(taskTypes));
+      console.log('Task types saved to localStorage:', taskTypes.length);
     } catch (error) {
       console.error('Error saving task types to localStorage:', error);
     }
-  }, [taskTypes]);
+  }, [taskTypes, dataInitialized]);
 
   useEffect(() => {
+    if (!dataInitialized) return;
     try {
       localStorage.setItem('taskFilter', filter);
+      console.log('Filter saved to localStorage:', filter);
     } catch (error) {
       console.error('Error saving filter to localStorage:', error);
     }
-  }, [filter]);
+  }, [filter, dataInitialized]);
 
   // Enhanced task creation with better ID generation
   const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {

@@ -38,7 +38,14 @@ const Index = () => {
     deleteTaskType,
   } = useTasks();
 
-  console.log('Index: Events loaded:', events);
+  console.log('Index: Tasks loaded:', tasks.length);
+  console.log('Index: Events loaded:', events.length);
+  console.log('Index: All functions available:', {
+    addTask: !!addTask,
+    updateTask: !!updateTask,
+    addEvent: !!addEvent,
+    updateEvent: !!updateEvent
+  });
 
   const handleConvertInboxItem = (item: any) => {
     // Create task data from inbox item
@@ -96,7 +103,16 @@ const Index = () => {
           />
         );
       case 'calendar':
-        return <CalendarView tasks={tasks} events={events} onUpdateTask={updateTask} />;
+        return (
+          <CalendarView 
+            tasks={tasks} 
+            events={events} 
+            onUpdateTask={updateTask} 
+            onUpdateEvent={updateEvent}
+            addTask={addTask}
+            addEvent={addEvent}
+          />
+        );
       case 'inbox':
         return (
           <Inbox
