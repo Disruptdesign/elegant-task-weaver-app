@@ -597,9 +597,9 @@ export function CalendarView({
 
       {viewMode === 'week' ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* En-tête des jours - Style Notion */}
+          {/* En-tête des jours - Alignement corrigé */}
           <div className="grid grid-cols-8 border-b border-gray-200">
-            <div className="w-16 p-3 text-center text-xs font-medium text-gray-500 border-r border-gray-200">
+            <div className="p-3 text-center text-xs font-medium text-gray-500 border-r border-gray-200 bg-gray-50/30">
               GMT+1
             </div>
             {getWeekDays().map((day, index) => {
@@ -610,7 +610,7 @@ export function CalendarView({
               return (
                 <div
                   key={index}
-                  className={`p-3 text-center border-r border-gray-200 ${
+                  className={`p-3 text-center border-r border-gray-200 last:border-r-0 ${
                     isToday ? 'bg-blue-50' : ''
                   }`}
                 >
@@ -627,11 +627,11 @@ export function CalendarView({
             })}
           </div>
 
-          {/* Grille horaire - Style Notion pour 24 heures avec hauteur réduite */}
+          {/* Grille horaire - Alignement corrigé */}
           <div className="relative max-h-[80vh] overflow-y-auto">
             <div className="grid grid-cols-8">
-              {/* Colonne des heures - Toute la journée */}
-              <div className="w-16 bg-gray-50/30 border-r border-gray-200">
+              {/* Colonne des heures - Largeur fixe et alignement parfait */}
+              <div className="bg-gray-50/30 border-r border-gray-200">
                 {allDayHours.map(hour => (
                   <div key={hour} className="h-16 border-b border-gray-100 flex items-start justify-center pt-1">
                     <span className="text-xs font-medium text-gray-400">
@@ -641,11 +641,11 @@ export function CalendarView({
                 ))}
               </div>
 
-              {/* Colonnes des jours */}
+              {/* Colonnes des jours - Alignement parfait */}
               {getWeekDays().map((day, dayIndex) => (
                 <div 
                   key={dayIndex} 
-                  className="relative border-r border-gray-200 bg-white hover:bg-gray-50/30 transition-colors"
+                  className="relative border-r border-gray-200 last:border-r-0 bg-white hover:bg-gray-50/30 transition-colors"
                 >
                   {/* Lignes horaires */}
                   {allDayHours.map(hour => (
