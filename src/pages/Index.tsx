@@ -2,7 +2,7 @@
 import React, { Suspense } from 'react';
 import { AuthWrapper } from '../components/AuthWrapper';
 import { useSupabaseTasks } from '../hooks/useSupabaseTasks';
-import { Dashboard } from '../components/Dashboard';
+import Dashboard from '../components/Dashboard';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
