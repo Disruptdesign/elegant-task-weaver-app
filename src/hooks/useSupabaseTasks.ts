@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, Event, InboxItem, Project, TaskType, ProjectTemplate, TemplateTask } from '../types/task';
@@ -133,7 +134,20 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
       setIsLoading(true);
       setError(null);
 
-      console.log('🔄 Fetching data from Supabase...');
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        console.log('❌ User not authenticated, clearing data');
+        setTasks([]);
+        setEvents([]);
+        setInboxItems([]);
+        setProjects([]);
+        setTaskTypes([]);
+        setProjectTemplates([]);
+        return;
+      }
+
+      console.log('🔄 Fetching data from Supabase for user:', session.user.id);
 
       const [
         tasksResult,
@@ -182,10 +196,36 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
   useEffect(() => {
     refreshData();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔐 Auth state changed:', event, !!session?.user);
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        refreshData();
+      } else if (event === 'SIGNED_OUT') {
+        setTasks([]);
+        setEvents([]);
+        setInboxItems([]);
+        setProjects([]);
+        setTaskTypes([]);
+        setProjectTemplates([]);
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [refreshData]);
+
+  const getCurrentUserId = async (): Promise<string | null> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.id || null;
+  };
 
   const addTask = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const userId = await getCurrentUserId();
+      if (!userId) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('tasks')
         .insert({
@@ -205,6 +245,7 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
           dependencies: taskData.dependencies,
           scheduled_start: taskData.scheduledStart?.toISOString(),
           scheduled_end: taskData.scheduledEnd?.toISOString(),
+          user_id: userId,
         })
         .select()
         .single();
@@ -222,6 +263,9 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
     try {
+      const userId = await getCurrentUserId();
+      if (!userId) throw new Error('User not authenticated');
+
       const updateData: any = {};
       
       if (updates.title !== undefined) updateData.title = updates.title;
@@ -279,6 +323,9 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
   const addEvent = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const userId = await getCurrentUserId();
+      if (!userId) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('events')
         .insert({
@@ -293,6 +340,7 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
           buffer_before: eventData.bufferBefore,
           buffer_after: eventData.bufferAfter,
           repeat_type: eventData.repeat,
+          user_id: userId,
         })
         .select()
         .single();
@@ -361,11 +409,15 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
   const addInboxItem = async (itemData: Omit<InboxItem, 'id' | 'createdAt'>) => {
     try {
+      const userId = await getCurrentUserId();
+      if (!userId) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('inbox_items')
         .insert({
           title: itemData.title,
           description: itemData.description,
+          user_id: userId,
         })
         .select()
         .single();
@@ -400,6 +452,9 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
   const addProject = async (projectData: Omit<Project, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const userId = await getCurrentUserId();
+      if (!userId) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -408,6 +463,7 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
           start_date: projectData.startDate.toISOString(),
           deadline: projectData.deadline.toISOString(),
           color: projectData.color,
+          user_id: userId,
         })
         .select()
         .single();
@@ -471,6 +527,9 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
   const addTaskType = async (taskTypeData: Omit<TaskType, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const userId = await getCurrentUserId();
+      if (!userId) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('task_types')
         .insert({
@@ -479,6 +538,7 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
           auto_schedule: taskTypeData.autoSchedule,
           allow_weekends: taskTypeData.allowWeekends,
           buffer_between_tasks: taskTypeData.bufferBetweenTasks,
+          user_id: userId,
         })
         .select()
         .single();
@@ -541,6 +601,9 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
   const addProjectTemplate = async (templateData: Omit<ProjectTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const userId = await getCurrentUserId();
+      if (!userId) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('project_templates')
         .insert({
@@ -548,6 +611,7 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
           description: templateData.description,
           color: templateData.color,
           default_duration: templateData.defaultDuration,
+          user_id: userId,
         })
         .select()
         .single();
