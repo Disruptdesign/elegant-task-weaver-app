@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3, Users, TrendingUp, FolderOpen } from 'lucide-react';
-import { Task, Event, Project } from '../types/task';
+import { Task, Event, Project, InboxItem, TaskType, ProjectTemplate } from '../types/task';
 import { format, isToday, isTomorrow, isThisWeek, isPast, isFuture } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { AddItemForm } from './AddItemForm';
@@ -9,12 +9,58 @@ import { getTaskStatus } from '../utils/taskStatus';
 interface DashboardProps {
   tasks: Task[];
   events: Event[];
-  onEditTask?: (id: string, updates: Partial<Task>) => void;
-  onEditEvent?: (id: string, updates: Partial<Event>) => void;
-  projects?: Project[];
+  inboxItems: InboxItem[];
+  projects: Project[];
+  taskTypes: TaskType[];
+  projectTemplates: ProjectTemplate[];
+  onAddTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onUpdateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  onDeleteTask: (id: string) => Promise<void>;
+  onAddEvent: (event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onUpdateEvent: (id: string, updates: Partial<Event>) => Promise<void>;
+  onDeleteEvent: (id: string) => Promise<void>;
+  onAddInboxItem: (item: Omit<InboxItem, 'id' | 'createdAt'>) => Promise<void>;
+  onDeleteInboxItem: (id: string) => Promise<void>;
+  onAddProject: (project: Omit<Project, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onUpdateProject: (id: string, updates: Partial<Project>) => Promise<void>;
+  onDeleteProject: (id: string) => Promise<void>;
+  onAddTaskType: (taskType: Omit<TaskType, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onUpdateTaskType: (id: string, updates: Partial<TaskType>) => Promise<void>;
+  onDeleteTaskType: (id: string) => Promise<void>;
+  onAddProjectTemplate: (template: Omit<ProjectTemplate, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onUpdateProjectTemplate: (id: string, updates: Partial<ProjectTemplate>) => Promise<void>;
+  onDeleteProjectTemplate: (id: string) => Promise<void>;
+  onCreateProjectFromTemplate: (templateId: string, projectData: { title: string; description?: string; startDate: Date; deadline: Date }) => Promise<void>;
+  onRefreshData: () => Promise<void>;
 }
 
-function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: DashboardProps) {
+function Dashboard({ 
+  tasks, 
+  events, 
+  inboxItems,
+  projects, 
+  taskTypes,
+  projectTemplates,
+  onAddTask,
+  onUpdateTask,
+  onDeleteTask,
+  onAddEvent,
+  onUpdateEvent,
+  onDeleteEvent,
+  onAddInboxItem,
+  onDeleteInboxItem,
+  onAddProject,
+  onUpdateProject,
+  onDeleteProject,
+  onAddTaskType,
+  onUpdateTaskType,
+  onDeleteTaskType,
+  onAddProjectTemplate,
+  onUpdateProjectTemplate,
+  onDeleteProjectTemplate,
+  onCreateProjectFromTemplate,
+  onRefreshData
+}: DashboardProps) {
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -136,22 +182,22 @@ function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: Da
     e.stopPropagation();
     console.log('Task completion clicked from dashboard:', task.id);
     
-    if (onEditTask) {
-      onEditTask(task.id, { completed: !task.completed });
+    if (onUpdateTask) {
+      onUpdateTask(task.id, { completed: !task.completed });
     }
   };
 
   const handleFormSubmit = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
-    if (selectedTask && onEditTask) {
-      onEditTask(selectedTask.id, taskData);
+    if (selectedTask && onUpdateTask) {
+      onUpdateTask(selectedTask.id, taskData);
     }
     setSelectedTask(undefined);
     setIsFormOpen(false);
   };
 
   const handleEventFormSubmit = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (selectedEvent && onEditEvent) {
-      onEditEvent(selectedEvent.id, eventData);
+    if (selectedEvent && onUpdateEvent) {
+      onUpdateEvent(selectedEvent.id, eventData);
     }
     setSelectedEvent(undefined);
     setIsFormOpen(false);
@@ -254,7 +300,7 @@ function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: Da
                 return (
                   <div key={task.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-red-100 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3 flex-1">
-                      {onEditTask && (
+                      {onUpdateTask && (
                         <button
                           type="button"
                           onClick={(e) => handleTaskCompletion(task, e)}
@@ -284,7 +330,7 @@ function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: Da
                         </div>
                       </div>
                     </div>
-                    {onEditTask && (
+                    {onUpdateTask && (
                       <button
                         type="button"
                         onClick={() => handleTaskClick(task)}
@@ -336,7 +382,7 @@ function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: Da
                       </div>
                     )}
                   </div>
-                  {onEditEvent && (
+                  {onUpdateEvent && (
                     <button
                       type="button"
                       onClick={() => handleEventClick(event)}
@@ -388,7 +434,7 @@ function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: Da
                           {format(event.startDate, 'HH:mm')} - {format(event.endDate, 'HH:mm')}
                         </span>
                       )}
-                      {onEditEvent && (
+                      {onUpdateEvent && (
                         <button
                           type="button"
                           onClick={() => handleEventClick(event)}
@@ -436,7 +482,7 @@ function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: Da
                       onClick={() => handleTaskClick(task)}
                     >
                       <div className="flex items-center gap-3 flex-1">
-                        {onEditTask && (
+                        {onUpdateTask && (
                           <button
                             type="button"
                             onClick={(e) => handleTaskCompletion(task, e)}
@@ -475,7 +521,7 @@ function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: Da
                         <span className="text-sm text-gray-500 font-medium">
                           {Math.floor(task.estimatedDuration / 60)}h{task.estimatedDuration % 60 > 0 ? ` ${task.estimatedDuration % 60}min` : ''}
                         </span>
-                        {onEditTask && (
+                        {onUpdateTask && (
                           <Edit3 className="text-gray-400 group-hover:text-blue-600 transition-colors" size={16} />
                         )}
                       </div>
@@ -499,7 +545,7 @@ function Dashboard({ tasks, events, onEditTask, onEditEvent, projects = [] }: Da
       </div>
 
       {/* Formulaire de modification */}
-      {(onEditTask || onEditEvent) && (
+      {(onUpdateTask || onUpdateEvent) && (
         <AddItemForm
           isOpen={isFormOpen}
           onClose={handleFormClose}
