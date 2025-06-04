@@ -1,45 +1,59 @@
-
 import React, { useState } from 'react';
 import { LayoutDashboard, CheckSquare, Calendar, Settings, Menu, X, FolderOpen, Inbox, Bell } from 'lucide-react';
-
 interface LayoutProps {
   children: React.ReactNode;
   currentView: string;
   onViewChange: (view: string) => void;
   sidebarFooter?: React.ReactNode;
 }
-
-export function Layout({ children, currentView, onViewChange, sidebarFooter }: LayoutProps) {
+export function Layout({
+  children,
+  currentView,
+  onViewChange,
+  sidebarFooter
+}: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const navigation = [
-    { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard, description: 'Vue d\'ensemble' },
-    { id: 'tasks', name: 'Tâches', icon: CheckSquare, description: 'Gérer mes tâches' },
-    { id: 'calendar', name: 'Calendrier', icon: Calendar, description: 'Planning' },
-    { id: 'projects', name: 'Projets', icon: FolderOpen, description: 'Mes projets' },
-    { id: 'inbox', name: 'Inbox', icon: Inbox, description: 'Idées rapides' },
-    { id: 'settings', name: 'Paramètres', icon: Settings, description: 'Configuration' },
-  ];
-
+  const navigation = [{
+    id: 'dashboard',
+    name: 'Dashboard',
+    icon: LayoutDashboard,
+    description: 'Vue d\'ensemble'
+  }, {
+    id: 'tasks',
+    name: 'Tâches',
+    icon: CheckSquare,
+    description: 'Gérer mes tâches'
+  }, {
+    id: 'calendar',
+    name: 'Calendrier',
+    icon: Calendar,
+    description: 'Planning'
+  }, {
+    id: 'projects',
+    name: 'Projets',
+    icon: FolderOpen,
+    description: 'Mes projets'
+  }, {
+    id: 'inbox',
+    name: 'Inbox',
+    icon: Inbox,
+    description: 'Idées rapides'
+  }, {
+    id: 'settings',
+    name: 'Paramètres',
+    icon: Settings,
+    description: 'Configuration'
+  }];
   const handleViewChange = (viewId: string) => {
     onViewChange(viewId);
     setIsSidebarOpen(false);
   };
-
-  return (
-    <div className="h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex overflow-hidden">
+  return <div className="h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex overflow-hidden">
       {/* Sidebar mobile overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300" onClick={() => setIsSidebarOpen(false)} />}
 
       {/* Sidebar - Fixe à la hauteur du viewport */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 lg:relative lg:translate-x-0 ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      }`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="flex flex-col h-full">
           {/* Logo et fermeture mobile */}
           <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
@@ -48,59 +62,37 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
                 <CheckSquare className="text-white" size={22} />
               </div>
               <div>
-                <h1 className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  FlowSavvy
-                </h1>
+                <h1 className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">MotionFlow</h1>
                 <p className="text-xs text-gray-500">Planification intelligente</p>
               </div>
             </div>
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg lg:hidden transition-colors"
-            >
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg lg:hidden transition-colors">
               <X size={20} />
             </button>
           </div>
 
           {/* Navigation - Défilable */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {navigation.map((item) => {
-              const IconComponent = item.icon;
-              const isActive = currentView === item.id;
-              
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleViewChange(item.id)}
-                  className={`w-full group flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${
-                    isActive
-                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm border border-blue-100'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:shadow-sm'
-                  }`}
-                >
-                  <div className={`p-2 rounded-lg transition-colors ${
-                    isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'
-                  }`}>
+            {navigation.map(item => {
+            const IconComponent = item.icon;
+            const isActive = currentView === item.id;
+            return <button key={item.id} onClick={() => handleViewChange(item.id)} className={`w-full group flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${isActive ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm border border-blue-100' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:shadow-sm'}`}>
+                  <div className={`p-2 rounded-lg transition-colors ${isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
                     <IconComponent size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{item.name}</div>
                     <div className="text-xs text-gray-500 truncate">{item.description}</div>
                   </div>
-                  {isActive && (
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  )}
-                </button>
-              );
-            })}
+                  {isActive && <div className="w-2 h-2 bg-blue-500 rounded-full"></div>}
+                </button>;
+          })}
           </nav>
 
           {/* Sidebar Footer */}
-          {sidebarFooter && (
-            <div className="border-t border-gray-100 flex-shrink-0">
+          {sidebarFooter && <div className="border-t border-gray-100 flex-shrink-0">
               {sidebarFooter}
-            </div>
-          )}
+            </div>}
 
           {/* Version */}
           <div className="p-4 border-t border-gray-100 flex-shrink-0">
@@ -120,10 +112,7 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
         {/* Top bar mobile */}
         <div className="bg-white/90 backdrop-blur-sm border-b border-gray-100 p-4 lg:hidden sticky top-0 z-30 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
               <Menu size={20} />
             </button>
             
@@ -147,6 +136,5 @@ export function Layout({ children, currentView, onViewChange, sidebarFooter }: L
           </div>
         </main>
       </div>
-    </div>
-  );
+    </div>;
 }
