@@ -9,7 +9,386 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      events: {
+        Row: {
+          all_day: boolean | null
+          buffer_after: number | null
+          buffer_before: number | null
+          created_at: string | null
+          description: string | null
+          end_date: string
+          google_meet_link: string | null
+          id: string
+          location: string | null
+          mark_as_busy: boolean | null
+          repeat_type: string | null
+          start_date: string
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          all_day?: boolean | null
+          buffer_after?: number | null
+          buffer_before?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date: string
+          google_meet_link?: string | null
+          id?: string
+          location?: string | null
+          mark_as_busy?: boolean | null
+          repeat_type?: string | null
+          start_date: string
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          all_day?: boolean | null
+          buffer_after?: number | null
+          buffer_before?: number | null
+          created_at?: string | null
+          description?: string | null
+          end_date?: string
+          google_meet_link?: string | null
+          id?: string
+          location?: string | null
+          mark_as_busy?: boolean | null
+          repeat_type?: string | null
+          start_date?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      inbox_items: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      project_templates: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          default_duration: number | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          default_duration?: number | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          default_duration?: number | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          color: string | null
+          completed: boolean | null
+          created_at: string | null
+          deadline: string
+          description: string | null
+          id: string
+          start_date: string
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          deadline: string
+          description?: string | null
+          id?: string
+          start_date: string
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          deadline?: string
+          description?: string | null
+          id?: string
+          start_date?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      task_types: {
+        Row: {
+          allow_weekends: boolean | null
+          auto_schedule: boolean | null
+          buffer_between_tasks: number | null
+          color: string
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          allow_weekends?: boolean | null
+          auto_schedule?: boolean | null
+          buffer_between_tasks?: number | null
+          color: string
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          allow_weekends?: boolean | null
+          auto_schedule?: boolean | null
+          buffer_between_tasks?: number | null
+          color?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          allow_splitting: boolean | null
+          buffer_after: number | null
+          buffer_before: number | null
+          can_start_from: string | null
+          category: string | null
+          completed: boolean | null
+          created_at: string | null
+          deadline: string
+          dependencies: string[] | null
+          description: string | null
+          estimated_duration: number
+          id: string
+          priority: string | null
+          project_id: string | null
+          scheduled_end: string | null
+          scheduled_start: string | null
+          split_duration: number | null
+          task_type_id: string | null
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          allow_splitting?: boolean | null
+          buffer_after?: number | null
+          buffer_before?: number | null
+          can_start_from?: string | null
+          category?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          deadline: string
+          dependencies?: string[] | null
+          description?: string | null
+          estimated_duration: number
+          id?: string
+          priority?: string | null
+          project_id?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          split_duration?: number | null
+          task_type_id?: string | null
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          allow_splitting?: boolean | null
+          buffer_after?: number | null
+          buffer_before?: number | null
+          can_start_from?: string | null
+          category?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          deadline?: string
+          dependencies?: string[] | null
+          description?: string | null
+          estimated_duration?: number
+          id?: string
+          priority?: string | null
+          project_id?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          split_duration?: number | null
+          task_type_id?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_task_type_id_fkey"
+            columns: ["task_type_id"]
+            isOneToOne: false
+            referencedRelation: "task_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_tasks: {
+        Row: {
+          allow_splitting: boolean | null
+          buffer_after: number | null
+          buffer_before: number | null
+          category: string | null
+          created_at: string | null
+          day_offset: number | null
+          dependencies: string[] | null
+          description: string | null
+          estimated_duration: number
+          id: string
+          priority: string | null
+          split_duration: number | null
+          task_type_id: string | null
+          template_id: string | null
+          title: string
+        }
+        Insert: {
+          allow_splitting?: boolean | null
+          buffer_after?: number | null
+          buffer_before?: number | null
+          category?: string | null
+          created_at?: string | null
+          day_offset?: number | null
+          dependencies?: string[] | null
+          description?: string | null
+          estimated_duration: number
+          id?: string
+          priority?: string | null
+          split_duration?: number | null
+          task_type_id?: string | null
+          template_id?: string | null
+          title: string
+        }
+        Update: {
+          allow_splitting?: boolean | null
+          buffer_after?: number | null
+          buffer_before?: number | null
+          category?: string | null
+          created_at?: string | null
+          day_offset?: number | null
+          dependencies?: string[] | null
+          description?: string | null
+          estimated_duration?: number
+          id?: string
+          priority?: string | null
+          split_duration?: number | null
+          task_type_id?: string | null
+          template_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_tasks_task_type_id_fkey"
+            columns: ["task_type_id"]
+            isOneToOne: false
+            referencedRelation: "task_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "template_tasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "project_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_slots: {
+        Row: {
+          available: boolean | null
+          created_at: string | null
+          day_of_week: number | null
+          end_time: string
+          id: string
+          start_time: string
+          task_type_id: string | null
+        }
+        Insert: {
+          available?: boolean | null
+          created_at?: string | null
+          day_of_week?: number | null
+          end_time: string
+          id?: string
+          start_time: string
+          task_type_id?: string | null
+        }
+        Update: {
+          available?: boolean | null
+          created_at?: string | null
+          day_of_week?: number | null
+          end_time?: string
+          id?: string
+          start_time?: string
+          task_type_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_slots_task_type_id_fkey"
+            columns: ["task_type_id"]
+            isOneToOne: false
+            referencedRelation: "task_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

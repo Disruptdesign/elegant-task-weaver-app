@@ -4,7 +4,8 @@ import { Layout } from '../components/Layout';
 import { AppContent } from '../components/AppContent';
 import { AddItemForm } from '../components/AddItemForm';
 import { QuickInbox } from '../components/QuickInbox';
-import { useOptimizedTasks } from '../hooks/useOptimizedTasks';
+import { AuthWrapper } from '../components/AuthWrapper';
+import { useSupabaseTasks } from '../hooks/useSupabaseTasks';
 import { useAppState } from '../hooks/useAppState';
 import { useAppHandlers } from '../hooks/useAppHandlers';
 import { usePerformanceCache } from '../hooks/usePerformanceCache';
@@ -27,6 +28,8 @@ const Index = () => {
     projects,
     taskTypes,
     projectTemplates,
+    isLoading,
+    error,
     addTask,
     updateTask,
     deleteTask,
@@ -45,10 +48,8 @@ const Index = () => {
     updateProjectTemplate,
     deleteProjectTemplate,
     createProjectFromTemplate,
-    tasksByProject,
-    completedTasksCount,
-    pendingTasksCount,
-  } = useOptimizedTasks();
+    refreshData,
+  } = useSupabaseTasks();
 
   const {
     handleConvertInboxItem,
@@ -68,7 +69,7 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [clearExpiredEntries]);
 
-  // Optimisation des callbacks
+  // Optimisation des callbacks avec les nouvelles fonctions async
   const optimizedHandlers = useOptimizedCallbacks({
     onEditTask: updateTask,
     onEditEvent: updateEvent,
@@ -93,13 +94,13 @@ const Index = () => {
     onReschedule: handleRescheduleAllTasks,
   });
 
-  console.log('Index: Performance metrics:', {
+  console.log('Index: Supabase metrics:', {
     tasks: tasks.length,
     events: events.length,
     projects: projects.length,
     taskTypes: taskTypes.length,
-    completedTasks: completedTasksCount,
-    pendingTasks: pendingTasksCount,
+    isLoading,
+    error,
     isAddFormOpen,
   });
 
@@ -107,12 +108,53 @@ const Index = () => {
     handleConvertInboxItem(item, openAddForm);
   };
 
-  const handleTaskFormSubmit = (taskData: any) => {
-    handleTaskSubmit(taskData, taskFormData, closeAddForm);
+  const handleTaskFormSubmit = async (taskData: any) => {
+    await handleTaskSubmit(taskData, taskFormData, closeAddForm);
+    // Rafraîchir les données après ajout
+    await refreshData();
   };
 
+  // Calculer les statistiques pour l'affichage
+  const completedTasksCount = tasks.filter(task => task.completed).length;
+  const pendingTasksCount = tasks.filter(task => !task.completed).length;
+
+  if (isLoading) {
+    return (
+      <AuthWrapper>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Chargement de vos données...</p>
+          </div>
+        </div>
+      </AuthWrapper>
+    );
+  }
+
+  if (error) {
+    return (
+      <AuthWrapper>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-red-600 text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Erreur de chargement</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={refreshData}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Réessayer
+            </button>
+          </div>
+        </div>
+      </AuthWrapper>
+    );
+  }
+
   return (
-    <>
+    <AuthWrapper>
       <Layout 
         currentView={currentView} 
         onViewChange={setCurrentView}
@@ -140,7 +182,7 @@ const Index = () => {
         projects={projects}
         taskTypes={taskTypes}
       />
-    </>
+    </AuthWrapper>
   );
 };
 

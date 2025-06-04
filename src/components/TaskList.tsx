@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Task, Project, TaskType } from '../types/task';
 import { TaskCard } from './TaskCard';
@@ -7,10 +6,10 @@ import { Plus, Search, Filter, RefreshCw, ListTodo, CheckCircle, ArrowUpDown } f
 
 interface TaskListProps {
   tasks: Task[];
-  onUpdateTask: (id: string, updates: Partial<Task>) => void;
-  onDeleteTask: (id: string) => void;
+  onUpdateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  onDeleteTask: (id: string) => Promise<void>;
   onCompleteTask: (id: string) => void;
-  onAddTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
+  onAddTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onReschedule: () => void;
   projects?: Project[];
   taskTypes?: TaskType[];
@@ -86,7 +85,7 @@ export function TaskList({
     return sortOrder === 'asc' ? comparison : -comparison;
   });
 
-  // Fonctions de gestion
+  // Fonctions de gestion avec support async
   const handleEdit = (task: Task) => {
     setEditingTask(task);
     setIsFormOpen(true);
@@ -96,13 +95,18 @@ export function TaskList({
     handleEdit(task);
   };
 
-  const handleFormSubmit = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
-    if (editingTask) {
-      onUpdateTask(editingTask.id, taskData);
-    } else {
-      onAddTask(taskData);
+  const handleFormSubmit = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      if (editingTask) {
+        await onUpdateTask(editingTask.id, taskData);
+      } else {
+        await onAddTask(taskData);
+      }
+      setEditingTask(undefined);
+    } catch (error) {
+      console.error('Error saving task:', error);
+      // You could add toast notification here
     }
-    setEditingTask(undefined);
   };
 
   const handleFormClose = () => {
@@ -114,7 +118,17 @@ export function TaskList({
     const task = tasks.find(t => t.id === taskId);
     if (task) {
       console.log('🔄 Basculement état completion pour tâche:', taskId, 'De:', task.completed, 'Vers:', !task.completed);
-      onUpdateTask(taskId, { completed: !task.completed });
+      onUpdateTask(taskId, { completed: !task.completed }).catch(error => {
+        console.error('Error toggling task completion:', error);
+      });
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await onDeleteTask(taskId);
+    } catch (error) {
+      console.error('Error deleting task:', error);
     }
   };
 
@@ -308,7 +322,7 @@ export function TaskList({
                     task={task}
                     onComplete={handleToggleComplete}
                     onEdit={handleEdit}
-                    onDelete={onDeleteTask}
+                    onDelete={handleDeleteTask}
                     onClick={handleCardClick}
                     projects={projects}
                   />
@@ -335,7 +349,7 @@ export function TaskList({
                     task={task}
                     onComplete={handleToggleComplete}
                     onEdit={handleEdit}
-                    onDelete={onDeleteTask}
+                    onDelete={handleDeleteTask}
                     onClick={handleCardClick}
                     projects={projects}
                   />

@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface DragState {
@@ -15,8 +14,8 @@ interface DragState {
 }
 
 interface DragCallbacks {
-  onUpdateTask?: (id: string, updates: any) => void;
-  onUpdateEvent?: (id: string, updates: any) => void;
+  onUpdateTask?: (id: string, updates: any) => Promise<void> | void;
+  onUpdateEvent?: (id: string, updates: any) => Promise<void> | void;
 }
 
 const DRAG_THRESHOLD = 5;
@@ -74,7 +73,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     document.body.style.cursor = '';
   }, []);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handleMouseMove = useCallback(async (e: MouseEvent) => {
     const currentState = dragStateRef.current;
     const currentCallbacks = callbacksRef.current;
     
@@ -120,17 +119,21 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       const roundedMinutes = Math.round(minute / 15) * 15;
       newStartTime.setMinutes(roundedMinutes, 0, 0);
 
-      if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
-        currentCallbacks.onUpdateTask(currentState.itemId, {
-          scheduledStart: newStartTime,
-          scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
-        });
-      } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
-        const newEndTime = new Date(newStartTime.getTime() + currentState.originalDuration * 60000);
-        currentCallbacks.onUpdateEvent(currentState.itemId, {
-          startDate: newStartTime,
-          endDate: newEndTime,
-        });
+      try {
+        if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
+          await currentCallbacks.onUpdateTask(currentState.itemId, {
+            scheduledStart: newStartTime,
+            scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
+          });
+        } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
+          const newEndTime = new Date(newStartTime.getTime() + currentState.originalDuration * 60000);
+          await currentCallbacks.onUpdateEvent(currentState.itemId, {
+            startDate: newStartTime,
+            endDate: newEndTime,
+          });
+        }
+      } catch (error) {
+        console.error('Error updating item during drag:', error);
       }
       
     } else if (currentState.action === 'resize') {
@@ -144,30 +147,38 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
         
         const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
         
-        if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
-          currentCallbacks.onUpdateTask(currentState.itemId, {
-            scheduledStart: newStartTime,
-            scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
-            estimatedDuration: newDuration,
-          });
-        } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
-          currentCallbacks.onUpdateEvent(currentState.itemId, {
-            startDate: newStartTime,
-            endDate: new Date(newStartTime.getTime() + newDuration * 60000),
-          });
+        try {
+          if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
+            await currentCallbacks.onUpdateTask(currentState.itemId, {
+              scheduledStart: newStartTime,
+              scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
+              estimatedDuration: newDuration,
+            });
+          } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
+            await currentCallbacks.onUpdateEvent(currentState.itemId, {
+              startDate: newStartTime,
+              endDate: new Date(newStartTime.getTime() + newDuration * 60000),
+            });
+          }
+        } catch (error) {
+          console.error('Error updating item during resize:', error);
         }
         return;
       }
 
-      if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
-        currentCallbacks.onUpdateTask(currentState.itemId, {
-          estimatedDuration: newDuration,
-          scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
-        });
-      } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
-        currentCallbacks.onUpdateEvent(currentState.itemId, {
-          endDate: new Date(currentState.startTime.getTime() + newDuration * 60000),
-        });
+      try {
+        if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
+          await currentCallbacks.onUpdateTask(currentState.itemId, {
+            estimatedDuration: newDuration,
+            scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
+          });
+        } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
+          await currentCallbacks.onUpdateEvent(currentState.itemId, {
+            endDate: new Date(currentState.startTime.getTime() + newDuration * 60000),
+          });
+        }
+      } catch (error) {
+        console.error('Error updating item during resize:', error);
       }
     }
   }, [snapToQuarterHour]);
