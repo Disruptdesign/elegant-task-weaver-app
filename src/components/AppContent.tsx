@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   LazyDashboard,
@@ -8,6 +9,7 @@ import {
   LazyTaskTypeSettings,
   withLazySuspense
 } from './LazyComponents';
+import Dashboard from './Dashboard';
 
 interface AppContentProps {
   currentView: string;
@@ -73,7 +75,6 @@ export const AppContent: React.FC<AppContentProps> = ({
   onReschedule,
 }) => {
   // Wrapping des composants avec lazy suspense
-  const Dashboard = withLazySuspense(LazyDashboard);
   const TaskList = withLazySuspense(LazyTaskList);
   const CalendarView = withLazySuspense(LazyCalendarView);
   const Inbox = withLazySuspense(LazyInbox);
@@ -86,9 +87,29 @@ export const AppContent: React.FC<AppContentProps> = ({
         <Dashboard 
           tasks={tasks} 
           events={events} 
-          onEditTask={onEditTask} 
-          onEditEvent={onEditEvent}
+          inboxItems={inboxItems}
           projects={projects}
+          taskTypes={taskTypes}
+          projectTemplates={projectTemplates}
+          onAddTask={onAddTask}
+          onUpdateTask={onUpdateTask}
+          onDeleteTask={onDeleteTask}
+          onAddEvent={onAddEvent}
+          onUpdateEvent={onUpdateEvent}
+          onDeleteEvent={onDeleteTask}
+          onAddInboxItem={onAddInboxItem}
+          onDeleteInboxItem={onDeleteInboxItem}
+          onAddProject={onAddProject}
+          onUpdateProject={onUpdateProject}
+          onDeleteProject={onDeleteProject}
+          onAddTaskType={onAddTaskType}
+          onUpdateTaskType={onUpdateTaskType}
+          onDeleteTaskType={onDeleteTaskType}
+          onAddProjectTemplate={onAddTemplate}
+          onUpdateProjectTemplate={onUpdateTemplate}
+          onDeleteProjectTemplate={onDeleteTemplate}
+          onCreateProjectFromTemplate={onCreateProjectFromTemplate}
+          onRefreshData={onReschedule}
         />
       );
     case 'tasks':
@@ -156,9 +177,29 @@ export const AppContent: React.FC<AppContentProps> = ({
         <Dashboard 
           tasks={tasks} 
           events={events} 
-          onEditTask={onEditTask} 
-          onEditEvent={onEditEvent} 
-          projects={projects} 
+          inboxItems={inboxItems}
+          projects={projects}
+          taskTypes={taskTypes}
+          projectTemplates={projectTemplates}
+          onAddTask={onAddTask}
+          onUpdateTask={onUpdateTask}
+          onDeleteTask={onDeleteTask}
+          onAddEvent={onAddEvent}
+          onUpdateEvent={onUpdateEvent}
+          onDeleteEvent={onDeleteTask}
+          onAddInboxItem={onAddInboxItem}
+          onDeleteInboxItem={onDeleteInboxItem}
+          onAddProject={onAddProject}
+          onUpdateProject={onUpdateProject}
+          onDeleteProject={onDeleteProject}
+          onAddTaskType={onAddTaskType}
+          onUpdateTaskType={onUpdateTaskType}
+          onDeleteTaskType={onDeleteTaskType}
+          onAddProjectTemplate={onAddTemplate}
+          onUpdateProjectTemplate={onUpdateTemplate}
+          onDeleteProjectTemplate={onDeleteTemplate}
+          onCreateProjectFromTemplate={onCreateProjectFromTemplate}
+          onRefreshData={onReschedule}
         />
       );
   }
