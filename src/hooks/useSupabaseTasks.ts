@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, Event, InboxItem, Project, TaskType, ProjectTemplate, TemplateTask } from '../types/task';
@@ -87,6 +86,36 @@ const convertDbProjectToProject = (dbProject: any): Project => ({
   updatedAt: new Date(dbProject.updated_at),
 });
 
+const convertDbInboxItemToInboxItem = (dbItem: any): InboxItem => ({
+  id: dbItem.id,
+  title: dbItem.title,
+  description: dbItem.description,
+  createdAt: new Date(dbItem.created_at),
+});
+
+const convertDbTaskTypeToTaskType = (dbTaskType: any): TaskType => ({
+  id: dbTaskType.id,
+  name: dbTaskType.name,
+  color: dbTaskType.color,
+  timeSlots: [], // Will be populated separately if needed
+  autoSchedule: dbTaskType.auto_schedule,
+  allowWeekends: dbTaskType.allow_weekends,
+  bufferBetweenTasks: dbTaskType.buffer_between_tasks,
+  createdAt: new Date(dbTaskType.created_at),
+  updatedAt: new Date(dbTaskType.updated_at),
+});
+
+const convertDbProjectTemplateToProjectTemplate = (dbTemplate: any): ProjectTemplate => ({
+  id: dbTemplate.id,
+  name: dbTemplate.name,
+  description: dbTemplate.description,
+  color: dbTemplate.color,
+  defaultDuration: dbTemplate.default_duration,
+  tasks: [], // Will be populated separately if needed
+  createdAt: new Date(dbTemplate.created_at),
+  updatedAt: new Date(dbTemplate.updated_at),
+});
+
 export function useSupabaseTasks(): UseSupabaseTasksReturn {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -131,10 +160,10 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
       setTasks((tasksResult.data || []).map(convertDbTaskToTask));
       setEvents((eventsResult.data || []).map(convertDbEventToEvent));
-      setInboxItems(inboxResult.data || []);
+      setInboxItems((inboxResult.data || []).map(convertDbInboxItemToInboxItem));
       setProjects((projectsResult.data || []).map(convertDbProjectToProject));
-      setTaskTypes(taskTypesResult.data || []);
-      setProjectTemplates(templatesResult.data || []);
+      setTaskTypes((taskTypesResult.data || []).map(convertDbTaskTypeToTaskType));
+      setProjectTemplates((templatesResult.data || []).map(convertDbProjectTemplateToProjectTemplate));
 
       console.log('✅ Data fetched successfully:', {
         tasks: tasksResult.data?.length || 0,
@@ -343,7 +372,8 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
       if (error) throw error;
       
-      setInboxItems(prev => [...prev, data]);
+      const newInboxItem = convertDbInboxItemToInboxItem(data);
+      setInboxItems(prev => [...prev, newInboxItem]);
       console.log('✅ Inbox item added successfully:', data.title);
     } catch (err) {
       console.error('❌ Error adding inbox item:', err);
@@ -455,7 +485,8 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
       if (error) throw error;
       
-      setTaskTypes(prev => [...prev, data]);
+      const newTaskType = convertDbTaskTypeToTaskType(data);
+      setTaskTypes(prev => [...prev, newTaskType]);
       console.log('✅ Task type added successfully:', data.name);
     } catch (err) {
       console.error('❌ Error adding task type:', err);
@@ -482,7 +513,8 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
       if (error) throw error;
 
-      setTaskTypes(prev => prev.map(taskType => taskType.id === id ? data : taskType));
+      const updatedTaskType = convertDbTaskTypeToTaskType(data);
+      setTaskTypes(prev => prev.map(taskType => taskType.id === id ? updatedTaskType : taskType));
       console.log('✅ Task type updated successfully:', id);
     } catch (err) {
       console.error('❌ Error updating task type:', err);
@@ -522,7 +554,8 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
       if (error) throw error;
       
-      setProjectTemplates(prev => [...prev, { ...data, tasks: [] }]);
+      const newProjectTemplate = convertDbProjectTemplateToProjectTemplate(data);
+      setProjectTemplates(prev => [...prev, newProjectTemplate]);
       console.log('✅ Project template added successfully:', data.name);
     } catch (err) {
       console.error('❌ Error adding project template:', err);
@@ -548,8 +581,9 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
       if (error) throw error;
 
+      const updatedProjectTemplate = convertDbProjectTemplateToProjectTemplate(data);
       setProjectTemplates(prev => prev.map(template => 
-        template.id === id ? { ...template, ...data } : template
+        template.id === id ? updatedProjectTemplate : template
       ));
       console.log('✅ Project template updated successfully:', id);
     } catch (err) {
