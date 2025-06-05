@@ -42,6 +42,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
   const hasDragStartedRef = useRef(false);
   const lastUpdateRef = useRef(0);
   const pendingUpdateRef = useRef<any>(null);
+  const dragElementRef = useRef<HTMLElement | null>(null);
 
   // Maintenir les refs à jour
   useEffect(() => {
@@ -75,8 +76,16 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     hasDragStartedRef.current = false;
     lastUpdateRef.current = 0;
     pendingUpdateRef.current = null;
+    dragElementRef.current = null;
+    
+    // Restaurer les styles et libérer la capture
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
+    
+    // Libérer la capture de la souris si elle était active
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
   }, []);
 
   // Fonction throttlée pour les mises à jour
@@ -113,6 +122,9 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
   }, []);
 
   const handleMouseMove = useCallback(async (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     const currentState = dragStateRef.current;
     
     if (!currentState.itemId || !currentState.startTime) {
@@ -203,7 +215,10 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     }
   }, [snapToQuarterHour, throttledUpdate]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     console.log('🖱️ Mouse up - finalizing smooth drag operation');
     
     if (pendingClickRef.current && !hasDragStartedRef.current) {
@@ -221,8 +236,8 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     }
     
     cleanupDrag();
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    document.removeEventListener('mousemove', handleMouseMove, true);
+    document.removeEventListener('mouseup', handleMouseUp, true);
   }, [cleanupDrag, handleMouseMove, throttledUpdate]);
 
   const startDrag = useCallback((
@@ -257,6 +272,9 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       pendingClickRef.current = onItemClick;
     }
 
+    // Stocker l'élément de référence
+    dragElementRef.current = e.currentTarget as HTMLElement;
+
     hasDragStartedRef.current = false;
     lastUpdateRef.current = 0;
     pendingUpdateRef.current = null;
@@ -274,18 +292,22 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       action,
     });
 
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    document.addEventListener('mousemove', handleMouseMove, { passive: false });
-    document.addEventListener('mouseup', handleMouseUp, { passive: false });
+    // Nettoyer les anciens listeners avant d'en ajouter de nouveaux
+    document.removeEventListener('mousemove', handleMouseMove, true);
+    document.removeEventListener('mouseup', handleMouseUp, true);
+    
+    // Ajouter les nouveaux listeners avec capture pour éviter les conflits
+    document.addEventListener('mousemove', handleMouseMove, { passive: false, capture: true });
+    document.addEventListener('mouseup', handleMouseUp, { passive: false, capture: true });
     
     console.log('✅ Smooth drag initialization complete');
   }, [handleMouseMove, handleMouseUp]);
 
+  // Cleanup au démontage
   useEffect(() => {
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove, true);
+      document.removeEventListener('mouseup', handleMouseUp, true);
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
