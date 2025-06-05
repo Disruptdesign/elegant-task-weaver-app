@@ -20,9 +20,9 @@ export function Layout({
     description: 'Vue d\'ensemble'
   }, {
     id: 'tasks',
-    name: 'Tâches',
+    name: 'Tâches & Événements',
     icon: CheckSquare,
-    description: 'Gérer mes tâches'
+    description: 'Gérer mes tâches et événements'
   }, {
     id: 'calendar',
     name: 'Calendrier',

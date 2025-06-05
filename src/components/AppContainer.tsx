@@ -65,8 +65,8 @@ export function AppContainer() {
     }
   };
 
-  const handleReschedule = () => {
-    refreshData();
+  const handleReschedule = async () => {
+    await refreshData();
   };
 
   if (error) {

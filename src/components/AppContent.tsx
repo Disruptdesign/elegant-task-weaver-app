@@ -21,26 +21,26 @@ interface AppContentProps {
   projectTemplates: any[];
   onEditTask: (id: string, data: any) => void;
   onEditEvent: (id: string, data: any) => void;
-  onAddTask: (data: any) => void;
-  onUpdateTask: (id: string, data: any) => void;
-  onDeleteTask: (id: string) => void;
-  onAddEvent: (data: any) => void;
-  onUpdateEvent: (id: string, data: any) => void;
-  onAddInboxItem: (data: any) => void;
-  onDeleteInboxItem: (id: string) => void;
+  onAddTask: (data: any) => Promise<void>;
+  onUpdateTask: (id: string, data: any) => Promise<void>;
+  onDeleteTask: (id: string) => Promise<void>;
+  onAddEvent: (data: any) => Promise<void>;
+  onUpdateEvent: (id: string, data: any) => Promise<void>;
+  onAddInboxItem: (data: any) => Promise<void>;
+  onDeleteInboxItem: (id: string) => Promise<void>;
   onConvertToTask: (item: any) => void;
-  onAddProject: (data: any) => void;
-  onUpdateProject: (id: string, data: any) => void;
-  onDeleteProject: (id: string) => void;
-  onAddTaskType: (data: any) => void;
-  onUpdateTaskType: (id: string, data: any) => void;
-  onDeleteTaskType: (id: string) => void;
-  onAddTemplate: (data: any) => void;
-  onUpdateTemplate: (id: string, data: any) => void;
-  onDeleteTemplate: (id: string) => void;
-  onCreateProjectFromTemplate: (templateId: string, projectData: any) => void;
+  onAddProject: (data: any) => Promise<void>;
+  onUpdateProject: (id: string, data: any) => Promise<void>;
+  onDeleteProject: (id: string) => Promise<void>;
+  onAddTaskType: (data: any) => Promise<void>;
+  onUpdateTaskType: (id: string, data: any) => Promise<void>;
+  onDeleteTaskType: (id: string) => Promise<void>;
+  onAddTemplate: (data: any) => Promise<void>;
+  onUpdateTemplate: (id: string, data: any) => Promise<void>;
+  onDeleteTemplate: (id: string) => Promise<void>;
+  onCreateProjectFromTemplate: (templateId: string, projectData: any) => Promise<void>;
   onCompleteTask: (id: string) => void;
-  onReschedule: () => void;
+  onReschedule: () => Promise<void>;
 }
 
 export const AppContent: React.FC<AppContentProps> = ({
@@ -116,9 +116,13 @@ export const AppContent: React.FC<AppContentProps> = ({
       return (
         <TaskList
           tasks={tasks}
+          events={events}
           onAddTask={onAddTask}
           onUpdateTask={onUpdateTask}
           onDeleteTask={onDeleteTask}
+          onAddEvent={onAddEvent}
+          onUpdateEvent={onUpdateEvent}
+          onDeleteEvent={onDeleteTask}
           onCompleteTask={onCompleteTask}
           onReschedule={onReschedule}
           projects={projects}
