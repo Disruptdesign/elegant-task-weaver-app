@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Task, Event, Project } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
@@ -208,6 +207,19 @@ export function CalendarView({
     const height = Math.max((duration / 60) * 64, 28);
     
     return { top: Math.max(0, top), height };
+  };
+
+  // Fonction pour déterminer le style du curseur selon la position
+  const getCursorStyle = (e: React.MouseEvent, elementHeight: number): string => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relativeY = e.clientY - rect.top;
+    
+    if (relativeY <= 4) {
+      return 'n-resize';
+    } else if (relativeY >= elementHeight - 4) {
+      return 's-resize';
+    }
+    return 'grab';
   };
 
   // Gestionnaire simplifié pour la replanification
@@ -485,7 +497,7 @@ export function CalendarView({
             })}
           </div>
 
-          {/* Grille horaire simplifiée */}
+          {/* Grille horaire optimisée */}
           <div className="h-[600px] overflow-y-auto">
             <div className="grid grid-cols-8">
               {/* Colonne des heures */}
@@ -513,11 +525,11 @@ export function CalendarView({
                     />
                   ))}
 
-                  {/* Événements */}
+                  {/* Événements avec curseurs améliorés */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getEventsForDay(day)
                       .filter(event => !event.allDay)
-                      .slice(0, 10) // Limite pour éviter surcharge
+                      .slice(0, 10)
                       .map(event => {
                         const position = getEventPosition(event);
                         if (!position) return null;
@@ -527,10 +539,10 @@ export function CalendarView({
                         return (
                           <div
                             key={`event-${event.id}`}
-                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer select-none shadow-sm pointer-events-auto ${
+                            className={`absolute rounded-lg transition-all duration-150 cursor-grab select-none shadow-sm pointer-events-auto group ${
                               isBeingDragged 
-                                ? 'opacity-80 shadow-lg z-50' 
-                                : 'hover:shadow-md z-20'
+                                ? 'opacity-80 shadow-lg z-50 cursor-grabbing' 
+                                : 'hover:shadow-md z-20 hover:scale-[1.02]'
                             }`}
                             style={{
                               top: `${position.top}px`,
@@ -539,6 +551,25 @@ export function CalendarView({
                               right: '2px',
                               backgroundColor: '#f0f9ff',
                               border: '1px solid #e0f2fe',
+                            }}
+                            onMouseMove={(e) => {
+                              if (!isBeingDragged && onUpdateEvent) {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const relativeY = e.clientY - rect.top;
+                                
+                                if (relativeY <= 4) {
+                                  e.currentTarget.style.cursor = 'n-resize';
+                                } else if (relativeY >= rect.height - 4) {
+                                  e.currentTarget.style.cursor = 's-resize';
+                                } else {
+                                  e.currentTarget.style.cursor = 'grab';
+                                }
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isBeingDragged) {
+                                e.currentTarget.style.cursor = 'grab';
+                              }
                             }}
                             onMouseDown={(e) => {
                               const rect = e.currentTarget.getBoundingClientRect();
@@ -558,6 +589,10 @@ export function CalendarView({
                               }
                             }}
                           >
+                            {/* Zones de redimensionnement visuelles */}
+                            <div className="absolute top-0 left-0 right-0 h-1 bg-transparent group-hover:bg-blue-300 opacity-0 group-hover:opacity-50 transition-opacity cursor-n-resize"></div>
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-transparent group-hover:bg-blue-300 opacity-0 group-hover:opacity-50 transition-opacity cursor-s-resize"></div>
+                            
                             <div className="h-full px-2 py-1 flex flex-col justify-start">
                               <div className="text-xs font-medium text-sky-800 leading-tight truncate">
                                 {event.title}
@@ -573,10 +608,10 @@ export function CalendarView({
                       })}
                   </div>
 
-                  {/* Tâches */}
+                  {/* Tâches avec curseurs améliorés */}
                   <div className="absolute inset-0 p-1 pointer-events-none">
                     {getTasksForDay(day)
-                      .slice(0, 10) // Limite pour éviter surcharge
+                      .slice(0, 10)
                       .map(task => {
                         const position = getTaskPosition(task);
                         if (!position) return null;
@@ -589,10 +624,10 @@ export function CalendarView({
                         return (
                           <div
                             key={`task-${task.id}`}
-                            className={`absolute rounded-lg transition-all duration-200 cursor-pointer select-none shadow-sm pointer-events-auto ${
+                            className={`absolute rounded-lg transition-all duration-150 cursor-grab select-none shadow-sm pointer-events-auto group ${
                               isBeingDragged 
-                                ? 'opacity-80 shadow-lg z-50' 
-                                : 'hover:shadow-md z-20'
+                                ? 'opacity-80 shadow-lg z-50 cursor-grabbing' 
+                                : 'hover:shadow-md z-20 hover:scale-[1.02]'
                             } ${isCompleted ? 'opacity-60' : ''}`}
                             style={{
                               top: `${position.top}px`,
@@ -601,6 +636,25 @@ export function CalendarView({
                               right: '2px',
                               backgroundColor: isCompleted ? '#f8f8f8' : statusColors.bgColor,
                               border: `1px solid ${isCompleted ? '#e5e5e5' : statusColors.borderColor}`,
+                            }}
+                            onMouseMove={(e) => {
+                              if (!isBeingDragged && onUpdateTask) {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const relativeY = e.clientY - rect.top;
+                                
+                                if (relativeY <= 4) {
+                                  e.currentTarget.style.cursor = 'n-resize';
+                                } else if (relativeY >= rect.height - 4) {
+                                  e.currentTarget.style.cursor = 's-resize';
+                                } else {
+                                  e.currentTarget.style.cursor = 'grab';
+                                }
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isBeingDragged) {
+                                e.currentTarget.style.cursor = 'grab';
+                              }
                             }}
                             onMouseDown={(e) => {
                               const rect = e.currentTarget.getBoundingClientRect();
@@ -620,10 +674,14 @@ export function CalendarView({
                               }
                             }}
                           >
+                            {/* Zones de redimensionnement visuelles */}
+                            <div className="absolute top-0 left-0 right-0 h-1 bg-transparent group-hover:bg-orange-300 opacity-0 group-hover:opacity-50 transition-opacity cursor-n-resize"></div>
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-transparent group-hover:bg-orange-300 opacity-0 group-hover:opacity-50 transition-opacity cursor-s-resize"></div>
+                            
                             <div className="h-full px-2 py-1 flex items-start gap-1.5">
                               {onUpdateTask && (
                                 <button
-                                  className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 ${
+                                  className={`flex-shrink-0 w-3.5 h-3.5 rounded border transition-all mt-0.5 z-10 ${
                                     isCompleted 
                                       ? 'bg-gray-400 border-gray-400' 
                                       : 'bg-white border-gray-300 hover:border-gray-400'

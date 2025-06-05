@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface DragState {
@@ -19,6 +20,7 @@ interface DragCallbacks {
 }
 
 const DRAG_THRESHOLD = 5;
+const UPDATE_THROTTLE = 16; // ~60fps
 
 export function useDragAndDrop(callbacks: DragCallbacks) {
   const [dragState, setDragState] = useState<DragState>({
@@ -38,8 +40,10 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
   const callbacksRef = useRef(callbacks);
   const pendingClickRef = useRef<(() => void) | null>(null);
   const hasDragStartedRef = useRef(false);
+  const lastUpdateRef = useRef(0);
+  const pendingUpdateRef = useRef<any>(null);
 
-  // Toujours maintenir les refs à jour
+  // Maintenir les refs à jour
   useEffect(() => {
     dragStateRef.current = dragState;
   }, [dragState]);
@@ -69,13 +73,47 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     });
 
     hasDragStartedRef.current = false;
+    lastUpdateRef.current = 0;
+    pendingUpdateRef.current = null;
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
   }, []);
 
-  const handleMouseMove = useCallback(async (e: MouseEvent) => {
+  // Fonction throttlée pour les mises à jour
+  const throttledUpdate = useCallback(async (updateData: any) => {
+    const now = Date.now();
+    
+    if (now - lastUpdateRef.current < UPDATE_THROTTLE) {
+      pendingUpdateRef.current = updateData;
+      return;
+    }
+
+    lastUpdateRef.current = now;
     const currentState = dragStateRef.current;
     const currentCallbacks = callbacksRef.current;
+
+    if (!currentState.itemId) return;
+
+    try {
+      if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
+        await currentCallbacks.onUpdateTask(currentState.itemId, updateData);
+      } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
+        await currentCallbacks.onUpdateEvent(currentState.itemId, updateData);
+      }
+    } catch (error) {
+      console.error('Error updating item during drag:', error);
+    }
+
+    // Traiter la mise à jour en attente s'il y en a une
+    if (pendingUpdateRef.current) {
+      const pending = pendingUpdateRef.current;
+      pendingUpdateRef.current = null;
+      setTimeout(() => throttledUpdate(pending), UPDATE_THROTTLE);
+    }
+  }, []);
+
+  const handleMouseMove = useCallback(async (e: MouseEvent) => {
+    const currentState = dragStateRef.current;
     
     if (!currentState.itemId || !currentState.startTime) {
       return;
@@ -86,7 +124,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
     if (!hasDragStartedRef.current && distance > DRAG_THRESHOLD) {
-      console.log('🎯 Starting drag operation:', currentState.action);
+      console.log('🎯 Starting smooth drag operation:', currentState.action);
       hasDragStartedRef.current = true;
       pendingClickRef.current = null;
       
@@ -115,26 +153,20 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
         newStartTime = new Date(newStartTime.getTime() + daysDelta * 24 * 60 * 60 * 1000);
       }
       
+      // Snap to 15-minute intervals
       const minute = newStartTime.getMinutes();
       const roundedMinutes = Math.round(minute / 15) * 15;
       newStartTime.setMinutes(roundedMinutes, 0, 0);
 
-      try {
-        if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
-          await currentCallbacks.onUpdateTask(currentState.itemId, {
-            scheduledStart: newStartTime,
-            scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
-          });
-        } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
-          const newEndTime = new Date(newStartTime.getTime() + currentState.originalDuration * 60000);
-          await currentCallbacks.onUpdateEvent(currentState.itemId, {
-            startDate: newStartTime,
-            endDate: newEndTime,
-          });
-        }
-      } catch (error) {
-        console.error('Error updating item during drag:', error);
-      }
+      const updateData = currentState.itemType === 'task' ? {
+        scheduledStart: newStartTime,
+        scheduledEnd: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
+      } : {
+        startDate: newStartTime,
+        endDate: new Date(newStartTime.getTime() + currentState.originalDuration * 60000),
+      };
+
+      throttledUpdate(updateData);
       
     } else if (currentState.action === 'resize') {
       const minutesDelta = Math.round((deltaY / 64) * 60);
@@ -147,44 +179,32 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
         
         const newStartTime = new Date(currentState.startTime.getTime() + (currentState.originalDuration - newDuration) * 60000);
         
-        try {
-          if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
-            await currentCallbacks.onUpdateTask(currentState.itemId, {
-              scheduledStart: newStartTime,
-              scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
-              estimatedDuration: newDuration,
-            });
-          } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
-            await currentCallbacks.onUpdateEvent(currentState.itemId, {
-              startDate: newStartTime,
-              endDate: new Date(newStartTime.getTime() + newDuration * 60000),
-            });
-          }
-        } catch (error) {
-          console.error('Error updating item during resize:', error);
-        }
+        const updateData = currentState.itemType === 'task' ? {
+          scheduledStart: newStartTime,
+          scheduledEnd: new Date(newStartTime.getTime() + newDuration * 60000),
+          estimatedDuration: newDuration,
+        } : {
+          startDate: newStartTime,
+          endDate: new Date(newStartTime.getTime() + newDuration * 60000),
+        };
+
+        throttledUpdate(updateData);
         return;
       }
 
-      try {
-        if (currentState.itemType === 'task' && currentCallbacks.onUpdateTask) {
-          await currentCallbacks.onUpdateTask(currentState.itemId, {
-            estimatedDuration: newDuration,
-            scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
-          });
-        } else if (currentState.itemType === 'event' && currentCallbacks.onUpdateEvent) {
-          await currentCallbacks.onUpdateEvent(currentState.itemId, {
-            endDate: new Date(currentState.startTime.getTime() + newDuration * 60000),
-          });
-        }
-      } catch (error) {
-        console.error('Error updating item during resize:', error);
-      }
+      const updateData = currentState.itemType === 'task' ? {
+        estimatedDuration: newDuration,
+        scheduledEnd: new Date(currentState.startTime.getTime() + newDuration * 60000),
+      } : {
+        endDate: new Date(currentState.startTime.getTime() + newDuration * 60000),
+      };
+
+      throttledUpdate(updateData);
     }
-  }, [snapToQuarterHour]);
+  }, [snapToQuarterHour, throttledUpdate]);
 
   const handleMouseUp = useCallback(() => {
-    console.log('🖱️ Mouse up - finalizing drag operation');
+    console.log('🖱️ Mouse up - finalizing smooth drag operation');
     
     if (pendingClickRef.current && !hasDragStartedRef.current) {
       console.log('👆 Executing pending click');
@@ -193,10 +213,17 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       setTimeout(() => clickHandler(), 0);
     }
     
+    // Effectuer la dernière mise à jour en attente
+    if (pendingUpdateRef.current) {
+      const pending = pendingUpdateRef.current;
+      pendingUpdateRef.current = null;
+      throttledUpdate(pending);
+    }
+    
     cleanupDrag();
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  }, [cleanupDrag, handleMouseMove]);
+  }, [cleanupDrag, handleMouseMove, throttledUpdate]);
 
   const startDrag = useCallback((
     e: React.MouseEvent,
@@ -209,7 +236,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('🚀 Initializing drag:', { action, itemType, itemId: item.id, resizeHandle });
+    console.log('🚀 Initializing smooth drag:', { action, itemType, itemId: item.id, resizeHandle });
 
     if (itemType === 'task' && !item.scheduledStart) {
       console.log('❌ Task has no scheduled start time');
@@ -231,6 +258,8 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     }
 
     hasDragStartedRef.current = false;
+    lastUpdateRef.current = 0;
+    pendingUpdateRef.current = null;
     
     setDragState({
       isDragging: false,
@@ -250,7 +279,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     document.addEventListener('mousemove', handleMouseMove, { passive: false });
     document.addEventListener('mouseup', handleMouseUp, { passive: false });
     
-    console.log('✅ Drag initialization complete');
+    console.log('✅ Smooth drag initialization complete');
   }, [handleMouseMove, handleMouseUp]);
 
   useEffect(() => {
