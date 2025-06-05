@@ -120,7 +120,7 @@ export function Layout({
               <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                 <CheckSquare className="text-white" size={14} />
               </div>
-              <span className="font-semibold text-gray-900">FlowSavvy</span>
+              <span className="font-semibold text-gray-900">Flowmotion</span>
             </div>
 
             <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
