@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Layout } from './Layout';
 import { AppContent } from './AppContent';
 import { useSupabaseTasks } from '../hooks/useSupabaseTasks';
+import { useUsers } from '../hooks/useUsers';
 import { Alert, AlertDescription } from './ui/alert';
 import { AlertCircle } from 'lucide-react';
 
@@ -38,6 +38,8 @@ export function AppContainer() {
     createProjectFromTemplate,
     refreshData,
   } = useSupabaseTasks();
+
+  const { users } = useUsers();
 
   const handleTaskEdit = (id: string, data: any) => {
     updateTask(id, data);

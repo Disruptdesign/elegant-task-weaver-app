@@ -1,266 +1,210 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Clock, Calendar, Flag, CheckCircle2, Edit3, Trash2, MoreVertical, RotateCcw, FolderOpen } from 'lucide-react';
+import React, { useState } from 'react';
 import { Task, Project } from '../types/task';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { 
+  Calendar, 
+  Clock, 
+  Edit, 
+  Trash2, 
+  CheckCircle2, 
+  Circle,
+  Users,
+  User
+} from 'lucide-react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { getTaskStatus, getTaskStatusColors } from '../utils/taskStatus';
+import { UserAssignmentDialog } from './UserAssignmentDialog';
+import { useUsers } from '../hooks/useUsers';
 
 interface TaskCardProps {
   task: Task;
-  onComplete: (id: string) => void;
+  onComplete: (taskId: string) => void;
   onEdit: (task: Task) => void;
-  onDelete: (id: string) => void;
-  onClick?: (task: Task) => void;
-  projects?: Project[];
+  onDelete: (taskId: string) => Promise<void>;
+  onClick: (task: Task) => void;
+  projects: Project[];
 }
 
-export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects = [] }: TaskCardProps) {
-  const [showActions, setShowActions] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects }: TaskCardProps) {
+  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
+  const { users, assignUserToTask, removeTaskAssignment } = useUsers();
 
-  const priorityConfig = {
-    low: { label: 'Faible', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
-    medium: { label: 'Moyenne', color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200' },
-    high: { label: 'Haute', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
-    urgent: { label: 'Urgente', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
+  const priorityColors: { [key: string]: string } = {
+    urgent: 'bg-red-500',
+    high: 'bg-orange-500',
+    medium: 'bg-yellow-500',
+    low: 'bg-green-500',
   };
 
-  const taskStatus = getTaskStatus(task);
-  const statusColors = getTaskStatusColors(taskStatus);
-  const config = priorityConfig[task.priority];
+  const projectInfo = projects.find(project => project.id === task.projectId);
 
-  // Trouver le projet associé à la tâche
-  const associatedProject = task.projectId 
-    ? projects.find(project => project.id === task.projectId)
-    : null;
+  const handleAssignUser = async (userId: string, role: string) => {
+    await assignUserToTask(task.id, userId, role as 'assignee' | 'reviewer' | 'observer');
+  };
 
-  // Fermer le menu quand on clique ailleurs
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowActions(false);
-      }
-    };
+  const handleRemoveAssignment = async (userId: string) => {
+    await removeTaskAssignment(task.id, userId);
+  };
 
-    if (showActions) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+  const getAssignedUsersDisplay = () => {
+    if (!task.assignments || task.assignments.length === 0) {
+      return null;
     }
-  }, [showActions]);
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) {
-      return `${hours}h${mins > 0 ? ` ${mins}min` : ''}`;
-    }
-    return `${mins}min`;
+    const displayCount = 2;
+    const assignments = task.assignments.slice(0, displayCount);
+    const remaining = task.assignments.length - displayCount;
+
+    return (
+      <div className="flex items-center gap-1 text-xs text-gray-600">
+        <User size={12} />
+        <span>
+          {assignments.map(assignment => {
+            const user = assignment.user;
+            const displayName = user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}`
+              : user?.email?.split('@')[0] || 'Utilisateur';
+            return displayName;
+          }).join(', ')}
+          {remaining > 0 && ` +${remaining}`}
+        </span>
+      </div>
+    );
   };
-
-  const formatScheduledTime = () => {
-    if (!task.scheduledStart) return null;
-    
-    if (isToday(task.scheduledStart)) {
-      return `Aujourd'hui à ${format(task.scheduledStart, 'HH:mm')}`;
-    } else if (isTomorrow(task.scheduledStart)) {
-      return `Demain à ${format(task.scheduledStart, 'HH:mm')}`;
-    } else {
-      return format(task.scheduledStart, 'dd/MM à HH:mm', { locale: fr });
-    }
-  };
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Ne pas déclencher le clic de carte si on clique sur un bouton
-    if ((e.target as HTMLElement).closest('button')) {
-      return;
-    }
-    
-    if (onClick) {
-      onClick(task);
-    }
-  };
-
-  const handleCompleteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Complete/Restore button clicked for task:', task.id, 'Current status:', task.completed);
-    onComplete(task.id);
-  };
-
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Edit button clicked for task:', task.id);
-    setShowActions(false);
-    onEdit(task);
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Delete button clicked for task:', task.id);
-    setShowActions(false);
-    onDelete(task.id);
-  };
-
-  const handleMenuToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowActions(!showActions);
-  };
-
-  const isOverdue = taskStatus === 'overdue';
-  const isApproaching = taskStatus === 'approaching';
 
   return (
-    <div 
-      className={`group relative cursor-pointer rounded-xl border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
-        task.completed 
-          ? 'bg-gray-50 border-gray-200 opacity-70' 
-          : `${statusColors.bg} ${statusColors.border} hover:shadow-xl`
-      }`}
-      onClick={handleCardClick}
-    >
-      <div className="p-5">
-        {/* En-tête avec titre et priorité - amélioré pour mobile */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0 mr-3">
-            <div className="flex items-start gap-2 mb-1 flex-wrap">
-              <h3 className={`font-semibold leading-tight break-words ${
-                task.completed ? 'line-through text-gray-500' : statusColors.text
-              }`}>
-                {task.title}
-              </h3>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bg} ${config.color} ${config.border} border shrink-0 whitespace-nowrap`}>
-                {config.label}
-              </span>
-            </div>
-            {task.description && (
-              <p className={`text-sm mt-1 line-clamp-2 break-words ${
-                task.completed ? 'text-gray-500' : statusColors.text
-              }`}>{task.description}</p>
-            )}
-
-            {/* Affichage du projet associé */}
-            {associatedProject && (
-              <div className="flex items-center gap-1 mt-2">
-                <FolderOpen size={14} className="text-blue-600" />
-                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 font-medium">
-                  {associatedProject.title}
-                </span>
-              </div>
-            )}
-          </div>
-          
-          {/* Menu d'actions - amélioré pour l'accessibilité */}
-          <div className="relative" ref={menuRef}>
-            <button
-              type="button"
-              onClick={handleMenuToggle}
-              className={`p-2 rounded-lg transition-all z-10 relative touch-target ${
-                showActions ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-              }`}
-              style={{ minWidth: '44px', minHeight: '44px' }}
-              aria-label="Menu d'actions"
-            >
-              <MoreVertical size={16} />
-            </button>
-            
-            {showActions && (
-              <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 min-w-[140px] animate-fade-in">
+    <>
+      <div 
+        className={`bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all cursor-pointer group ${
+          task.completed ? 'opacity-75' : ''
+        }`}
+        onClick={() => onClick(task)}
+      >
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-2">
                 <button
-                  type="button"
-                  onClick={handleEditClick}
-                  className="w-full px-3 py-3 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors touch-target"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onComplete(task.id);
+                  }}
+                  className="flex-shrink-0 transition-colors"
                 >
-                  <Edit3 size={14} />
-                  Modifier
+                  {task.completed ? (
+                    <CheckCircle2 className="text-green-600" size={20} />
+                  ) : (
+                    <Circle className="text-gray-400 hover:text-blue-600" size={20} />
+                  )}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteClick}
-                  className="w-full px-3 py-3 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 flex items-center gap-2 transition-colors touch-target"
-                >
-                  <Trash2 size={14} />
-                  Supprimer
-                </button>
+                <h3 className={`font-medium text-gray-900 truncate ${
+                  task.completed ? 'line-through text-gray-500' : ''
+                }`}>
+                  {task.title}
+                </h3>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Informations temporelles - améliorées pour la lisibilité */}
-        <div className="space-y-3 mb-4">
-          <div className="flex items-center gap-4 text-sm flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <Calendar size={14} className={task.completed ? 'text-gray-500' : statusColors.text} />
-              <span className={`${
-                isPast(task.deadline) && !task.completed ? 'font-medium' : ''
-              } whitespace-nowrap ${task.completed ? 'text-gray-500' : statusColors.text}`}>
-                {format(task.deadline, 'dd MMM', { locale: fr })}
-              </span>
+              
+              {task.description && (
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                  {task.description}
+                </p>
+              )}
             </div>
-            <div className="flex items-center gap-1.5">
-              <Clock size={14} className={task.completed ? 'text-gray-500' : statusColors.text} />
-              <span className={`whitespace-nowrap ${task.completed ? 'text-gray-500' : statusColors.text}`}>
-                {formatDuration(task.estimatedDuration)}
-              </span>
+
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAssignmentDialog(true);
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <Users size={16} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(task);
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <Edit size={16} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task.id);
+                }}
+                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 size={16} />
+              </Button>
             </div>
           </div>
 
-          {/* Planification */}
-          {task.scheduledStart && (
-            <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${
-              task.completed ? 'bg-gray-100' : statusColors.accent
+          {/* Metadata */}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+            {/* Priority */}
+            <Badge className={`${priorityColors[task.priority]} text-white`}>
+              {task.priority === 'urgent' && '🔴'}
+              {task.priority === 'high' && '🟠'}
+              {task.priority === 'medium' && '🟡'}
+              {task.priority === 'low' && '🟢'}
+              {task.priority}
+            </Badge>
+
+            {/* Deadline */}
+            <div className={`flex items-center gap-1 ${
+              isPast(task.deadline) && !task.completed ? 'text-red-600' : ''
             }`}>
-              <Calendar size={14} />
-              <span className="font-medium break-words">
-                {formatScheduledTime()}
+              <Calendar size={12} />
+              <span>
+                {isToday(task.deadline) && 'Aujourd\'hui'}
+                {isTomorrow(task.deadline) && 'Demain'}
+                {!isToday(task.deadline) && !isTomorrow(task.deadline) && 
+                  format(task.deadline, 'dd MMM', { locale: fr })
+                }
               </span>
             </div>
-          )}
-        </div>
 
-        {/* Statuts et actions - améliorés pour mobile */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
-            {isOverdue && !task.completed && (
-              <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded-md border border-red-200 flex items-center gap-1 whitespace-nowrap">
-                ⚠️ En retard
-              </span>
-            )}
-            {isApproaching && !isOverdue && !task.completed && (
-              <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-1 rounded-md border border-orange-200 flex items-center gap-1 whitespace-nowrap">
-                ⏰ Échéance proche
-              </span>
+            {/* Duration */}
+            <div className="flex items-center gap-1">
+              <Clock size={12} />
+              <span>{task.estimatedDuration}min</span>
+            </div>
+
+            {/* Project */}
+            {projectInfo && (
+              <Badge variant="outline" style={{ borderColor: projectInfo.color }}>
+                {projectInfo.title}
+              </Badge>
             )}
           </div>
-          
-          {/* Bouton de completion/restauration - amélioré pour mobile */}
-          <button
-            type="button"
-            onClick={handleCompleteClick}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm shrink-0 z-10 relative touch-target ${
-              task.completed
-                ? 'bg-orange-500 text-white hover:bg-orange-600 border border-orange-500 hover:border-orange-600 hover:shadow-md active:scale-95'
-                : 'bg-white text-gray-700 border border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-300 hover:shadow-md active:scale-95'
-            }`}
-            style={{ minHeight: '44px' }}
-          >
-            {task.completed ? (
-              <>
-                <RotateCcw size={14} className="text-white" />
-                <span className="hidden sm:inline whitespace-nowrap">Rétablir</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 size={14} />
-                <span className="hidden sm:inline whitespace-nowrap">Terminer</span>
-              </>
-            )}
-          </button>
+
+          {/* Assigned users */}
+          {getAssignedUsersDisplay()}
         </div>
       </div>
-    </div>
+
+      <UserAssignmentDialog
+        isOpen={showAssignmentDialog}
+        onClose={() => setShowAssignmentDialog(false)}
+        type="task"
+        itemId={task.id}
+        itemTitle={task.title}
+        users={users}
+        assignments={task.assignments || []}
+        onAssignUser={handleAssignUser}
+        onRemoveAssignment={handleRemoveAssignment}
+      />
+    </>
   );
 }

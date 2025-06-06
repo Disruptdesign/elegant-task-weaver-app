@@ -157,8 +157,41 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
         taskTypesResult,
         templatesResult,
       ] = await Promise.all([
-        supabase.from('tasks').select('*').order('created_at', { ascending: false }),
-        supabase.from('events').select('*').order('start_date', { ascending: true }),
+        supabase.from('tasks').select(`
+          *,
+          task_assignments!inner(
+            id,
+            user_id,
+            role,
+            assigned_at,
+            assigned_by,
+            app_users!task_assignments_user_id_fkey(
+              id,
+              email,
+              first_name,
+              last_name,
+              avatar_url
+            )
+          )
+        `).order('created_at', { ascending: false }),
+        supabase.from('events').select(`
+          *,
+          event_assignments!inner(
+            id,
+            user_id,
+            role,
+            assigned_at,
+            assigned_by,
+            response_status,
+            app_users!event_assignments_user_id_fkey(
+              id,
+              email,
+              first_name,
+              last_name,
+              avatar_url
+            )
+          )
+        `).order('start_date', { ascending: true }),
         supabase.from('inbox_items').select('*').order('created_at', { ascending: false }),
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('task_types').select('*').order('name', { ascending: true }),
@@ -172,8 +205,61 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
       if (taskTypesResult.error) throw taskTypesResult.error;
       if (templatesResult.error) throw templatesResult.error;
 
-      setTasks((tasksResult.data || []).map(convertDbTaskToTask));
-      setEvents((eventsResult.data || []).map(convertDbEventToEvent));
+      // Convert tasks with assignments
+      const tasksWithAssignments = (tasksResult.data || []).map(task => {
+        const convertedTask = convertDbTaskToTask(task);
+        convertedTask.assignments = (task.task_assignments || []).map((assignment: any) => ({
+          id: assignment.id,
+          taskId: task.id,
+          userId: assignment.user_id,
+          role: assignment.role,
+          assignedAt: new Date(assignment.assigned_at),
+          assignedBy: assignment.assigned_by,
+          user: assignment.app_users ? {
+            id: assignment.app_users.id,
+            authUserId: '',
+            email: assignment.app_users.email,
+            firstName: assignment.app_users.first_name,
+            lastName: assignment.app_users.last_name,
+            avatarUrl: assignment.app_users.avatar_url,
+            role: 'member',
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } : undefined,
+        }));
+        return convertedTask;
+      });
+
+      // Convert events with assignments
+      const eventsWithAssignments = (eventsResult.data || []).map(event => {
+        const convertedEvent = convertDbEventToEvent(event);
+        convertedEvent.assignments = (event.event_assignments || []).map((assignment: any) => ({
+          id: assignment.id,
+          eventId: event.id,
+          userId: assignment.user_id,
+          role: assignment.role,
+          assignedAt: new Date(assignment.assigned_at),
+          assignedBy: assignment.assigned_by,
+          responseStatus: assignment.response_status,
+          user: assignment.app_users ? {
+            id: assignment.app_users.id,
+            authUserId: '',
+            email: assignment.app_users.email,
+            firstName: assignment.app_users.first_name,
+            lastName: assignment.app_users.last_name,
+            avatarUrl: assignment.app_users.avatar_url,
+            role: 'member',
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } : undefined,
+        }));
+        return convertedEvent;
+      });
+
+      setTasks(tasksWithAssignments);
+      setEvents(eventsWithAssignments);
       setInboxItems((inboxResult.data || []).map(convertDbInboxItemToInboxItem));
       setProjects((projectsResult.data || []).map(convertDbProjectToProject));
       setTaskTypes((taskTypesResult.data || []).map(convertDbTaskTypeToTaskType));
