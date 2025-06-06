@@ -92,7 +92,7 @@ export function AddItemForm({
       setLocation(editingEvent.location || '');
       setBufferBefore(editingEvent.bufferBefore || 0);
       setBufferAfter(editingEvent.bufferAfter || 0);
-      setRepeat(editingEvent.repeat || 'none');
+      setRepeat(editingEvent.repeat || null);
     } else if (initialData) {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
