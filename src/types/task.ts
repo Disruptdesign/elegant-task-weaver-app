@@ -1,5 +1,17 @@
+
 export type Priority = 'urgent' | 'high' | 'medium' | 'low';
 export type RepeatType = 'daily' | 'weekly' | 'monthly' | 'yearly' | null;
+export type ItemType = 'task' | 'event';
+
+export interface TimeSlot {
+  id: string;
+  taskTypeId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  available: boolean;
+  createdAt: Date;
+}
 
 export interface Task {
   id: string;
@@ -66,7 +78,7 @@ export interface TaskType {
   id: string;
   name: string;
   color: string;
-  timeSlots: any[];
+  timeSlots: TimeSlot[];
   autoSchedule: boolean;
   allowWeekends: boolean;
   bufferBetweenTasks: number;
@@ -89,9 +101,16 @@ export interface TemplateTask {
   id: string;
   title: string;
   description?: string;
-  duration: number;
+  estimatedDuration: number;
   priority: Priority;
-  deadlineFromStart: number;
+  dayOffset: number;
+  category?: string;
+  bufferBefore?: number;
+  bufferAfter?: number;
+  allowSplitting?: boolean;
+  splitDuration?: number;
+  taskTypeId?: string;
+  dependencies?: string[];
 }
 
 import { AppUser, TaskAssignment, EventAssignment } from './user';

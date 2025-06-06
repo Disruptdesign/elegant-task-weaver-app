@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Flag, Plus, FolderOpen, Tag, MapPin, Video, Repeat } from 'lucide-react';
 import { Task, Event, Priority, ItemType, Project, TaskType } from '../types/task';
@@ -55,7 +54,7 @@ export function AddItemForm({
   const [markAsBusy, setMarkAsBusy] = useState(true);
   const [googleMeetLink, setGoogleMeetLink] = useState('');
   const [location, setLocation] = useState('');
-  const [repeat, setRepeat] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
+  const [repeat, setRepeat] = useState<RepeatType>(null);
 
   console.log('AddItemForm: Rendering with', { 
     projectsCount: projects.length, 
@@ -122,7 +121,7 @@ export function AddItemForm({
     setMarkAsBusy(true);
     setGoogleMeetLink('');
     setLocation('');
-    setRepeat('none');
+    setRepeat(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -184,7 +183,7 @@ export function AddItemForm({
   ] as const;
 
   const repeatOptions = [
-    { value: 'none', label: 'Aucune' },
+    { value: null, label: 'Aucune' },
     { value: 'daily', label: 'Quotidienne' },
     { value: 'weekly', label: 'Hebdomadaire' },
     { value: 'monthly', label: 'Mensuelle' },
@@ -572,12 +571,12 @@ export function AddItemForm({
                     Répétition
                   </label>
                   <select
-                    value={repeat}
-                    onChange={(e) => setRepeat(e.target.value as any)}
+                    value={repeat || ''}
+                    onChange={(e) => setRepeat(e.target.value === '' ? null : e.target.value as RepeatType)}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     {repeatOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
+                      <option key={option.value || 'none'} value={option.value || ''}>
                         {option.label}
                       </option>
                     ))}
