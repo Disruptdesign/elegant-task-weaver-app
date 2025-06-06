@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Flag, Plus, FolderOpen, Tag, MapPin, Video, Repeat } from 'lucide-react';
-import { Task, Event, Priority, ItemType, Project, TaskType } from '../types/task';
+import { Task, Event, Priority, ItemType, Project, TaskType, RepeatType } from '../types/task';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { DurationSelector } from './ui/duration-selector';
