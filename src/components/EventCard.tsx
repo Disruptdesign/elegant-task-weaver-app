@@ -1,137 +1,206 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Event } from '../types/task';
-import { Calendar, Clock, MapPin, Edit3, Trash2, Users } from 'lucide-react';
-import { format, isToday, isTomorrow, isPast } from 'date-fns';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { 
+  Calendar, 
+  Clock, 
+  Edit, 
+  Trash2,
+  MapPin,
+  Video,
+  Users,
+  User
+} from 'lucide-react';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { UserAssignmentDialog } from './UserAssignmentDialog';
+import { useUsers } from '../hooks/useUsers';
 
 interface EventCardProps {
   event: Event;
   onEdit: (event: Event) => void;
-  onDelete: (eventId: string) => void;
+  onDelete: (eventId: string) => Promise<void>;
   onClick: (event: Event) => void;
 }
 
 export function EventCard({ event, onEdit, onDelete, onClick }: EventCardProps) {
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEdit(event);
+  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
+  const { users, assignUserToEvent, removeEventAssignment } = useUsers();
+
+  console.log('📅 EventCard render:', {
+    eventId: event.id,
+    title: event.title,
+    assignmentsCount: event.assignments?.length || 0,
+    usersCount: users.length
+  });
+
+  const handleAssignUser = async (userId: string, role: string) => {
+    console.log('👤 Assigning user to event:', { eventId: event.id, userId, role });
+    await assignUserToEvent(event.id, userId, role as 'organizer' | 'attendee' | 'optional');
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
-      onDelete(event.id);
-    }
+  const handleRemoveAssignment = async (userId: string) => {
+    console.log('🗑️ Removing user assignment from event:', { eventId: event.id, userId });
+    await removeEventAssignment(event.id, userId);
   };
 
-  const formatEventDate = () => {
-    if (event.allDay) {
-      if (isToday(event.startDate)) {
-        return "Aujourd'hui - Toute la journée";
-      } else if (isTomorrow(event.startDate)) {
-        return "Demain - Toute la journée";
-      } else {
-        return format(event.startDate, 'EEEE dd MMMM yyyy', { locale: fr }) + " - Toute la journée";
-      }
-    } else {
-      if (isToday(event.startDate)) {
-        return `Aujourd'hui de ${format(event.startDate, 'HH:mm')} à ${format(event.endDate, 'HH:mm')}`;
-      } else if (isTomorrow(event.startDate)) {
-        return `Demain de ${format(event.startDate, 'HH:mm')} à ${format(event.endDate, 'HH:mm')}`;
-      } else {
-        return `${format(event.startDate, 'EEEE dd MMMM yyyy à HH:mm', { locale: fr })} - ${format(event.endDate, 'HH:mm')}`;
-      }
+  const getAssignedUsersDisplay = () => {
+    if (!event.assignments || event.assignments.length === 0) {
+      return (
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <User size={12} />
+          <span>Aucun participant</span>
+        </div>
+      );
     }
-  };
 
-  const getStatusColor = () => {
-    if (isPast(event.endDate)) {
-      return 'border-gray-300 bg-gray-50';
-    } else if (isToday(event.startDate)) {
-      return 'border-purple-200 bg-purple-50';
-    } else {
-      return 'border-blue-200 bg-blue-50';
-    }
+    const displayCount = 2;
+    const assignments = event.assignments.slice(0, displayCount);
+    const remaining = event.assignments.length - displayCount;
+
+    return (
+      <div className="flex items-center gap-1 text-xs text-gray-600">
+        <User size={12} />
+        <span>
+          {assignments.map(assignment => {
+            const user = assignment.user;
+            const displayName = user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}`
+              : user?.email?.split('@')[0] || 'Participant';
+            return displayName;
+          }).join(', ')}
+          {remaining > 0 && ` +${remaining}`}
+        </span>
+      </div>
+    );
   };
 
   return (
-    <div
-      onClick={() => onClick(event)}
-      className={`p-4 sm:p-6 rounded-xl border-2 transition-all duration-300 hover:shadow-lg cursor-pointer group ${getStatusColor()}`}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Calendar className="text-purple-600" size={18} />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 text-lg mb-1 truncate">
-                {event.title}
-              </h3>
-              <div className="flex items-center gap-2 text-sm text-purple-600 font-medium">
-                <Clock size={14} />
-                <span>{formatEventDate()}</span>
+    <>
+      <div 
+        className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all cursor-pointer group"
+        onClick={() => onClick(event)}
+      >
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
+                <h3 className="font-medium text-gray-900 truncate">
+                  {event.title}
+                </h3>
               </div>
+              
+              {event.description && (
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                  {event.description}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('👥 Opening user assignment dialog for event:', event.id);
+                  setShowAssignmentDialog(true);
+                }}
+                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
+                title="Gérer les participants"
+              >
+                <Users size={16} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(event);
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <Edit size={16} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(event.id);
+                }}
+                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 size={16} />
+              </Button>
             </div>
           </div>
 
-          {event.description && (
-            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-              {event.description}
-            </p>
-          )}
+          {/* Event Details */}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+            {/* Date and Time */}
+            <div className="flex items-center gap-1">
+              <Calendar size={12} />
+              <span>
+                {format(event.startDate, 'dd MMM', { locale: fr })}
+              </span>
+            </div>
 
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+            {!event.allDay && (
+              <div className="flex items-center gap-1">
+                <Clock size={12} />
+                <span>
+                  {format(event.startDate, 'HH:mm')} - {format(event.endDate, 'HH:mm')}
+                </span>
+              </div>
+            )}
+
+            {event.allDay && (
+              <Badge variant="outline">
+                Journée entière
+              </Badge>
+            )}
+
+            {/* Location */}
             {event.location && (
               <div className="flex items-center gap-1">
-                <MapPin size={14} />
-                <span className="truncate">{event.location}</span>
-              </div>
-            )}
-            
-            {event.googleMeetLink && (
-              <div className="flex items-center gap-1">
-                <Users size={14} />
-                <span>Visioconférence</span>
+                <MapPin size={12} />
+                <span className="truncate max-w-[100px]">{event.location}</span>
               </div>
             )}
 
-            {event.markAsBusy && (
+            {/* Google Meet */}
+            {event.googleMeetLink && (
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <span>Occupé</span>
+                <Video size={12} />
+                <span>Meet</span>
               </div>
             )}
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={handleEdit}
-            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Modifier l'événement"
-          >
-            <Edit3 size={16} />
-          </button>
-          <button
-            onClick={handleDelete}
-            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            title="Supprimer l'événement"
-          >
-            <Trash2 size={16} />
-          </button>
+          {/* Assigned users - Always visible */}
+          {getAssignedUsersDisplay()}
         </div>
       </div>
 
-      {isPast(event.endDate) && (
-        <div className="mt-3 pt-3 border-t border-gray-200">
-          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
-            Événement passé
-          </span>
-        </div>
-      )}
-    </div>
+      <UserAssignmentDialog
+        isOpen={showAssignmentDialog}
+        onClose={() => {
+          console.log('❌ Closing user assignment dialog for event');
+          setShowAssignmentDialog(false);
+        }}
+        type="event"
+        itemId={event.id}
+        itemTitle={event.title}
+        users={users}
+        assignments={event.assignments || []}
+        onAssignUser={handleAssignUser}
+        onRemoveAssignment={handleRemoveAssignment}
+      />
+    </>
   );
 }

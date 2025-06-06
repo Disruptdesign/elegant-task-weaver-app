@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Task, Project } from '../types/task';
 import { Badge } from './ui/badge';
@@ -30,6 +31,13 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
   const { users, assignUserToTask, removeTaskAssignment } = useUsers();
 
+  console.log('🎯 TaskCard render:', {
+    taskId: task.id,
+    title: task.title,
+    assignmentsCount: task.assignments?.length || 0,
+    usersCount: users.length
+  });
+
   const priorityColors: { [key: string]: string } = {
     urgent: 'bg-red-500',
     high: 'bg-orange-500',
@@ -40,16 +48,23 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
   const projectInfo = projects.find(project => project.id === task.projectId);
 
   const handleAssignUser = async (userId: string, role: string) => {
+    console.log('👤 Assigning user to task:', { taskId: task.id, userId, role });
     await assignUserToTask(task.id, userId, role as 'assignee' | 'reviewer' | 'observer');
   };
 
   const handleRemoveAssignment = async (userId: string) => {
+    console.log('🗑️ Removing user assignment:', { taskId: task.id, userId });
     await removeTaskAssignment(task.id, userId);
   };
 
   const getAssignedUsersDisplay = () => {
     if (!task.assignments || task.assignments.length === 0) {
-      return null;
+      return (
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <User size={12} />
+          <span>Aucun utilisateur assigné</span>
+        </div>
+      );
     }
 
     const displayCount = 2;
@@ -119,9 +134,11 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
+                  console.log('👥 Opening user assignment dialog for task:', task.id);
                   setShowAssignmentDialog(true);
                 }}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
+                title="Assigner des utilisateurs"
               >
                 <Users size={16} />
               </Button>
@@ -189,14 +206,17 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
             )}
           </div>
 
-          {/* Assigned users */}
+          {/* Assigned users - Always visible */}
           {getAssignedUsersDisplay()}
         </div>
       </div>
 
       <UserAssignmentDialog
         isOpen={showAssignmentDialog}
-        onClose={() => setShowAssignmentDialog(false)}
+        onClose={() => {
+          console.log('❌ Closing user assignment dialog');
+          setShowAssignmentDialog(false);
+        }}
         type="task"
         itemId={task.id}
         itemTitle={task.title}

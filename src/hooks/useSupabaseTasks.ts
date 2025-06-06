@@ -1,123 +1,9 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Task, Event, InboxItem, Project, TaskType, ProjectTemplate, TemplateTask } from '../types/task';
-import { useAlgorithmicScheduler } from './useAlgorithmicScheduler';
+import { Task, Event, InboxItem, Project, TaskType, ProjectTemplate } from '../types/task';
+import { TaskAssignment, EventAssignment } from '../types/user';
 
-export interface UseSupabaseTasksReturn {
-  tasks: Task[];
-  events: Event[];
-  inboxItems: InboxItem[];
-  projects: Project[];
-  taskTypes: TaskType[];
-  projectTemplates: ProjectTemplate[];
-  isLoading: boolean;
-  error: string | null;
-  addTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
-  deleteTask: (id: string) => Promise<void>;
-  addEvent: (event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateEvent: (id: string, updates: Partial<Event>) => Promise<void>;
-  deleteEvent: (id: string) => Promise<void>;
-  addInboxItem: (item: Omit<InboxItem, 'id' | 'createdAt'>) => Promise<void>;
-  deleteInboxItem: (id: string) => Promise<void>;
-  addProject: (project: Omit<Project, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
-  deleteProject: (id: string) => Promise<void>;
-  addTaskType: (taskType: Omit<TaskType, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateTaskType: (id: string, updates: Partial<TaskType>) => Promise<void>;
-  deleteTaskType: (id: string) => Promise<void>;
-  addProjectTemplate: (template: Omit<ProjectTemplate, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateProjectTemplate: (id: string, updates: Partial<ProjectTemplate>) => Promise<void>;
-  deleteProjectTemplate: (id: string) => Promise<void>;
-  createProjectFromTemplate: (templateId: string, projectData: { title: string; description?: string; startDate: Date; deadline: Date }) => Promise<void>;
-  refreshData: () => Promise<void>;
-}
-
-// Helper function to convert database rows to app types
-const convertDbTaskToTask = (dbTask: any): Task => ({
-  id: dbTask.id,
-  title: dbTask.title,
-  description: dbTask.description,
-  deadline: new Date(dbTask.deadline),
-  priority: dbTask.priority,
-  estimatedDuration: dbTask.estimated_duration,
-  completed: dbTask.completed,
-  scheduledStart: dbTask.scheduled_start ? new Date(dbTask.scheduled_start) : undefined,
-  scheduledEnd: dbTask.scheduled_end ? new Date(dbTask.scheduled_end) : undefined,
-  category: dbTask.category,
-  createdAt: new Date(dbTask.created_at),
-  updatedAt: new Date(dbTask.updated_at),
-  canStartFrom: dbTask.can_start_from ? new Date(dbTask.can_start_from) : undefined,
-  bufferBefore: dbTask.buffer_before,
-  bufferAfter: dbTask.buffer_after,
-  allowSplitting: dbTask.allow_splitting,
-  splitDuration: dbTask.split_duration,
-  projectId: dbTask.project_id,
-  dependencies: dbTask.dependencies || [],
-  taskTypeId: dbTask.task_type_id,
-});
-
-const convertDbEventToEvent = (dbEvent: any): Event => ({
-  id: dbEvent.id,
-  title: dbEvent.title,
-  description: dbEvent.description,
-  startDate: new Date(dbEvent.start_date),
-  endDate: new Date(dbEvent.end_date),
-  allDay: dbEvent.all_day,
-  markAsBusy: dbEvent.mark_as_busy,
-  googleMeetLink: dbEvent.google_meet_link,
-  location: dbEvent.location,
-  bufferBefore: dbEvent.buffer_before,
-  bufferAfter: dbEvent.buffer_after,
-  repeat: dbEvent.repeat_type,
-  createdAt: new Date(dbEvent.created_at),
-  updatedAt: new Date(dbEvent.updated_at),
-});
-
-const convertDbProjectToProject = (dbProject: any): Project => ({
-  id: dbProject.id,
-  title: dbProject.title,
-  description: dbProject.description,
-  startDate: new Date(dbProject.start_date),
-  deadline: new Date(dbProject.deadline),
-  color: dbProject.color,
-  completed: dbProject.completed,
-  createdAt: new Date(dbProject.created_at),
-  updatedAt: new Date(dbProject.updated_at),
-});
-
-const convertDbInboxItemToInboxItem = (dbItem: any): InboxItem => ({
-  id: dbItem.id,
-  title: dbItem.title,
-  description: dbItem.description,
-  createdAt: new Date(dbItem.created_at),
-});
-
-const convertDbTaskTypeToTaskType = (dbTaskType: any): TaskType => ({
-  id: dbTaskType.id,
-  name: dbTaskType.name,
-  color: dbTaskType.color,
-  timeSlots: [], // Will be populated separately if needed
-  autoSchedule: dbTaskType.auto_schedule,
-  allowWeekends: dbTaskType.allow_weekends,
-  bufferBetweenTasks: dbTaskType.buffer_between_tasks,
-  createdAt: new Date(dbTaskType.created_at),
-  updatedAt: new Date(dbTaskType.updated_at),
-});
-
-const convertDbProjectTemplateToProjectTemplate = (dbTemplate: any): ProjectTemplate => ({
-  id: dbTemplate.id,
-  name: dbTemplate.name,
-  description: dbTemplate.description,
-  color: dbTemplate.color,
-  defaultDuration: dbTemplate.default_duration,
-  tasks: [], // Will be populated separately if needed
-  createdAt: new Date(dbTemplate.created_at),
-  updatedAt: new Date(dbTemplate.updated_at),
-});
-
-export function useSupabaseTasks(): UseSupabaseTasksReturn {
+export function useSupabaseTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
@@ -127,17 +13,138 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { scheduleAllTasks } = useAlgorithmicScheduler();
+  // Helper function to convert database rows to app types
+  const convertDbTaskToTask = (dbTask: any): Task => ({
+    id: dbTask.id,
+    title: dbTask.title,
+    description: dbTask.description || '',
+    deadline: new Date(dbTask.deadline),
+    priority: dbTask.priority || 'medium',
+    estimatedDuration: dbTask.estimated_duration,
+    completed: dbTask.completed || false,
+    scheduledStart: dbTask.scheduled_start ? new Date(dbTask.scheduled_start) : undefined,
+    scheduledEnd: dbTask.scheduled_end ? new Date(dbTask.scheduled_end) : undefined,
+    category: dbTask.category,
+    createdAt: new Date(dbTask.created_at),
+    updatedAt: new Date(dbTask.updated_at),
+    canStartFrom: dbTask.can_start_from ? new Date(dbTask.can_start_from) : undefined,
+    bufferBefore: dbTask.buffer_before || 0,
+    bufferAfter: dbTask.buffer_after || 0,
+    allowSplitting: dbTask.allow_splitting || false,
+    splitDuration: dbTask.split_duration,
+    projectId: dbTask.project_id,
+    dependencies: dbTask.dependencies || [],
+    taskTypeId: dbTask.task_type_id,
+    assignments: dbTask.task_assignments?.map((assignment: any) => ({
+      id: assignment.id,
+      taskId: assignment.task_id,
+      userId: assignment.user_id,
+      role: assignment.role,
+      assignedAt: new Date(assignment.assigned_at),
+      assignedBy: assignment.assigned_by,
+      user: assignment.app_users ? {
+        id: assignment.app_users.id,
+        authUserId: assignment.app_users.auth_user_id,
+        email: assignment.app_users.email,
+        firstName: assignment.app_users.first_name,
+        lastName: assignment.app_users.last_name,
+        avatarUrl: assignment.app_users.avatar_url,
+        role: assignment.app_users.role,
+        isActive: assignment.app_users.is_active,
+        createdAt: new Date(assignment.app_users.created_at),
+        updatedAt: new Date(assignment.app_users.updated_at),
+      } : undefined,
+    })) || [],
+  });
 
-  const refreshData = useCallback(async () => {
+  const convertDbEventToEvent = (dbEvent: any): Event => ({
+    id: dbEvent.id,
+    title: dbEvent.title,
+    description: dbEvent.description || '',
+    startDate: new Date(dbEvent.start_date),
+    endDate: new Date(dbEvent.end_date),
+    allDay: dbEvent.all_day || false,
+    markAsBusy: dbEvent.mark_as_busy || true,
+    googleMeetLink: dbEvent.google_meet_link,
+    location: dbEvent.location,
+    bufferBefore: dbEvent.buffer_before || 0,
+    bufferAfter: dbEvent.buffer_after || 0,
+    repeat: dbEvent.repeat_type === 'none' ? null : dbEvent.repeat_type,
+    createdAt: new Date(dbEvent.created_at),
+    updatedAt: new Date(dbEvent.updated_at),
+    assignments: dbEvent.event_assignments?.map((assignment: any) => ({
+      id: assignment.id,
+      eventId: assignment.event_id,
+      userId: assignment.user_id,
+      role: assignment.role,
+      assignedAt: new Date(assignment.assigned_at),
+      assignedBy: assignment.assigned_by,
+      responseStatus: assignment.response_status,
+      user: assignment.app_users ? {
+        id: assignment.app_users.id,
+        authUserId: assignment.app_users.auth_user_id,
+        email: assignment.app_users.email,
+        firstName: assignment.app_users.first_name,
+        lastName: assignment.app_users.last_name,
+        avatarUrl: assignment.app_users.avatar_url,
+        role: assignment.app_users.role,
+        isActive: assignment.app_users.is_active,
+        createdAt: new Date(assignment.app_users.created_at),
+        updatedAt: new Date(assignment.app_users.updated_at),
+      } : undefined,
+    })) || [],
+  });
+
+  const convertDbProjectToProject = (dbProject: any): Project => ({
+    id: dbProject.id,
+    title: dbProject.title,
+    description: dbProject.description,
+    startDate: new Date(dbProject.start_date),
+    deadline: new Date(dbProject.deadline),
+    color: dbProject.color,
+    completed: dbProject.completed,
+    createdAt: new Date(dbProject.created_at),
+    updatedAt: new Date(dbProject.updated_at),
+  });
+
+  const convertDbInboxItemToInboxItem = (dbItem: any): InboxItem => ({
+    id: dbItem.id,
+    title: dbItem.title,
+    description: dbItem.description,
+    createdAt: new Date(dbItem.created_at),
+  });
+
+  const convertDbTaskTypeToTaskType = (dbTaskType: any): TaskType => ({
+    id: dbTaskType.id,
+    name: dbTaskType.name,
+    color: dbTaskType.color,
+    timeSlots: [], // Will be populated separately if needed
+    autoSchedule: dbTaskType.auto_schedule,
+    allowWeekends: dbTaskType.allow_weekends,
+    bufferBetweenTasks: dbTaskType.buffer_between_tasks,
+    createdAt: new Date(dbTaskType.created_at),
+    updatedAt: new Date(dbTaskType.updated_at),
+  });
+
+  const convertDbProjectTemplateToProjectTemplate = (dbTemplate: any): ProjectTemplate => ({
+    id: dbTemplate.id,
+    name: dbTemplate.name,
+    description: dbTemplate.description,
+    color: dbTemplate.color,
+    defaultDuration: dbTemplate.default_duration,
+    tasks: [], // Will be populated separately if needed
+    createdAt: new Date(dbTemplate.created_at),
+    updatedAt: new Date(dbTemplate.updated_at),
+  });
+
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Check if user is authenticated
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        console.log('❌ User not authenticated, clearing data');
+        console.log('🔐 No authenticated user found');
         setTasks([]);
         setEvents([]);
         setInboxItems([]);
@@ -149,145 +156,130 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
 
       console.log('🔄 Fetching data from Supabase for user:', session.user.id);
 
-      const [
-        tasksResult,
-        eventsResult,
-        inboxResult,
-        projectsResult,
-        taskTypesResult,
-        templatesResult,
-      ] = await Promise.all([
-        supabase.from('tasks').select(`
+      // Fetch tasks with assignments
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select(`
           *,
-          task_assignments!inner(
+          task_assignments (
             id,
+            task_id,
             user_id,
             role,
             assigned_at,
             assigned_by,
-            app_users!task_assignments_user_id_fkey(
+            app_users (
               id,
+              auth_user_id,
               email,
               first_name,
               last_name,
-              avatar_url
+              avatar_url,
+              role,
+              is_active,
+              created_at,
+              updated_at
             )
           )
-        `).order('created_at', { ascending: false }),
-        supabase.from('events').select(`
+        `)
+        .eq('user_id', session.user.id);
+
+      if (tasksError) throw tasksError;
+
+      // Fetch events with assignments
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('events')
+        .select(`
           *,
-          event_assignments!inner(
+          event_assignments (
             id,
+            event_id,
             user_id,
             role,
             assigned_at,
             assigned_by,
             response_status,
-            app_users!event_assignments_user_id_fkey(
+            app_users (
               id,
+              auth_user_id,
               email,
               first_name,
               last_name,
-              avatar_url
+              avatar_url,
+              role,
+              is_active,
+              created_at,
+              updated_at
             )
           )
-        `).order('start_date', { ascending: true }),
-        supabase.from('inbox_items').select('*').order('created_at', { ascending: false }),
-        supabase.from('projects').select('*').order('created_at', { ascending: false }),
-        supabase.from('task_types').select('*').order('name', { ascending: true }),
-        supabase.from('project_templates').select('*').order('name', { ascending: true }),
-      ]);
+        `)
+        .eq('user_id', session.user.id);
 
-      if (tasksResult.error) throw tasksResult.error;
-      if (eventsResult.error) throw eventsResult.error;
-      if (inboxResult.error) throw inboxResult.error;
-      if (projectsResult.error) throw projectsResult.error;
-      if (taskTypesResult.error) throw taskTypesResult.error;
-      if (templatesResult.error) throw templatesResult.error;
+      if (eventsError) throw eventsError;
 
-      // Convert tasks with assignments
-      const tasksWithAssignments = (tasksResult.data || []).map(task => {
-        const convertedTask = convertDbTaskToTask(task);
-        convertedTask.assignments = (task.task_assignments || []).map((assignment: any) => ({
-          id: assignment.id,
-          taskId: task.id,
-          userId: assignment.user_id,
-          role: assignment.role,
-          assignedAt: new Date(assignment.assigned_at),
-          assignedBy: assignment.assigned_by,
-          user: assignment.app_users ? {
-            id: assignment.app_users.id,
-            authUserId: '',
-            email: assignment.app_users.email,
-            firstName: assignment.app_users.first_name,
-            lastName: assignment.app_users.last_name,
-            avatarUrl: assignment.app_users.avatar_url,
-            role: 'member',
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          } : undefined,
-        }));
-        return convertedTask;
-      });
+      // Fetch inbox items
+      const { data: inboxData, error: inboxError } = await supabase
+        .from('inbox_items')
+        .select('*')
+        .eq('user_id', session.user.id);
 
-      // Convert events with assignments
-      const eventsWithAssignments = (eventsResult.data || []).map(event => {
-        const convertedEvent = convertDbEventToEvent(event);
-        convertedEvent.assignments = (event.event_assignments || []).map((assignment: any) => ({
-          id: assignment.id,
-          eventId: event.id,
-          userId: assignment.user_id,
-          role: assignment.role,
-          assignedAt: new Date(assignment.assigned_at),
-          assignedBy: assignment.assigned_by,
-          responseStatus: assignment.response_status,
-          user: assignment.app_users ? {
-            id: assignment.app_users.id,
-            authUserId: '',
-            email: assignment.app_users.email,
-            firstName: assignment.app_users.first_name,
-            lastName: assignment.app_users.last_name,
-            avatarUrl: assignment.app_users.avatar_url,
-            role: 'member',
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          } : undefined,
-        }));
-        return convertedEvent;
-      });
+      if (inboxError) throw inboxError;
 
-      setTasks(tasksWithAssignments);
-      setEvents(eventsWithAssignments);
-      setInboxItems((inboxResult.data || []).map(convertDbInboxItemToInboxItem));
-      setProjects((projectsResult.data || []).map(convertDbProjectToProject));
-      setTaskTypes((taskTypesResult.data || []).map(convertDbTaskTypeToTaskType));
-      setProjectTemplates((templatesResult.data || []).map(convertDbProjectTemplateToProjectTemplate));
+      // Fetch projects
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', session.user.id);
+
+      if (projectsError) throw projectsError;
+
+      // Fetch task types
+      const { data: taskTypesData, error: taskTypesError } = await supabase
+        .from('task_types')
+        .select('*')
+        .eq('user_id', session.user.id);
+
+      if (taskTypesError) throw taskTypesError;
+
+      // Fetch project templates
+      const { data: templatesData, error: templatesError } = await supabase
+        .from('project_templates')
+        .select('*')
+        .eq('user_id', session.user.id);
+
+      if (templatesError) throw templatesError;
+
+      // Convert and set data
+      setTasks((tasksData || []).map(convertDbTaskToTask));
+      setEvents((eventsData || []).map(convertDbEventToEvent));
+      setInboxItems((inboxData || []).map(convertDbInboxItemToInboxItem));
+      setProjects((projectsData || []).map(convertDbProjectToProject));
+      setTaskTypes((taskTypesData || []).map(convertDbTaskTypeToTaskType));
+      setProjectTemplates((templatesData || []).map(convertDbProjectTemplateToProjectTemplate));
 
       console.log('✅ Data fetched successfully:', {
-        tasks: tasksResult.data?.length || 0,
-        events: eventsResult.data?.length || 0,
-        projects: projectsResult.data?.length || 0,
-        taskTypes: taskTypesResult.data?.length || 0,
+        tasks: tasksData?.length || 0,
+        events: eventsData?.length || 0,
+        projects: projectsData?.length || 0,
+        taskTypes: taskTypesData?.length || 0
       });
 
     } catch (err) {
       console.error('❌ Error fetching data:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refreshData();
+    fetchData();
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('🔐 Auth state changed:', event, !!session?.user);
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        refreshData();
+        fetchData();
       } else if (event === 'SIGNED_OUT') {
         setTasks([]);
         setEvents([]);
@@ -300,7 +292,7 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
     });
 
     return () => subscription.unsubscribe();
-  }, [refreshData]);
+  }, [fetchData]);
 
   const getCurrentUserId = async (): Promise<string | null> => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -812,6 +804,6 @@ export function useSupabaseTasks(): UseSupabaseTasksReturn {
     updateProjectTemplate,
     deleteProjectTemplate,
     createProjectFromTemplate,
-    refreshData,
+    refreshData: fetchData,
   };
 }

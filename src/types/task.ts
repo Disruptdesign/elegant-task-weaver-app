@@ -113,4 +113,5 @@ export interface TemplateTask {
   dependencies?: string[];
 }
 
-import { AppUser, TaskAssignment, EventAssignment } from './user';
+// Import des types d'assignation depuis user.ts
+import { TaskAssignment, EventAssignment } from './user';
