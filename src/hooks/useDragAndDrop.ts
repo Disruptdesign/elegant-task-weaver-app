@@ -43,6 +43,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
   const lastUpdateRef = useRef(0);
   const pendingUpdateRef = useRef<any>(null);
   const dragElementRef = useRef<HTMLElement | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   // Maintenir les refs à jour
   useEffect(() => {
@@ -59,6 +60,12 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
 
   const cleanupDrag = useCallback(() => {
     console.log('🧹 Cleaning up drag state');
+    
+    // Annuler le RAF en attente
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
     
     setDragState({
       isDragging: false,
@@ -78,7 +85,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     pendingUpdateRef.current = null;
     dragElementRef.current = null;
     
-    // Restaurer les styles et libérer la capture
+    // Restaurer les styles
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
     
@@ -88,12 +95,24 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     }
   }, []);
 
-  // Fonction throttlée pour les mises à jour
+  // Fonction throttlée optimisée pour les mises à jour
   const throttledUpdate = useCallback(async (updateData: any) => {
-    const now = Date.now();
+    const now = performance.now();
     
     if (now - lastUpdateRef.current < UPDATE_THROTTLE) {
       pendingUpdateRef.current = updateData;
+      
+      // Programmer une mise à jour différée avec RAF
+      if (!rafIdRef.current) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          if (pendingUpdateRef.current) {
+            const pending = pendingUpdateRef.current;
+            pendingUpdateRef.current = null;
+            throttledUpdate(pending);
+          }
+        });
+      }
       return;
     }
 
@@ -111,17 +130,11 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
       }
     } catch (error) {
       console.error('Error updating item during drag:', error);
-    }
-
-    // Traiter la mise à jour en attente s'il y en a une
-    if (pendingUpdateRef.current) {
-      const pending = pendingUpdateRef.current;
-      pendingUpdateRef.current = null;
-      setTimeout(() => throttledUpdate(pending), UPDATE_THROTTLE);
+      // En cas d'erreur, on continue le drag mais on log l'erreur
     }
   }, []);
 
-  const handleMouseMove = useCallback(async (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -136,7 +149,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
     if (!hasDragStartedRef.current && distance > DRAG_THRESHOLD) {
-      console.log('🎯 Starting smooth drag operation:', currentState.action);
+      console.log('🎯 Starting optimized drag operation:', currentState.action);
       hasDragStartedRef.current = true;
       pendingClickRef.current = null;
       
@@ -219,12 +232,13 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🖱️ Mouse up - finalizing smooth drag operation');
+    console.log('🖱️ Mouse up - finalizing optimized drag operation');
     
     if (pendingClickRef.current && !hasDragStartedRef.current) {
       console.log('👆 Executing pending click');
       const clickHandler = pendingClickRef.current;
       pendingClickRef.current = null;
+      // Utiliser setTimeout pour éviter les conflits
       setTimeout(() => clickHandler(), 0);
     }
     
@@ -251,7 +265,7 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('🚀 Initializing smooth drag:', { action, itemType, itemId: item.id, resizeHandle });
+    console.log('🚀 Initializing optimized drag:', { action, itemType, itemId: item.id, resizeHandle });
 
     if (itemType === 'task' && !item.scheduledStart) {
       console.log('❌ Task has no scheduled start time');
@@ -300,12 +314,15 @@ export function useDragAndDrop(callbacks: DragCallbacks) {
     document.addEventListener('mousemove', handleMouseMove, { passive: false, capture: true });
     document.addEventListener('mouseup', handleMouseUp, { passive: false, capture: true });
     
-    console.log('✅ Smooth drag initialization complete');
+    console.log('✅ Optimized drag initialization complete');
   }, [handleMouseMove, handleMouseUp]);
 
   // Cleanup au démontage
   useEffect(() => {
     return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
       document.removeEventListener('mousemove', handleMouseMove, true);
       document.removeEventListener('mouseup', handleMouseUp, true);
       document.body.style.userSelect = '';

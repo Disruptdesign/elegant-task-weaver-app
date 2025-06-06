@@ -7,6 +7,7 @@ import { TaskListFilters } from './TaskListFilters';
 import { TaskListContent } from './TaskListContent';
 import { useTaskListFilters } from '../hooks/useTaskListFilters';
 import { useTaskListSorting } from '../hooks/useTaskListSorting';
+import { useToast } from '../hooks/use-toast';
 
 interface TaskListProps {
   tasks: Task[];
@@ -40,6 +41,8 @@ export function TaskList({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [editingEvent, setEditingEvent] = useState<Event | undefined>();
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const { toast } = useToast();
 
   console.log('TaskList: Rendering with props:', {
     projects: projects.length,
@@ -77,7 +80,12 @@ export function TaskList({
   // Vérifier si des filtres sont actifs
   const hasActiveFilters = searchTerm !== '' || filterStatus !== 'all' || filterPriority !== 'all' || filterType !== 'all';
 
-  // Fonctions de gestion
+  // Utilitaire pour gérer les états de chargement
+  const setItemLoading = (itemId: string, loading: boolean) => {
+    setLoadingStates(prev => ({ ...prev, [itemId]: loading }));
+  };
+
+  // Fonctions de gestion avec amélioration des erreurs
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
     setEditingEvent(undefined);
@@ -93,26 +101,64 @@ export function TaskList({
   const handleTaskFormSubmit = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
     try {
       if (editingTask) {
+        setItemLoading(editingTask.id, true);
         await onUpdateTask(editingTask.id, taskData);
+        toast({
+          title: "Tâche mise à jour",
+          description: "La tâche a été modifiée avec succès.",
+        });
       } else {
         await onAddTask(taskData);
+        toast({
+          title: "Tâche créée",
+          description: "La nouvelle tâche a été ajoutée avec succès.",
+        });
       }
       setEditingTask(undefined);
+      setIsFormOpen(false);
     } catch (error) {
       console.error('Error saving task:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la sauvegarde de la tâche.",
+        variant: "destructive",
+      });
+    } finally {
+      if (editingTask) {
+        setItemLoading(editingTask.id, false);
+      }
     }
   };
 
   const handleEventFormSubmit = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       if (editingEvent) {
+        setItemLoading(editingEvent.id, true);
         await onUpdateEvent(editingEvent.id, eventData);
+        toast({
+          title: "Événement mis à jour",
+          description: "L'événement a été modifié avec succès.",
+        });
       } else {
         await onAddEvent(eventData);
+        toast({
+          title: "Événement créé",
+          description: "Le nouvel événement a été ajouté avec succès.",
+        });
       }
       setEditingEvent(undefined);
+      setIsFormOpen(false);
     } catch (error) {
       console.error('Error saving event:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la sauvegarde de l'événement.",
+        variant: "destructive",
+      });
+    } finally {
+      if (editingEvent) {
+        setItemLoading(editingEvent.id, false);
+      }
     }
   };
 
@@ -122,33 +168,92 @@ export function TaskList({
     setEditingEvent(undefined);
   };
 
-  const handleToggleComplete = (taskId: string) => {
+  const handleToggleComplete = async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
-      console.log('🔄 Basculement état completion pour tâche:', taskId, 'De:', task.completed, 'Vers:', !task.completed);
-      onUpdateTask(taskId, { completed: !task.completed }).catch(error => {
+      try {
+        setItemLoading(taskId, true);
+        console.log('🔄 Basculement état completion pour tâche:', taskId, 'De:', task.completed, 'Vers:', !task.completed);
+        await onUpdateTask(taskId, { completed: !task.completed });
+        toast({
+          title: task.completed ? "Tâche rouverte" : "Tâche terminée",
+          description: task.completed ? "La tâche a été rouverte." : "Félicitations ! Tâche marquée comme terminée.",
+        });
+      } catch (error) {
         console.error('Error toggling task completion:', error);
-      });
+        toast({
+          title: "Erreur",
+          description: "Impossible de modifier l'état de la tâche.",
+          variant: "destructive",
+        });
+      } finally {
+        setItemLoading(taskId, false);
+      }
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     try {
+      setItemLoading(taskId, true);
       await onDeleteTask(taskId);
+      toast({
+        title: "Tâche supprimée",
+        description: "La tâche a été supprimée définitivement.",
+      });
     } catch (error) {
       console.error('Error deleting task:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la tâche.",
+        variant: "destructive",
+      });
+    } finally {
+      setItemLoading(taskId, false);
     }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
     try {
+      setItemLoading(eventId, true);
       await onDeleteEvent(eventId);
+      toast({
+        title: "Événement supprimé",
+        description: "L'événement a été supprimé définitivement.",
+      });
     } catch (error) {
       console.error('Error deleting event:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'événement.",
+        variant: "destructive",
+      });
+    } finally {
+      setItemLoading(eventId, false);
     }
   };
 
   const handleAddNew = () => setIsFormOpen(true);
+
+  const handleRescheduleWithFeedback = async () => {
+    try {
+      toast({
+        title: "Replanification en cours...",
+        description: "Nous optimisons votre planning.",
+      });
+      await onReschedule();
+      toast({
+        title: "Planning optimisé",
+        description: "Votre planning a été replanifié avec succès.",
+      });
+    } catch (error) {
+      console.error('Error rescheduling:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de replanifier le planning.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -157,7 +262,7 @@ export function TaskList({
         completedTasks={completedTasks.length}
         totalEvents={totalEvents}
         onAddNew={handleAddNew}
-        onReschedule={onReschedule}
+        onReschedule={handleRescheduleWithFeedback}
       />
 
       <TaskListFilters
@@ -189,6 +294,7 @@ export function TaskList({
         onDeleteEvent={handleDeleteEvent}
         onAddNew={handleAddNew}
         projects={projects}
+        loadingStates={loadingStates}
       />
 
       <AddItemForm

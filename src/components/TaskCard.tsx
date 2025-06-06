@@ -11,7 +11,8 @@ import {
   CheckCircle2, 
   Circle,
   Users,
-  User
+  User,
+  Loader2
 } from 'lucide-react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -25,9 +26,18 @@ interface TaskCardProps {
   onDelete: (taskId: string) => Promise<void>;
   onClick: (task: Task) => void;
   projects: Project[];
+  isLoading?: boolean;
 }
 
-export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects }: TaskCardProps) {
+export function TaskCard({ 
+  task, 
+  onComplete, 
+  onEdit, 
+  onDelete, 
+  onClick, 
+  projects, 
+  isLoading = false 
+}: TaskCardProps) {
   const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
   const { users, assignUserToTask, removeTaskAssignment } = useUsers();
 
@@ -35,14 +45,29 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
     taskId: task.id,
     title: task.title,
     assignmentsCount: task.assignments?.length || 0,
-    usersCount: users.length
+    usersCount: users.length,
+    isLoading
   });
 
   const priorityColors: { [key: string]: string } = {
-    urgent: 'bg-red-500',
-    high: 'bg-orange-500',
-    medium: 'bg-yellow-500',
-    low: 'bg-green-500',
+    urgent: 'bg-red-500 text-white border-red-600',
+    high: 'bg-orange-500 text-white border-orange-600',
+    medium: 'bg-yellow-500 text-white border-yellow-600',
+    low: 'bg-green-500 text-white border-green-600',
+  };
+
+  const priorityLabels: { [key: string]: string } = {
+    urgent: 'Urgent',
+    high: 'Élevée',
+    medium: 'Moyenne',
+    low: 'Faible',
+  };
+
+  const priorityEmojis: { [key: string]: string } = {
+    urgent: '🔴',
+    high: '🟠',
+    medium: '🟡',
+    low: '🟢',
   };
 
   const projectInfo = projects.find(project => project.id === task.projectId);
@@ -62,7 +87,7 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
       return (
         <div className="flex items-center gap-1 text-xs text-gray-500">
           <User size={12} />
-          <span>Aucun utilisateur assigné</span>
+          <span>Non assignée</span>
         </div>
       );
     }
@@ -72,9 +97,9 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
     const remaining = task.assignments.length - displayCount;
 
     return (
-      <div className="flex items-center gap-1 text-xs text-gray-600">
-        <User size={12} />
-        <span>
+      <div className="flex items-center gap-1 text-xs text-gray-700">
+        <User size={12} className="text-blue-600" />
+        <span className="font-medium">
           {assignments.map(assignment => {
             const user = assignment.user;
             const displayName = user?.firstName && user?.lastName 
@@ -82,20 +107,28 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
               : user?.email?.split('@')[0] || 'Utilisateur';
             return displayName;
           }).join(', ')}
-          {remaining > 0 && ` +${remaining}`}
+          {remaining > 0 && ` +${remaining} autre${remaining > 1 ? 's' : ''}`}
         </span>
       </div>
     );
   };
 
+  const isOverdue = isPast(task.deadline) && !task.completed;
+
   return (
     <>
       <div 
-        className={`bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all cursor-pointer group ${
-          task.completed ? 'opacity-75' : ''
-        }`}
-        onClick={() => onClick(task)}
+        className={`bg-white rounded-xl border border-gray-100 p-4 hover:shadow-lg transition-all duration-200 cursor-pointer group relative ${
+          task.completed ? 'bg-gray-50 opacity-80' : 'hover:border-blue-200'
+        } ${isOverdue ? 'border-red-200 bg-red-50' : ''} ${isLoading ? 'pointer-events-none' : ''}`}
+        onClick={() => !isLoading && onClick(task)}
       >
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/50 rounded-xl flex items-center justify-center z-10">
+            <Loader2 className="animate-spin text-blue-600" size={24} />
+          </div>
+        )}
+
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
@@ -104,9 +137,11 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onComplete(task.id);
+                    if (!isLoading) onComplete(task.id);
                   }}
-                  className="flex-shrink-0 transition-colors"
+                  className="flex-shrink-0 transition-all duration-200 hover:scale-110"
+                  disabled={isLoading}
+                  aria-label={task.completed ? "Marquer comme non terminée" : "Marquer comme terminée"}
                 >
                   {task.completed ? (
                     <CheckCircle2 className="text-green-600" size={20} />
@@ -114,30 +149,38 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
                     <Circle className="text-gray-400 hover:text-blue-600" size={20} />
                   )}
                 </button>
-                <h3 className={`font-medium text-gray-900 truncate ${
+                <h3 className={`font-semibold text-gray-900 truncate transition-all duration-200 ${
                   task.completed ? 'line-through text-gray-500' : ''
                 }`}>
                   {task.title}
                 </h3>
+                {isOverdue && (
+                  <Badge variant="outline" className="border-red-500 text-red-700 text-xs">
+                    En retard
+                  </Badge>
+                )}
               </div>
               
               {task.description && (
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2 leading-relaxed">
                   {task.description}
                 </p>
               )}
             </div>
 
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log('👥 Opening user assignment dialog for task:', task.id);
-                  setShowAssignmentDialog(true);
+                  if (!isLoading) {
+                    console.log('👥 Opening user assignment dialog for task:', task.id);
+                    setShowAssignmentDialog(true);
+                  }
                 }}
-                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
+                disabled={isLoading}
+                className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50 transition-colors duration-200"
                 title="Assigner des utilisateurs"
               >
                 <Users size={16} />
@@ -147,9 +190,11 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onEdit(task);
+                  if (!isLoading) onEdit(task);
                 }}
-                className="h-8 w-8 p-0"
+                disabled={isLoading}
+                className="h-8 w-8 p-0 hover:bg-gray-100 transition-colors duration-200"
+                title="Modifier la tâche"
               >
                 <Edit size={16} />
               </Button>
@@ -158,9 +203,11 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDelete(task.id);
+                  if (!isLoading) onDelete(task.id);
                 }}
-                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                disabled={isLoading}
+                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors duration-200"
+                title="Supprimer la tâche"
               >
                 <Trash2 size={16} />
               </Button>
@@ -168,22 +215,23 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
           </div>
 
           {/* Metadata */}
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
             {/* Priority */}
-            <Badge className={`${priorityColors[task.priority]} text-white`}>
-              {task.priority === 'urgent' && '🔴'}
-              {task.priority === 'high' && '🟠'}
-              {task.priority === 'medium' && '🟡'}
-              {task.priority === 'low' && '🟢'}
-              {task.priority}
+            <Badge className={`${priorityColors[task.priority]} shadow-sm`}>
+              <span className="mr-1">{priorityEmojis[task.priority]}</span>
+              {priorityLabels[task.priority]}
             </Badge>
 
             {/* Deadline */}
-            <div className={`flex items-center gap-1 ${
-              isPast(task.deadline) && !task.completed ? 'text-red-600' : ''
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${
+              isOverdue 
+                ? 'text-red-700 bg-red-100' 
+                : isToday(task.deadline) 
+                  ? 'text-orange-700 bg-orange-100'
+                  : 'text-gray-600 bg-gray-100'
             }`}>
               <Calendar size={12} />
-              <span>
+              <span className="font-medium">
                 {isToday(task.deadline) && 'Aujourd\'hui'}
                 {isTomorrow(task.deadline) && 'Demain'}
                 {!isToday(task.deadline) && !isTomorrow(task.deadline) && 
@@ -193,21 +241,30 @@ export function TaskCard({ task, onComplete, onEdit, onDelete, onClick, projects
             </div>
 
             {/* Duration */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-100 text-blue-700">
               <Clock size={12} />
-              <span>{task.estimatedDuration}min</span>
+              <span className="font-medium">{task.estimatedDuration}min</span>
             </div>
 
             {/* Project */}
             {projectInfo && (
-              <Badge variant="outline" style={{ borderColor: projectInfo.color }}>
+              <Badge 
+                variant="outline" 
+                style={{ 
+                  borderColor: projectInfo.color,
+                  color: projectInfo.color 
+                }}
+                className="bg-white"
+              >
                 {projectInfo.title}
               </Badge>
             )}
           </div>
 
-          {/* Assigned users - Always visible */}
-          {getAssignedUsersDisplay()}
+          {/* Assigned users */}
+          <div className="pt-1 border-t border-gray-100">
+            {getAssignedUsersDisplay()}
+          </div>
         </div>
       </div>
 
