@@ -156,7 +156,7 @@ export function useSupabaseTasks() {
 
       console.log('🔄 Fetching data from Supabase for user:', session.user.id);
 
-      // Fetch tasks with assignments
+      // Fetch tasks with assignments - using explicit foreign key relationships
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select(`
@@ -168,7 +168,7 @@ export function useSupabaseTasks() {
             role,
             assigned_at,
             assigned_by,
-            app_users (
+            app_users!task_assignments_user_id_fkey (
               id,
               auth_user_id,
               email,
@@ -186,7 +186,7 @@ export function useSupabaseTasks() {
 
       if (tasksError) throw tasksError;
 
-      // Fetch events with assignments
+      // Fetch events with assignments - using explicit foreign key relationships
       const { data: eventsData, error: eventsError } = await supabase
         .from('events')
         .select(`
@@ -199,7 +199,7 @@ export function useSupabaseTasks() {
             assigned_at,
             assigned_by,
             response_status,
-            app_users (
+            app_users!event_assignments_user_id_fkey (
               id,
               auth_user_id,
               email,
