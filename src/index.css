@@ -69,7 +69,7 @@
   }
 }
 
-/* Classes utilitaires pour l'accessibilité tactile */
+/* Classes utilitaires pour l'accessibilité tactile et responsivité */
 @layer utilities {
   .touch-target {
     @apply min-w-[44px] min-h-[44px];
@@ -86,5 +86,64 @@
     word-wrap: break-word;
     word-break: break-word;
     overflow-wrap: break-word;
+  }
+
+  /* Classes d'animation pour les transitions fluides */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Classes pour la responsivité des textes */
+  .text-responsive {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+
+  .text-responsive-lg {
+    @apply text-base sm:text-lg lg:text-xl;
+  }
+
+  .text-responsive-xl {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+
+  /* Classes pour l'espacement responsive */
+  .space-responsive {
+    @apply space-y-3 sm:space-y-4 lg:space-y-6;
+  }
+
+  .p-responsive {
+    @apply p-3 sm:p-4 lg:p-6;
+  }
+
+  .px-responsive {
+    @apply px-2 sm:px-4 lg:px-6;
+  }
+
+  .py-responsive {
+    @apply py-3 sm:py-4 lg:py-6;
+  }
+
+  /* Classes pour les marges responsive */
+  .m-responsive {
+    @apply m-2 sm:m-4 lg:m-6;
+  }
+
+  .mx-responsive {
+    @apply mx-2 sm:mx-4 lg:mx-0;
+  }
+
+  .my-responsive {
+    @apply my-3 sm:my-4 lg:my-6;
   }
 }

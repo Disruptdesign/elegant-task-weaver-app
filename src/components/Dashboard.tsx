@@ -210,18 +210,18 @@ function Dashboard({
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
+    <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-fade-in px-2 sm:px-4 lg:px-0">
       {/* En-tête */}
-      <div className="text-center py-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl mx-4">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+      <div className="text-center py-6 sm:py-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2 sm:mb-4">
           Tableau de bord
         </h1>
-        <p className="text-lg text-gray-600 mb-4">
+        <p className="text-base sm:text-lg text-gray-600 mb-2 sm:mb-4 px-4">
           Vue d'ensemble de votre productivité
         </p>
         {tasks.length > 0 && (
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-            <TrendingUp size={16} />
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-500 px-4">
+            <TrendingUp size={14} className="sm:size-4" />
             <span>
               {completionRate}% de tâches terminées · {pendingTasks.length} tâches restantes
             </span>
@@ -230,7 +230,7 @@ function Dashboard({
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {stats.map((stat, index) => {
           const IconComponent = stat.icon;
           const colorClasses = {
@@ -245,29 +245,29 @@ function Dashboard({
           return (
             <div
               key={index}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+              className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
             >
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className={`p-4 rounded-xl border-2 ${classes}`}>
-                  <IconComponent size={28} />
+              <div className="flex flex-col items-center text-center space-y-2 sm:space-y-3 lg:space-y-4">
+                <div className={`p-2 sm:p-3 lg:p-4 rounded-lg sm:rounded-xl border-2 ${classes}`}>
+                  <IconComponent size={20} className="sm:size-6 lg:size-7" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-gray-900 mb-1">
+                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
                     {stat.value}
                     {stat.total && (
-                      <span className="text-lg text-gray-500 font-normal">
+                      <span className="text-sm sm:text-base lg:text-lg text-gray-500 font-normal">
                         /{stat.total}
                       </span>
                     )}
                   </div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">{stat.title}</h3>
-                  <p className="text-xs text-gray-500">{stat.subtitle}</p>
+                  <h3 className="text-xs sm:text-sm font-medium text-gray-700 mb-1">{stat.title}</h3>
+                  <p className="text-xs text-gray-500 break-words">{stat.subtitle}</p>
                 </div>
                 {stat.total && (
                   <div className="w-full">
-                    <div className="bg-gray-200 rounded-full h-2">
+                    <div className="bg-gray-200 rounded-full h-1.5 sm:h-2">
                       <div
-                        className={`h-2 rounded-full transition-all duration-500 bg-gradient-to-r ${classes}`}
+                        className={`h-1.5 sm:h-2 rounded-full transition-all duration-500 bg-gradient-to-r ${classes}`}
                         style={{ width: `${(stat.value / stat.total) * 100}%` }}
                       />
                     </div>
@@ -281,156 +281,152 @@ function Dashboard({
 
       {/* Tâches en retard */}
       {overdueTasks.length > 0 && (
-        <div className="mx-4">
-          <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-2xl p-6 shadow-lg">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-red-100 rounded-xl animate-pulse">
-                <AlertTriangle className="text-red-600" size={24} />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-red-800">
-                  ⚠️ Tâches en retard ({overdueTasks.length})
-                </h2>
-                <p className="text-sm text-red-600">Ces tâches nécessitent votre attention immédiate</p>
-              </div>
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
+            <div className="p-2 sm:p-3 bg-red-100 rounded-lg sm:rounded-xl animate-pulse">
+              <AlertTriangle className="text-red-600" size={20} />
             </div>
-            <div className="space-y-3">
-              {overdueTasks.slice(0, 3).map(task => {
-                const projectName = getProjectName(task.projectId);
-                return (
-                  <div key={task.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-red-100 hover:shadow-md transition-shadow">
-                    <div className="flex items-center gap-3 flex-1">
-                      {onUpdateTask && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleTaskCompletion(task, e)}
-                          className="p-2 hover:bg-green-100 rounded-lg transition-colors"
-                          title="Marquer comme terminé"
-                        >
-                          <CheckCircle2 size={18} className="text-gray-400 hover:text-green-600" />
-                        </button>
-                      )}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-gray-900">{task.title}</span>
-                          {projectName && (
-                            <div className="flex items-center gap-1">
-                              <FolderOpen size={12} className="text-blue-600" />
-                              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                                {projectName}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-sm text-red-600 font-medium">
-                          {task.scheduledStart && task.scheduledStart > new Date(task.deadline) 
-                            ? `Planifiée après l'échéance: ${format(task.scheduledStart, 'dd/MM/yyyy à HH:mm')}`
-                            : `Échéance dépassée: ${format(task.deadline, 'dd/MM/yyyy à HH:mm')}`
-                          }
-                        </div>
-                      </div>
-                    </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg sm:text-xl font-semibold text-red-800">
+                ⚠️ Tâches en retard ({overdueTasks.length})
+              </h2>
+              <p className="text-xs sm:text-sm text-red-600">Ces tâches nécessitent votre attention immédiate</p>
+            </div>
+          </div>
+          <div className="space-y-2 sm:space-y-3">
+            {overdueTasks.slice(0, 3).map(task => {
+              const projectName = getProjectName(task.projectId);
+              return (
+                <div key={task.id} className="flex items-center justify-between bg-white p-3 sm:p-4 rounded-lg sm:rounded-xl shadow-sm border border-red-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     {onUpdateTask && (
                       <button
                         type="button"
-                        onClick={() => handleTaskClick(task)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                        title="Modifier la tâche"
+                        onClick={(e) => handleTaskCompletion(task, e)}
+                        className="p-1.5 sm:p-2 hover:bg-green-100 rounded-lg transition-colors flex-shrink-0"
+                        title="Marquer comme terminé"
                       >
-                        <Edit3 size={16} />
+                        <CheckCircle2 size={16} className="text-gray-400 hover:text-green-600" />
                       </button>
                     )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-medium text-gray-900 text-sm sm:text-base truncate">{task.title}</span>
+                        {projectName && (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <FolderOpen size={10} className="text-blue-600" />
+                            <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 truncate max-w-20 sm:max-w-none">
+                              {projectName}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs sm:text-sm text-red-600 font-medium">
+                        {task.scheduledStart && task.scheduledStart > new Date(task.deadline) 
+                          ? `Planifiée après l'échéance: ${format(task.scheduledStart, 'dd/MM/yyyy à HH:mm')}`
+                          : `Échéance dépassée: ${format(task.deadline, 'dd/MM/yyyy à HH:mm')}`
+                        }
+                      </div>
+                    </div>
                   </div>
-                );
-              })}
-              {overdueTasks.length > 3 && (
-                <p className="text-sm text-red-600 text-center font-medium bg-white p-2 rounded-lg">
-                  +{overdueTasks.length - 3} autres tâches en retard
-                </p>
-              )}
-            </div>
+                  {onUpdateTask && (
+                    <button
+                      type="button"
+                      onClick={() => handleTaskClick(task)}
+                      className="p-1.5 sm:p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors flex-shrink-0"
+                      title="Modifier la tâche"
+                    >
+                      <Edit3 size={14} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {overdueTasks.length > 3 && (
+              <p className="text-xs sm:text-sm text-red-600 text-center font-medium bg-white p-2 rounded-lg">
+                +{overdueTasks.length - 3} autres tâches en retard
+              </p>
+            )}
           </div>
         </div>
       )}
 
       {/* Événements d'aujourd'hui */}
       {todayEvents.length > 0 && (
-        <div className="mx-4">
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-2xl p-6 shadow-lg">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-purple-100 rounded-xl">
-                <Users className="text-purple-600" size={24} />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-purple-800">
-                  📅 Événements d'aujourd'hui ({todayEvents.length})
-                </h2>
-                <p className="text-sm text-purple-600">Vos rendez-vous du jour</p>
-              </div>
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
+            <div className="p-2 sm:p-3 bg-purple-100 rounded-lg sm:rounded-xl">
+              <Users className="text-purple-600" size={20} />
             </div>
-            <div className="space-y-3">
-              {todayEvents.map(event => (
-                <div key={event.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm group hover:shadow-md transition-shadow">
-                  <div className="flex-1">
-                    <span className="font-medium text-gray-900">{event.title}</span>
-                    <div className="text-sm text-purple-600 font-medium mt-1">
-                      {event.allDay ? 'Toute la journée' : `${format(event.startDate, 'HH:mm')} - ${format(event.endDate, 'HH:mm')}`}
-                    </div>
-                    {event.location && (
-                      <div className="text-sm text-gray-600 mt-1">
-                        📍 {event.location}
-                      </div>
-                    )}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg sm:text-xl font-semibold text-purple-800">
+                📅 Événements d'aujourd'hui ({todayEvents.length})
+              </h2>
+              <p className="text-xs sm:text-sm text-purple-600">Vos rendez-vous du jour</p>
+            </div>
+          </div>
+          <div className="space-y-2 sm:space-y-3">
+            {todayEvents.map(event => (
+              <div key={event.id} className="flex items-center justify-between bg-white p-3 sm:p-4 rounded-lg sm:rounded-xl shadow-sm group hover:shadow-md transition-shadow">
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-gray-900 text-sm sm:text-base block truncate">{event.title}</span>
+                  <div className="text-xs sm:text-sm text-purple-600 font-medium mt-1">
+                    {event.allDay ? 'Toute la journée' : `${format(event.startDate, 'HH:mm')} - ${format(event.endDate, 'HH:mm')}`}
                   </div>
-                  {onUpdateEvent && (
-                    <button
-                      type="button"
-                      onClick={() => handleEventClick(event)}
-                      className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
-                      title="Modifier l'événement"
-                    >
-                      <Edit3 size={16} />
-                    </button>
+                  {event.location && (
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1 truncate">
+                      📍 {event.location}
+                    </div>
                   )}
                 </div>
-              ))}
-            </div>
+                {onUpdateEvent && (
+                  <button
+                    type="button"
+                    onClick={() => handleEventClick(event)}
+                    className="p-1.5 sm:p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors flex-shrink-0"
+                    title="Modifier l'événement"
+                  >
+                    <Edit3 size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* Grid responsive pour les sections suivantes */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mx-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
         {/* Prochains événements */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-              <Users className="text-purple-600" size={24} />
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100">
+          <div className="p-4 sm:p-6 border-b border-gray-100">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-3">
+              <Users className="text-purple-600" size={20} />
               Prochains événements
             </h2>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {getUpcomingEvents().length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {getUpcomingEvents().map((event) => (
                   <div
                     key={event.id}
-                    className="flex items-center justify-between p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors group"
+                    className="flex items-center justify-between p-3 sm:p-4 bg-purple-50 rounded-lg sm:rounded-xl hover:bg-purple-100 transition-colors group"
                   >
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 mb-1">{event.title}</h3>
-                      <p className="text-sm text-purple-600 font-medium">{formatEventTime(event)}</p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900 mb-1 text-sm sm:text-base truncate">{event.title}</h3>
+                      <p className="text-xs sm:text-sm text-purple-600 font-medium">{formatEventTime(event)}</p>
                       {event.location && (
-                        <p className="text-sm text-gray-600 mt-1">📍 {event.location}</p>
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">📍 {event.location}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                       {event.allDay ? (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
+                        <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-purple-200 text-purple-800">
                           Toute la journée
                         </span>
                       ) : (
-                        <span className="text-sm text-gray-500 font-medium">
+                        <span className="text-xs sm:text-sm text-gray-500 font-medium hidden sm:inline">
                           {format(event.startDate, 'HH:mm')} - {format(event.endDate, 'HH:mm')}
                         </span>
                       )}
@@ -438,10 +434,10 @@ function Dashboard({
                         <button
                           type="button"
                           onClick={() => handleEventClick(event)}
-                          className="p-2 text-gray-400 hover:text-purple-600 hover:bg-white rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                          className="p-1.5 sm:p-2 text-gray-400 hover:text-purple-600 hover:bg-white rounded-md transition-colors opacity-0 group-hover:opacity-100"
                           title="Modifier l'événement"
                         >
-                          <Edit3 size={16} />
+                          <Edit3 size={14} />
                         </button>
                       )}
                     </div>
@@ -449,12 +445,12 @@ function Dashboard({
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <Users className="mx-auto text-gray-400 mb-4" size={48} />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <div className="text-center py-6 sm:py-8">
+                <Users className="mx-auto text-gray-400 mb-4" size={40} />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
                   Aucun événement planifié
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   Vos prochains événements apparaîtront ici
                 </p>
               </div>
@@ -463,52 +459,52 @@ function Dashboard({
         </div>
 
         {/* Prochaines tâches */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-3">
-              <Calendar className="text-blue-600" size={24} />
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100">
+          <div className="p-4 sm:p-6 border-b border-gray-100">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-3">
+              <Calendar className="text-blue-600" size={20} />
               Prochaines tâches
             </h2>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {getUpcomingTasks().length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {getUpcomingTasks().map((task) => {
                   const projectName = getProjectName(task.projectId);
                   return (
                     <div
                       key={task.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group cursor-pointer"
+                      className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg sm:rounded-xl hover:bg-gray-100 transition-colors group cursor-pointer"
                       onClick={() => handleTaskClick(task)}
                     >
-                      <div className="flex items-center gap-3 flex-1">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                         {onUpdateTask && (
                           <button
                             type="button"
                             onClick={(e) => handleTaskCompletion(task, e)}
-                            className="p-1 hover:bg-white rounded"
+                            className="p-1 hover:bg-white rounded flex-shrink-0"
                             title="Marquer comme terminé"
                           >
-                            <CheckCircle2 size={16} className="text-gray-400 hover:text-green-600" />
+                            <CheckCircle2 size={14} className="text-gray-400 hover:text-green-600" />
                           </button>
                         )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-gray-900">{task.title}</h3>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 sm:gap-2 mb-1 flex-wrap">
+                            <h3 className="font-medium text-gray-900 text-sm sm:text-base truncate">{task.title}</h3>
                             {projectName && (
-                              <div className="flex items-center gap-1">
-                                <FolderOpen size={12} className="text-blue-600" />
-                                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <FolderOpen size={10} className="text-blue-600" />
+                                <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 truncate max-w-16 sm:max-w-none">
                                   {projectName}
                                 </span>
                               </div>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">{formatTaskTime(task)}</p>
+                          <p className="text-xs sm:text-sm text-gray-600">{formatTaskTime(task)}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
                           task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
                           task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
                           task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
@@ -518,11 +514,11 @@ function Dashboard({
                            task.priority === 'high' ? 'Haute' :
                            task.priority === 'medium' ? 'Moyenne' : 'Faible'}
                         </span>
-                        <span className="text-sm text-gray-500 font-medium">
+                        <span className="text-xs sm:text-sm text-gray-500 font-medium hidden sm:inline">
                           {Math.floor(task.estimatedDuration / 60)}h{task.estimatedDuration % 60 > 0 ? ` ${task.estimatedDuration % 60}min` : ''}
                         </span>
                         {onUpdateTask && (
-                          <Edit3 className="text-gray-400 group-hover:text-blue-600 transition-colors" size={16} />
+                          <Edit3 className="text-gray-400 group-hover:text-blue-600 transition-colors hidden sm:inline" size={14} />
                         )}
                       </div>
                     </div>
@@ -530,12 +526,12 @@ function Dashboard({
                 })}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <Calendar className="mx-auto text-gray-400 mb-4" size={48} />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <div className="text-center py-6 sm:py-8">
+                <Calendar className="mx-auto text-gray-400 mb-4" size={40} />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
                   Aucune tâche planifiée
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   Commencez par créer vos premières tâches
                 </p>
               </div>
