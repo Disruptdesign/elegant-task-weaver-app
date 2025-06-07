@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { Search, Filter, ArrowUpDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 
 type ItemType = 'all' | 'tasks' | 'events';
 type FilterStatus = 'all' | 'pending' | 'completed';
@@ -65,93 +67,117 @@ export function TaskListFilters({
   ];
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
+    <div className="bg-card rounded-2xl shadow-sm border border-border p-4 sm:p-6 space-y-6">
+      {/* Barre de recherche */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
+        <input
+          type="text"
+          placeholder="Rechercher une tâche ou un événement..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-12 pr-4 py-3 border border-input rounded-xl bg-background focus:ring-2 focus:ring-ring focus:border-transparent transition-all text-base placeholder:text-muted-foreground"
+        />
+      </div>
+
+      {/* Filtres organisés en sections */}
       <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Rechercher une tâche ou un événement..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
-          />
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Filtre par type */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter size={16} className="text-gray-400 flex-shrink-0" />
-            <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
-              {typeFilterOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setFilterType(option.value as ItemType)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${
-                    filterType === option.value
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  {option.label} ({option.count})
-                </button>
-              ))}
-            </div>
+        {/* Section Type */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Filter size={16} className="text-muted-foreground" />
+            <span>Type d'élément</span>
           </div>
-
-          {/* Filtre par statut */}
-          <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
-            {statusFilterOptions.map((option) => (
-              <button
+          <ToggleGroup 
+            type="single" 
+            value={filterType} 
+            onValueChange={(value) => value && setFilterType(value as ItemType)}
+            className="justify-start"
+          >
+            {typeFilterOptions.map((option) => (
+              <ToggleGroupItem
                 key={option.value}
-                onClick={() => setFilterStatus(option.value as FilterStatus)}
-                disabled={filterType === 'events' && option.value === 'completed'}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${
-                  filterStatus === option.value
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed'
-                }`}
+                value={option.value}
+                aria-label={option.label}
+                className="px-4 py-2 text-sm font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
               >
                 {option.label} ({option.count})
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
+        </div>
 
+        {/* Section Statut */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-foreground">Statut</div>
+          <ToggleGroup 
+            type="single" 
+            value={filterStatus} 
+            onValueChange={(value) => value && setFilterStatus(value as FilterStatus)}
+            className="justify-start"
+          >
+            {statusFilterOptions.map((option) => (
+              <ToggleGroupItem
+                key={option.value}
+                value={option.value}
+                aria-label={option.label}
+                disabled={filterType === 'events' && option.value === 'completed'}
+                className="px-4 py-2 text-sm font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {option.label} ({option.count})
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
+
+        {/* Section contrôles avancés */}
+        <div className="flex flex-col sm:flex-row gap-4 pt-2 border-t border-border">
           {/* Filtre par priorité (seulement pour les tâches) */}
           {filterType !== 'events' && (
-            <select
-              value={filterPriority}
-              onChange={(e) => setFilterPriority(e.target.value as FilterPriority)}
-              className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm touch-target flex-1 sm:flex-none"
-            >
-              <option value="all">Toutes priorités</option>
-              <option value="urgent">🔴 Urgente</option>
-              <option value="high">🟠 Haute</option>
-              <option value="medium">🟡 Moyenne</option>
-              <option value="low">🟢 Faible</option>
-            </select>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-foreground mb-2">Priorité</div>
+              <Select value={filterPriority} onValueChange={(value) => setFilterPriority(value as FilterPriority)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Toutes priorités" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes priorités</SelectItem>
+                  <SelectItem value="urgent">🔴 Urgente</SelectItem>
+                  <SelectItem value="high">🟠 Haute</SelectItem>
+                  <SelectItem value="medium">🟡 Moyenne</SelectItem>
+                  <SelectItem value="low">🟢 Faible</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <ArrowUpDown size={16} className="text-gray-400 flex-shrink-0" />
-            <select
-              value={sortBy}
-              onChange={(e) => onSortChange(e.target.value as SortOption)}
-              className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm touch-target flex-1 sm:flex-none"
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-              title={sortOrder === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'}
-            >
-              {sortOrder === 'asc' ? '↑' : '↓'}
-            </button>
+          {/* Tri */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+              <ArrowUpDown size={16} className="text-muted-foreground" />
+              <span>Tri</span>
+            </div>
+            <div className="flex gap-2">
+              <Select value={sortBy} onValueChange={(value) => onSortChange(value as SortOption)}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="px-3 py-2 border border-input rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-sm min-w-[44px] h-10 flex items-center justify-center"
+                title={sortOrder === 'asc' ? 'Ordre croissant' : 'Ordre décroissant'}
+              >
+                {sortOrder === 'asc' ? '↑' : '↓'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
