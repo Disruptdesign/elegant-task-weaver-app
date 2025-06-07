@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Alert, AlertDescription } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { LogIn, UserPlus, LogOut, Mail, Lock } from 'lucide-react';
+import { Layout } from './Layout';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState('dashboard');
 
   // Form states
   const [email, setEmail] = useState('');
@@ -159,6 +161,223 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
       </div>
     );
   }
+
+  // Sidebar footer component for authentication
+  const AuthSidebarFooter = () => {
+    if (session && user) {
+      return (
+        <div className="p-4 border-t border-gray-100 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-sm font-medium">
+                {user.email?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {user.email}
+              </p>
+              <p className="text-xs text-gray-500">Connecté</p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleSignOut}
+            disabled={isAuthenticating}
+            className="w-full flex items-center gap-2"
+          >
+            <LogOut size={16} />
+            {isAuthenticating ? 'Déconnexion...' : 'Déconnexion'}
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-4 border-t border-gray-100">
+        <Card className="shadow-sm">
+          <CardHeader className="text-center pb-3">
+            <CardTitle className="text-lg">Connexion</CardTitle>
+            <CardDescription className="text-sm">
+              Accédez à votre planificateur
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <Tabs defaultValue="signin" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="signin" onClick={clearMessages} className="text-xs">
+                  <LogIn size={14} className="mr-1" />
+                  Connexion
+                </TabsTrigger>
+                <TabsTrigger value="signup" onClick={clearMessages} className="text-xs">
+                  <UserPlus size={14} className="mr-1" />
+                  Inscription
+                </TabsTrigger>
+              </TabsList>
+
+              {authError && (
+                <Alert className="mb-3 border-red-200 bg-red-50">
+                  <AlertDescription className="text-red-700 text-xs">
+                    {authError}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {authMessage && (
+                <Alert className="mb-3 border-green-200 bg-green-50">
+                  <AlertDescription className="text-green-700 text-xs">
+                    {authMessage}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <TabsContent value="signin">
+                <form onSubmit={handleSignIn} className="space-y-3">
+                  <div className="space-y-1">
+                    <label htmlFor="signin-email" className="text-xs font-medium text-gray-700">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-2 top-2.5 h-3 w-3 text-gray-400" />
+                      <Input
+                        id="signin-email"
+                        type="email"
+                        placeholder="votre@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-8 h-8 text-sm"
+                        required
+                        disabled={isAuthenticating}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label htmlFor="signin-password" className="text-xs font-medium text-gray-700">
+                      Mot de passe
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-2 top-2.5 h-3 w-3 text-gray-400" />
+                      <Input
+                        id="signin-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-8 h-8 text-sm"
+                        required
+                        disabled={isAuthenticating}
+                      />
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full h-8 bg-blue-600 hover:bg-blue-700 text-sm"
+                    disabled={isAuthenticating}
+                  >
+                    {isAuthenticating ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                        Connexion...
+                      </div>
+                    ) : (
+                      <>
+                        <LogIn size={14} className="mr-1" />
+                        Se connecter
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-3">
+                  <div className="space-y-1">
+                    <label htmlFor="signup-email" className="text-xs font-medium text-gray-700">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-2 top-2.5 h-3 w-3 text-gray-400" />
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="votre@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-8 h-8 text-sm"
+                        required
+                        disabled={isAuthenticating}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label htmlFor="signup-password" className="text-xs font-medium text-gray-700">
+                      Mot de passe
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-2 top-2.5 h-3 w-3 text-gray-400" />
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-8 h-8 text-sm"
+                        required
+                        disabled={isAuthenticating}
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="confirm-password" className="text-xs font-medium text-gray-700">
+                      Confirmer le mot de passe
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-2 top-2.5 h-3 w-3 text-gray-400" />
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="pl-8 h-8 text-sm"
+                        required
+                        disabled={isAuthenticating}
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full h-8 bg-green-600 hover:bg-green-700 text-sm"
+                    disabled={isAuthenticating}
+                  >
+                    {isAuthenticating ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                        Inscription...
+                      </div>
+                    ) : (
+                      <>
+                        <UserPlus size={14} className="mr-1" />
+                        S'inscrire
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   if (!session || !user) {
     return (
@@ -349,36 +568,12 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Gestionnaire de Tâches
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                {user.email}
-              </span>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleSignOut}
-                disabled={isAuthenticating}
-                className="flex items-center gap-2"
-              >
-                <LogOut size={16} />
-                Déconnexion
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-      <main>
-        {children}
-      </main>
-    </div>
+    <Layout 
+      currentView={currentView}
+      onViewChange={setCurrentView}
+      sidebarFooter={<AuthSidebarFooter />}
+    >
+      {children}
+    </Layout>
   );
 }
