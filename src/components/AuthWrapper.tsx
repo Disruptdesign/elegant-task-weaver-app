@@ -166,7 +166,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
         <Card className="w-full max-w-md mx-auto shadow-xl">
           <CardHeader className="text-center space-y-2">
             <CardTitle className="text-2xl font-bold text-gray-900">
-              Gestionnaire de Tâches
+              MotionFlow
             </CardTitle>
             <CardDescription className="text-gray-600">
               Connectez-vous pour accéder à votre planificateur
@@ -348,37 +348,11 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Gestionnaire de Tâches
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                {user.email}
-              </span>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleSignOut}
-                disabled={isAuthenticating}
-                className="flex items-center gap-2"
-              >
-                <LogOut size={16} />
-                Déconnexion
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-      <main>
-        {children}
-      </main>
-    </div>
-  );
+  // Pass auth data to children via React.cloneElement
+  return React.cloneElement(children as React.ReactElement, { 
+    user, 
+    session, 
+    onSignOut: handleSignOut,
+    isAuthenticating 
+  });
 }
