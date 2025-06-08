@@ -10,7 +10,7 @@ const TaskListContent = lazy(() => import('./TaskListContent').then(module => ({
 const CalendarView = lazy(() => import('./CalendarView').then(module => ({ default: module.CalendarView })));
 const ProjectList = lazy(() => import('./ProjectList').then(module => ({ default: module.ProjectList })));
 const Inbox = lazy(() => import('./Inbox'));
-const LazyComponents = lazy(() => import('./LazyComponents'));
+const LazyComponents = lazy(() => import('./LazyComponents').then(module => ({ default: module.default })));
 
 export function AppContainer() {
   const { 
@@ -32,9 +32,15 @@ export function AppContainer() {
     deleteEvent,
     addInboxItem,
     deleteInboxItem,
-    toggleTaskComplete,
-    loading
+    isLoading: loading
   } = useTasks();
+
+  const handleToggleTaskComplete = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      await updateTask(taskId, { completed: !task.completed });
+    }
+  };
 
   const renderContent = () => {
     // Show loading state while data is being fetched
@@ -58,9 +64,9 @@ export function AppContainer() {
             onAddTask={addTask}
             onAddEvent={addEvent}
             onAddInboxItem={addInboxItem}
-            onToggleComplete={toggleTaskComplete}
-            onEditTask={updateTask}
-            onEditEvent={updateEvent}
+            onToggleComplete={handleToggleTaskComplete}
+            onEditTask={(task) => updateTask(task.id, task)}
+            onEditEvent={(event) => updateEvent(event.id, event)}
             onDeleteTask={deleteTask}
             onDeleteEvent={deleteEvent}
             onDeleteInboxItem={deleteInboxItem}
@@ -69,8 +75,8 @@ export function AppContainer() {
                 title: item.title,
                 description: item.description,
                 priority: 'medium',
-                status: 'todo',
-                dueDate: new Date()
+                estimated_duration: 30,
+                deadline: new Date()
               });
               deleteInboxItem(item.id);
             }}
@@ -84,9 +90,9 @@ export function AppContainer() {
               ...events.map(event => ({ ...event, type: 'event' as const }))
             ]}
             hasActiveFilters={false}
-            onToggleComplete={toggleTaskComplete}
-            onEditTask={updateTask}
-            onEditEvent={updateEvent}
+            onToggleComplete={handleToggleTaskComplete}
+            onEditTask={(task) => updateTask(task.id, task)}
+            onEditEvent={(event) => updateEvent(event.id, event)}
             onDeleteTask={deleteTask}
             onDeleteEvent={deleteEvent}
             onAddNew={() => setCurrentView('dashboard')}
@@ -94,9 +100,16 @@ export function AppContainer() {
           />
         );
       case 'calendar':
-        return <CalendarView />;
+        return <CalendarView tasks={tasks} events={events} />;
       case 'projects':
-        return <ProjectList />;
+        return <ProjectList 
+          projects={projects} 
+          tasks={tasks}
+          onAddProject={() => {}}
+          onUpdateProject={() => {}}
+          onDeleteProject={() => {}}
+          onViewProject={() => {}}
+        />;
       case 'inbox':
         return (
           <Inbox
@@ -108,8 +121,8 @@ export function AppContainer() {
                 title: item.title,
                 description: item.description,
                 priority: 'medium',
-                status: 'todo',
-                dueDate: new Date()
+                estimated_duration: 30,
+                deadline: new Date()
               });
               deleteInboxItem(item.id);
             }}
@@ -127,9 +140,9 @@ export function AppContainer() {
             onAddTask={addTask}
             onAddEvent={addEvent}
             onAddInboxItem={addInboxItem}
-            onToggleComplete={toggleTaskComplete}
-            onEditTask={updateTask}
-            onEditEvent={updateEvent}
+            onToggleComplete={handleToggleTaskComplete}
+            onEditTask={(task) => updateTask(task.id, task)}
+            onEditEvent={(event) => updateEvent(event.id, event)}
             onDeleteTask={deleteTask}
             onDeleteEvent={deleteEvent}
             onDeleteInboxItem={deleteInboxItem}
@@ -138,8 +151,8 @@ export function AppContainer() {
                 title: item.title,
                 description: item.description,
                 priority: 'medium',
-                status: 'todo',
-                dueDate: new Date()
+                estimated_duration: 30,
+                deadline: new Date()
               });
               deleteInboxItem(item.id);
             }}

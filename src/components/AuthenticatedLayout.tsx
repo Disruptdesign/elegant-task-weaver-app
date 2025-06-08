@@ -1,14 +1,15 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { Layout } from './Layout';
+import { QuickInbox } from './QuickInbox';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { LogIn, UserPlus, Mail, Lock } from 'lucide-react';
+import { useTasks } from '../hooks/useTasks';
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode;
@@ -28,6 +29,9 @@ export function AuthenticatedLayout({ children, currentView, onViewChange }: Aut
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Get tasks hook for QuickInbox
+  const { addInboxItem } = useTasks();
 
   useEffect(() => {
     // Get initial session
@@ -163,7 +167,7 @@ export function AuthenticatedLayout({ children, currentView, onViewChange }: Aut
     );
   }
 
-  // Create auth sidebar footer component
+  // Create auth sidebar footer component with QuickInbox for authenticated users
   const authSidebarFooter = !session ? (
     <div className="p-4">
       <Tabs defaultValue="signin" className="w-full">
@@ -336,7 +340,9 @@ export function AuthenticatedLayout({ children, currentView, onViewChange }: Aut
         </TabsContent>
       </Tabs>
     </div>
-  ) : undefined;
+  ) : (
+    <QuickInbox onAddInboxItem={addInboxItem} />
+  );
 
   return (
     <Layout
