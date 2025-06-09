@@ -118,7 +118,7 @@ export function AddItemForm({
               />
             ) : (
               <TaskForm
-                isOpen={true}
+                isOpen={false}
                 onClose={onClose}
                 onSubmit={onSubmitTask}
                 editingTask={editingTask}
@@ -129,7 +129,7 @@ export function AddItemForm({
             )
           ) : (
             <EventForm
-              isOpen={true}
+              isOpen={false}
               onClose={onClose}
               onSubmit={onSubmitEvent}
               editingEvent={editingEvent}
