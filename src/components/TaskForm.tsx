@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Flag, Plus, FolderOpen, Tag, Zap, GitBranch } from 'lucide-react';
 import { Task, Priority, Project, TaskType } from '../types/task';
@@ -41,6 +40,18 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
     projectsData: projects.map(p => ({ id: p.id, title: p.title })),
     taskTypesData: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
+
+  // Obtenir le projet sélectionné
+  const selectedProject = projects.find(p => p.id === projectId);
+  const isProjectSelected = projectId && projectId !== 'no-project';
+
+  // Mettre à jour automatiquement les dates quand un projet est sélectionné
+  useEffect(() => {
+    if (selectedProject) {
+      setDeadline(new Date(selectedProject.deadline));
+      setCanStartFrom(new Date(selectedProject.startDate));
+    }
+  }, [selectedProject]);
 
   useEffect(() => {
     if (editingTask) {
@@ -217,14 +228,19 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date limite *
+                {isProjectSelected && (
+                  <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>
+                )}
               </label>
-              <DateTimeSelector
-                value={deadline}
-                onChange={setDeadline}
-                placeholder="Sélectionnez une date limite"
-                includeTime={false}
-                required
-              />
+              <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
+                <DateTimeSelector
+                  value={deadline}
+                  onChange={isProjectSelected ? () => {} : setDeadline}
+                  placeholder="Sélectionnez une date limite"
+                  includeTime={false}
+                  required
+                />
+              </div>
             </div>
 
             <div>
@@ -383,13 +399,18 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Peut commencer à partir de
+                    {isProjectSelected && (
+                      <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>
+                    )}
                   </label>
-                  <DateTimeSelector
-                    value={canStartFrom}
-                    onChange={setCanStartFrom}
-                    placeholder="Choisir une date"
-                    includeTime={false}
-                  />
+                  <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
+                    <DateTimeSelector
+                      value={canStartFrom}
+                      onChange={isProjectSelected ? () => {} : setCanStartFrom}
+                      placeholder="Choisir une date"
+                      includeTime={false}
+                    />
+                  </div>
                 </div>
 
                 {/* Temps de pause */}

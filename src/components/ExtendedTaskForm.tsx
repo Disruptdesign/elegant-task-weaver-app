@@ -75,6 +75,19 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
     onSubmit(data);
   };
 
+  // Obtenir le projet sélectionné
+  const selectedProjectId = form.watch('projectId');
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const isProjectSelected = selectedProject && selectedProjectId && selectedProjectId !== '';
+
+  // Mettre à jour automatiquement les dates quand un projet est sélectionné
+  React.useEffect(() => {
+    if (selectedProject) {
+      form.setValue('deadline', new Date(selectedProject.deadline));
+      form.setValue('canStartFrom', new Date(selectedProject.startDate));
+    }
+  }, [selectedProject, form]);
+
   const availableTasksForDependencies = tasks.filter(task => task.id !== initialData?.id && !task.completed);
 
   // Grouper les tâches disponibles par projet pour une meilleure organisation
@@ -179,15 +192,22 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
             name="deadline"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Date limite</FormLabel>
+                <FormLabel>
+                  Date limite
+                  {isProjectSelected && (
+                    <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>
+                  )}
+                </FormLabel>
                 <FormControl>
-                  <DateTimeSelector
-                    value={field.value}
-                    onChange={(date) => field.onChange(date)}
-                    placeholder="Sélectionnez une date limite"
-                    includeTime={false}
-                    required
-                  />
+                  <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
+                    <DateTimeSelector
+                      value={field.value}
+                      onChange={isProjectSelected ? () => {} : (date) => field.onChange(date)}
+                      placeholder="Sélectionnez une date limite"
+                      includeTime={false}
+                      required
+                    />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -397,14 +417,21 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
               name="canStartFrom"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Peut commencer à partir du</FormLabel>
+                  <FormLabel>
+                    Peut commencer à partir du
+                    {isProjectSelected && (
+                      <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>
+                    )}
+                  </FormLabel>
                   <FormControl>
-                    <DateTimeSelector
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Sélectionnez une date"
-                      includeTime={false}
-                    />
+                    <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
+                      <DateTimeSelector
+                        value={field.value}
+                        onChange={isProjectSelected ? () => {} : field.onChange}
+                        placeholder="Sélectionnez une date"
+                        includeTime={false}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

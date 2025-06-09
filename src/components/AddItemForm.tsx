@@ -65,6 +65,18 @@ export function AddItemForm({
     taskTypes: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
 
+  // Obtenir le projet sélectionné
+  const selectedProject = projects.find(p => p.id === projectId);
+  const isProjectSelected = projectId && projectId !== 'no-project';
+
+  // Mettre à jour automatiquement les dates quand un projet est sélectionné
+  useEffect(() => {
+    if (selectedProject && itemType === 'task') {
+      setDeadline(new Date(selectedProject.deadline));
+      setCanStartFrom(new Date(selectedProject.startDate));
+    }
+  }, [selectedProject, itemType]);
+
   useEffect(() => {
     if (editingTask) {
       setItemType('task');
@@ -345,14 +357,19 @@ export function AddItemForm({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Date limite
+                      {isProjectSelected && (
+                        <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>
+                      )}
                     </label>
-                    <DateTimeSelector
-                      value={deadline}
-                      onChange={setDeadline}
-                      placeholder="Sélectionnez une date limite"
-                      includeTime={false}
-                      required
-                    />
+                    <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
+                      <DateTimeSelector
+                        value={deadline}
+                        onChange={isProjectSelected ? () => {} : setDeadline}
+                        placeholder="Sélectionnez une date limite"
+                        includeTime={false}
+                        required
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -369,13 +386,18 @@ export function AddItemForm({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Peut commencer à partir de
+                    {isProjectSelected && (
+                      <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>
+                    )}
                   </label>
-                  <DateTimeSelector
-                    value={canStartFrom}
-                    onChange={setCanStartFrom}
-                    placeholder="Choisir une date"
-                    includeTime={false}
-                  />
+                  <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
+                    <DateTimeSelector
+                      value={canStartFrom}
+                      onChange={isProjectSelected ? () => {} : setCanStartFrom}
+                      placeholder="Choisir une date"
+                      includeTime={false}
+                    />
+                  </div>
                 </div>
               </div>
 
