@@ -4,6 +4,7 @@ import { AuthenticatedLayout } from './AuthenticatedLayout';
 import { useAppState } from '../hooks/useAppState';
 import { useTasks } from '../hooks/useTasks';
 import { useAlgorithmicScheduler } from '../hooks/useAlgorithmicScheduler';
+import { useTaskDataSync } from '../hooks/useTaskDataSync';
 
 // Fix lazy loading for named exports
 const Dashboard = lazy(() => import('./Dashboard'));
@@ -47,6 +48,21 @@ export function AppContainer() {
     deleteProjectTemplate,
     createProjectFromTemplate
   } = useTasks();
+
+  // Add data synchronization to clean up invalid dependencies
+  useTaskDataSync({ 
+    tasks, 
+    events, 
+    projects, 
+    onTasksUpdate: (updatedTasks) => {
+      updatedTasks.forEach(task => {
+        const originalTask = tasks.find(t => t.id === task.id);
+        if (originalTask && JSON.stringify(task.dependencies) !== JSON.stringify(originalTask.dependencies)) {
+          updateTask(task.id, { dependencies: task.dependencies });
+        }
+      });
+    }
+  });
 
   // Add the algorithmic scheduler for manual reschedule
   const { rescheduleAllTasks } = useAlgorithmicScheduler();
@@ -142,6 +158,7 @@ export function AppContainer() {
             tasks={tasks} 
             events={events} 
             projects={projects}
+            taskTypes={taskTypes}
             onUpdateTask={async (id, updates) => updateTask(id, updates)}
             onUpdateEvent={async (id, updates) => updateEvent(id, updates)}
             addTask={async (task) => addTask(task)}

@@ -3,14 +3,29 @@ import { Task, Event, Project } from '../types/task';
 
 export function useDataValidation() {
   const validateAndLogData = (tasks: Task[], events: Event[], projects: Project[]) => {
-    console.log('📊 État des données de l\'application:', {
+    const tasksWithProjects = tasks.filter(t => t.projectId);
+    const tasksWithDependencies = tasks.filter(t => t.dependencies?.length);
+    const scheduledTasks = tasks.filter(t => t.scheduledStart);
+    
+    console.log('📊 État détaillé des données de l\'application:', {
       tasks: tasks.length,
       events: events.length,
       projects: projects.length,
-      tasksWithProjects: tasks.filter(t => t.projectId).length,
-      tasksWithDependencies: tasks.filter(t => t.dependencies?.length).length,
-      scheduledTasks: tasks.filter(t => t.scheduledStart).length
+      tasksWithProjects: tasksWithProjects.length,
+      tasksWithDependencies: tasksWithDependencies.length,
+      scheduledTasks: scheduledTasks.length,
+      taskTitles: tasks.map(t => t.title),
+      projectTitles: projects.map(p => p.title),
+      eventTitles: events.map(e => e.title)
     });
+
+    if (tasksWithProjects.length > 0) {
+      console.log('📋 Tâches avec projets:', tasksWithProjects.map(t => ({
+        taskTitle: t.title,
+        projectId: t.projectId,
+        hasScheduledStart: !!t.scheduledStart
+      })));
+    }
 
     // Vérifier les références de projet invalides
     const projectIds = new Set(projects.map(p => p.id));

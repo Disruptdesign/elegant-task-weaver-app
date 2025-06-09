@@ -16,7 +16,17 @@ export function useTaskDataSync({ tasks, events, projects, onTasksUpdate }: UseT
   const { validateAndLogData } = useDataValidation();
 
   useEffect(() => {
-    if (tasks.length === 0) return;
+    console.log('🔄 Synchronisation des données - État actuel:', {
+      tasksLength: tasks.length,
+      eventsLength: events.length,
+      projectsLength: projects.length,
+      hasTasksUpdate: !!onTasksUpdate
+    });
+
+    if (tasks.length === 0) {
+      console.log('⚠️ Aucune tâche à synchroniser');
+      return;
+    }
 
     console.log('🔄 Synchronisation des données en cours...');
     
@@ -41,7 +51,7 @@ export function useTaskDataSync({ tasks, events, projects, onTasksUpdate }: UseT
     } else {
       console.log('✅ Toutes les données sont valides');
     }
-  }, [tasks, events, projects]);
+  }, [tasks, events, projects, onTasksUpdate, cleanupInvalidDependencies, validateAndLogData]);
 
   return { validateAndLogData };
 }
