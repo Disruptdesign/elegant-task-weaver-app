@@ -123,10 +123,12 @@ function Dashboard({
       icon: Calendar,
       subtitle: (
         <div className="flex flex-col items-center gap-1">
-          <div className="text-xs text-gray-500">
-            événement{todayEvents.length > 1 ? 's' : ''} aujourd'hui
+          <div className="flex items-center gap-1">
+            <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600">
+              {todayEvents.length}
+            </span>
             {todayEventsHours > 0 && (
-              <span className="text-gray-600 ml-1">
+              <span className="text-sm font-normal text-gray-600">
                 ({todayEventsHours}h)
               </span>
             )}
