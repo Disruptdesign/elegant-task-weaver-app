@@ -153,17 +153,7 @@ export function AppContainer() {
           onAddProject={async (project) => addProject(project)}
           onUpdateProject={async (id, updates) => updateProject(id, updates)}
           onDeleteProject={async (id) => deleteProject(id)}
-          onEditTask={async (taskId) => {
-            const task = tasks.find(t => t.id === taskId);
-            if (task) {
-              await updateTask(taskId, task);
-            }
-          }}
-          projectTemplates={projectTemplates}
-          onAddTemplate={async (template) => addProjectTemplate(template)}
-          onUpdateTemplate={async (id, updates) => updateProjectTemplate(id, updates)}
-          onDeleteTemplate={async (id) => deleteProjectTemplate(id)}
-          onCreateProjectFromTemplate={async (templateId, projectData) => createProjectFromTemplate(templateId, projectData)}
+          onAddTask={async (task) => addTask(task)}
         />;
       case 'inbox':
         return (
