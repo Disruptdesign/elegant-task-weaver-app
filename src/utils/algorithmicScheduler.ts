@@ -1,3 +1,4 @@
+
 import { Task, Event } from '../types/task';
 import { addMinutes, startOfDay, endOfDay, isAfter, isBefore, isWithinInterval, addDays, format } from 'date-fns';
 
@@ -584,12 +585,13 @@ export class AlgorithmicScheduler {
 
   /**
    * Obtient les créneaux disponibles pour un jour donné
+   * MODIFICATION: Exclut les tâches terminées du calcul des créneaux occupés
    */
   private getAvailableSlots(date: Date, existingTasks: Task[]): TimeSlot[] {
     const dayStart = this.getWorkingDayStart(date);
     const dayEnd = this.getWorkingDayEnd(date);
     
-    // Collecter tous les éléments occupés (événements + tâches programmées)
+    // Collecter tous les éléments occupés (événements + tâches programmées NON TERMINÉES)
     const occupiedSlots: TimeSlot[] = [];
     
     // Ajouter les événements
@@ -607,8 +609,14 @@ export class AlgorithmicScheduler {
       }
     });
     
-    // Ajouter les tâches déjà programmées
+    // Ajouter SEULEMENT les tâches NON TERMINÉES déjà programmées
     existingTasks.forEach(task => {
+      // 🎯 MODIFICATION CLÉ : Ignorer les tâches terminées lors du calcul des créneaux occupés
+      if (task.completed) {
+        console.log('✅ Tâche terminée ignorée pour le calcul des créneaux:', task.title);
+        return;
+      }
+      
       if (task.scheduledStart && task.scheduledEnd) {
         const taskStart = new Date(task.scheduledStart);
         const taskEnd = new Date(task.scheduledEnd);
