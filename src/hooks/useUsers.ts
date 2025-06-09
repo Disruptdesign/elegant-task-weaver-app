@@ -116,8 +116,24 @@ export function useUsers() {
     }
   }, []);
 
+  const isValidUUID = (uuid: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
+
   const assignUserToTask = async (taskId: string, userId: string, role: 'assignee' | 'reviewer' | 'observer' = 'assignee') => {
     try {
+      console.log('🔍 Validating task assignment:', { taskId, userId, role });
+      
+      // Validate UUIDs
+      if (!isValidUUID(taskId)) {
+        throw new Error(`ID de tâche invalide: "${taskId}". Cette tâche ne peut pas être assignée car elle n'a pas un ID valide.`);
+      }
+      
+      if (!isValidUUID(userId)) {
+        throw new Error(`ID d'utilisateur invalide: "${userId}". Veuillez vous reconnecter.`);
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('User not authenticated');
 
@@ -128,16 +144,31 @@ export function useUsers() {
         .eq('auth_user_id', session.user.id)
         .single();
 
+      if (!currentUserData) {
+        throw new Error('Votre profil utilisateur n\'est pas configuré. Veuillez synchroniser votre compte.');
+      }
+
+      console.log('📝 Inserting task assignment:', {
+        task_id: taskId,
+        user_id: userId,
+        role,
+        assigned_by: currentUserData.id,
+      });
+
       const { error } = await supabase
         .from('task_assignments')
         .insert({
           task_id: taskId,
           user_id: userId,
           role,
-          assigned_by: currentUserData?.id,
+          assigned_by: currentUserData.id,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
+      
       console.log('✅ User assigned to task successfully');
     } catch (err) {
       console.error('❌ Error assigning user to task:', err);
@@ -147,6 +178,17 @@ export function useUsers() {
 
   const assignUserToEvent = async (eventId: string, userId: string, role: 'organizer' | 'attendee' | 'optional' = 'attendee') => {
     try {
+      console.log('🔍 Validating event assignment:', { eventId, userId, role });
+      
+      // Validate UUIDs
+      if (!isValidUUID(eventId)) {
+        throw new Error(`ID d'événement invalide: "${eventId}". Cet événement ne peut pas être assigné car il n'a pas un ID valide.`);
+      }
+      
+      if (!isValidUUID(userId)) {
+        throw new Error(`ID d'utilisateur invalide: "${userId}". Veuillez vous reconnecter.`);
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('User not authenticated');
 
@@ -157,16 +199,24 @@ export function useUsers() {
         .eq('auth_user_id', session.user.id)
         .single();
 
+      if (!currentUserData) {
+        throw new Error('Votre profil utilisateur n\'est pas configuré. Veuillez synchroniser votre compte.');
+      }
+
       const { error } = await supabase
         .from('event_assignments')
         .insert({
           event_id: eventId,
           user_id: userId,
           role,
-          assigned_by: currentUserData?.id,
+          assigned_by: currentUserData.id,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        throw error;
+      }
+      
       console.log('✅ User assigned to event successfully');
     } catch (err) {
       console.error('❌ Error assigning user to event:', err);

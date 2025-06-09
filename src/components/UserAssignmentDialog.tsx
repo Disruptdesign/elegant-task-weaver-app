@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { AppUser, TaskAssignment, EventAssignment } from '../types/user';
-import { Users, UserPlus, X, Edit2, Check, UserCheck, RefreshCw } from 'lucide-react';
+import { Users, UserPlus, X, Edit2, Check, UserCheck, RefreshCw, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '../hooks/use-toast';
 
@@ -41,6 +41,14 @@ export function UserAssignmentDialog({
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
   const [isCheckingUser, setIsCheckingUser] = useState(false);
   const { toast } = useToast();
+
+  // Check if the itemId is a valid UUID
+  const isValidUUID = (uuid: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
+
+  const isValidItemId = isValidUUID(itemId);
 
   // Get current user information
   useEffect(() => {
@@ -121,6 +129,7 @@ export function UserAssignmentDialog({
     isOpen,
     type,
     itemId,
+    isValidItemId,
     currentUser: currentUser ? { id: currentUser.id, email: currentUser.email, username: currentUser.username } : null,
     isCurrentUserAssigned,
     assignmentsCount: assignments.length,
@@ -142,6 +151,15 @@ export function UserAssignmentDialog({
   const handleAssign = async () => {
     if (!selectedUserId || !selectedRole) return;
 
+    if (!isValidItemId) {
+      toast({
+        title: "Assignation impossible",
+        description: `Cette ${type === 'task' ? 'tâche' : 'événement'} ne peut pas être assignée car elle utilise un identifiant de démonstration.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       console.log('👤 Assigning user:', { selectedUserId, selectedRole, itemId, type });
       setIsAssigning(true);
@@ -154,9 +172,10 @@ export function UserAssignmentDialog({
       });
     } catch (error) {
       console.error('❌ Error assigning user:', error);
+      const errorMessage = error instanceof Error ? error.message : "Impossible d'assigner l'utilisateur.";
       toast({
-        title: "Erreur",
-        description: "Impossible d'assigner l'utilisateur.",
+        title: "Erreur d'assignation",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -170,6 +189,15 @@ export function UserAssignmentDialog({
       toast({
         title: "Erreur",
         description: "Impossible de vous identifier. Veuillez vous reconnecter.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isValidItemId) {
+      toast({
+        title: "Auto-assignation impossible",
+        description: `Cette ${type === 'task' ? 'tâche' : 'événement'} de démonstration ne peut pas être assignée. Les assignations ne fonctionnent qu'avec les ${type === 'task' ? 'tâches' : 'événements'} que vous créez.`,
         variant: "destructive",
       });
       return;
@@ -195,9 +223,10 @@ export function UserAssignmentDialog({
       });
     } catch (error) {
       console.error('❌ Error self-assigning:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       toast({
         title: "Erreur d'auto-assignation",
-        description: `Impossible de vous auto-assigner. Erreur: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        description: `Impossible de vous auto-assigner. ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -304,6 +333,24 @@ export function UserAssignmentDialog({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Warning for demo items */}
+          {!isValidItemId && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="text-amber-600 mt-0.5 flex-shrink-0" size={18} />
+                <div className="space-y-2">
+                  <h3 className="font-medium text-amber-900">
+                    {type === 'task' ? 'Tâche' : 'Événement'} de démonstration
+                  </h3>
+                  <p className="text-sm text-amber-800">
+                    Cette {type === 'task' ? 'tâche' : 'événement'} est un exemple et ne peut pas être assignée. 
+                    Les assignations ne fonctionnent qu'avec les {type === 'task' ? 'tâches' : 'événements'} que vous créez.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Section profil utilisateur actuel */}
           <div className="bg-blue-50 rounded-lg p-4 space-y-3">
             <h3 className="font-medium flex items-center gap-2 text-blue-900">
@@ -410,7 +457,7 @@ export function UserAssignmentDialog({
                       : `Vous n'êtes pas assigné à ce ${type === 'task' ? 'tâche' : 'événement'}`
                     }
                   </span>
-                  {!isCurrentUserAssigned && (
+                  {!isCurrentUserAssigned && isValidItemId && (
                     <Button
                       size="sm"
                       onClick={handleSelfAssign}
@@ -426,58 +473,60 @@ export function UserAssignmentDialog({
           </div>
 
           {/* Ajouter un nouvel utilisateur */}
-          <div className="space-y-4">
-            <h3 className="font-medium flex items-center gap-2">
-              <UserPlus size={18} />
-              Ajouter un utilisateur
-            </h3>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un utilisateur" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUsers.map(user => (
-                    <SelectItem key={user.id} value={user.id}>
-                      <div className="flex flex-col">
-                        <span>
-                          {user.username || (user.firstName && user.lastName 
-                            ? `${user.firstName} ${user.lastName}`
-                            : user.email)
-                          }
-                        </span>
-                        {(user.username || (user.firstName && user.lastName)) && (
-                          <span className="text-xs text-gray-500">{user.email}</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {isValidItemId && (
+            <div className="space-y-4">
+              <h3 className="font-medium flex items-center gap-2">
+                <UserPlus size={18} />
+                Ajouter un utilisateur
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un utilisateur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableUsers.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        <div className="flex flex-col">
+                          <span>
+                            {user.username || (user.firstName && user.lastName 
+                              ? `${user.firstName} ${user.lastName}`
+                              : user.email)
+                            }
+                          </span>
+                          {(user.username || (user.firstName && user.lastName)) && (
+                            <span className="text-xs text-gray-500">{user.email}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un rôle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getRoleOptions().map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un rôle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getRoleOptions().map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              <Button 
-                onClick={handleAssign}
-                disabled={!selectedUserId || !selectedRole || isAssigning}
-                className="w-full"
-              >
-                {isAssigning ? 'Ajout...' : 'Ajouter'}
-              </Button>
+                <Button 
+                  onClick={handleAssign}
+                  disabled={!selectedUserId || !selectedRole || isAssigning}
+                  className="w-full"
+                >
+                  {isAssigning ? 'Ajout...' : 'Ajouter'}
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Liste des utilisateurs assignés */}
           <div className="space-y-4">
@@ -527,14 +576,16 @@ export function UserAssignmentDialog({
                         </Badge>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemove(assignment.userId)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <X size={16} />
-                    </Button>
+                    {isValidItemId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemove(assignment.userId)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X size={16} />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
