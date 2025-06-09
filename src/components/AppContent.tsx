@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   LazyDashboard,
@@ -27,7 +28,7 @@ interface AppContentProps {
   onUpdateEvent: (id: string, data: any) => Promise<void>;
   onAddInboxItem: (data: any) => Promise<void>;
   onDeleteInboxItem: (id: string) => Promise<void>;
-  onConvertToTask: (item: any) => void;
+  onConvertToTask: (item: any) => Promise<void>;
   onAddProject: (data: any) => Promise<void>;
   onUpdateProject: (id: string, data: any) => Promise<void>;
   onDeleteProject: (id: string) => Promise<void>;
