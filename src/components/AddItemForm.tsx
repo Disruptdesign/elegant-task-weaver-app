@@ -69,29 +69,29 @@ export function AddItemForm({
               {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Choisissez le type d\'élément à créer.'}
             </p>
             
-            {/* Sélecteur de type seulement si on n'édite pas */}
-            {!isEditing && (
-              <div className="flex gap-2 mt-4">
-                <Button
-                  type="button"
-                  variant={currentType === 'task' ? 'default' : 'outline'}
-                  onClick={() => setItemType('task')}
-                  className="flex items-center gap-2"
-                >
-                  <CheckSquare size={16} />
-                  Tâche
-                </Button>
-                <Button
-                  type="button"
-                  variant={currentType === 'event' ? 'default' : 'outline'}
-                  onClick={() => setItemType('event')}
-                  className="flex items-center gap-2"
-                >
-                  <Calendar size={16} />
-                  Événement
-                </Button>
-              </div>
-            )}
+            {/* Sélecteur de type directement intégré - toujours visible */}
+            <div className="flex gap-2 mt-4">
+              <Button
+                type="button"
+                variant={currentType === 'task' ? 'default' : 'outline'}
+                onClick={() => !isEditing && setItemType('task')}
+                disabled={isEditing}
+                className="flex items-center gap-2"
+              >
+                <CheckSquare size={16} />
+                Tâche
+              </Button>
+              <Button
+                type="button"
+                variant={currentType === 'event' ? 'default' : 'outline'}
+                onClick={() => !isEditing && setItemType('event')}
+                disabled={isEditing}
+                className="flex items-center gap-2"
+              >
+                <Calendar size={16} />
+                Événement
+              </Button>
+            </div>
           </div>
           <button
             onClick={onClose}
