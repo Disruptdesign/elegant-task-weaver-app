@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Checkbox } from './ui/checkbox';
-import { DateTimeSelectorContainer } from './ui/datetime-selector';
+import { DateTimeSelector } from './ui/datetime-selector';
 
 interface EventFormProps {
   isOpen: boolean;
@@ -132,10 +132,10 @@ export function EventForm({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Date de début *
             </label>
-            <DateTimeSelectorContainer
-              date={formData.startDate}
-              onDateChange={(date) => setFormData({ ...formData, startDate: date })}
-              showTime={!formData.allDay}
+            <DateTimeSelector
+              value={formData.startDate}
+              onChange={(date) => setFormData({ ...formData, startDate: date || new Date() })}
+              includeTime={!formData.allDay}
               className="w-full"
             />
           </div>
@@ -144,10 +144,10 @@ export function EventForm({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Date de fin *
             </label>
-            <DateTimeSelectorContainer
-              date={formData.endDate}
-              onDateChange={(date) => setFormData({ ...formData, endDate: date })}
-              showTime={!formData.allDay}
+            <DateTimeSelector
+              value={formData.endDate}
+              onChange={(date) => setFormData({ ...formData, endDate: date || new Date() })}
+              includeTime={!formData.allDay}
               className="w-full"
             />
           </div>
