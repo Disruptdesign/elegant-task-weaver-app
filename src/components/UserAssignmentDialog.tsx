@@ -45,17 +45,39 @@ export function UserAssignmentDialog({
   // Get current user information
   useEffect(() => {
     const getCurrentUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+      try {
+        console.log('🔍 Getting current user session...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('❌ Error getting session:', sessionError);
+          return;
+        }
+
+        if (!session?.user) {
+          console.log('❌ No session or user found');
+          return;
+        }
+
+        console.log('✅ Session found, user ID:', session.user.id);
+        console.log('📋 Available users:', users.length);
+
         const currentUserData = users.find(user => user.authUserId === session.user.id);
+        
         if (currentUserData) {
+          console.log('✅ Current user found in users list:', currentUserData);
           setCurrentUser(currentUserData);
           setNewUsername(currentUserData.username || '');
+        } else {
+          console.log('❌ Current user NOT found in users list. Auth user ID:', session.user.id);
+          console.log('🔍 Users auth IDs:', users.map(u => ({ id: u.id, authUserId: u.authUserId, email: u.email })));
         }
+      } catch (error) {
+        console.error('❌ Error in getCurrentUser:', error);
       }
     };
 
-    if (isOpen) {
+    if (isOpen && users.length > 0) {
       getCurrentUser();
     }
   }, [isOpen, users]);
@@ -66,10 +88,22 @@ export function UserAssignmentDialog({
 
   const isCurrentUserAssigned = currentUser && assignments.some(assignment => assignment.userId === currentUser.id);
 
+  console.log('🎯 UserAssignmentDialog state:', {
+    isOpen,
+    type,
+    itemId,
+    currentUser: currentUser ? { id: currentUser.id, email: currentUser.email, username: currentUser.username } : null,
+    isCurrentUserAssigned,
+    assignmentsCount: assignments.length,
+    usersCount: users.length,
+    availableUsersCount: availableUsers.length
+  });
+
   const handleAssign = async () => {
     if (!selectedUserId || !selectedRole) return;
 
     try {
+      console.log('👤 Assigning user:', { selectedUserId, selectedRole, itemId, type });
       setIsAssigning(true);
       await onAssignUser(selectedUserId, selectedRole);
       setSelectedUserId('');
@@ -79,7 +113,7 @@ export function UserAssignmentDialog({
         description: "L'utilisateur a été assigné avec succès.",
       });
     } catch (error) {
-      console.error('Error assigning user:', error);
+      console.error('❌ Error assigning user:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'assigner l'utilisateur.",
@@ -91,21 +125,39 @@ export function UserAssignmentDialog({
   };
 
   const handleSelfAssign = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.error('❌ Cannot self-assign: no current user');
+      toast({
+        title: "Erreur",
+        description: "Impossible de vous identifier. Veuillez vous reconnecter.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const defaultRole = type === 'task' ? 'assignee' : 'attendee';
+    
     try {
+      console.log('🎯 Self-assigning user:', { 
+        userId: currentUser.id, 
+        role: defaultRole, 
+        itemId, 
+        type,
+        currentUser: { id: currentUser.id, email: currentUser.email }
+      });
+      
       setIsAssigning(true);
       await onAssignUser(currentUser.id, defaultRole);
+      
       toast({
         title: "Auto-assignation réussie",
         description: `Vous avez été assigné à ce ${type === 'task' ? 'tâche' : 'événement'}.`,
       });
     } catch (error) {
-      console.error('Error self-assigning:', error);
+      console.error('❌ Error self-assigning:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de vous auto-assigner.",
+        title: "Erreur d'auto-assignation",
+        description: `Impossible de vous auto-assigner. Erreur: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
         variant: "destructive",
       });
     } finally {
@@ -115,13 +167,14 @@ export function UserAssignmentDialog({
 
   const handleRemove = async (userId: string) => {
     try {
+      console.log('🗑️ Removing assignment:', { userId, itemId, type });
       await onRemoveAssignment(userId);
       toast({
         title: "Assignation supprimée",
         description: "L'assignation a été supprimée avec succès.",
       });
     } catch (error) {
-      console.error('Error removing assignment:', error);
+      console.error('❌ Error removing assignment:', error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer l'assignation.",
@@ -212,14 +265,23 @@ export function UserAssignmentDialog({
 
         <div className="space-y-6">
           {/* Section profil utilisateur actuel */}
-          {currentUser && (
-            <div className="bg-blue-50 rounded-lg p-4 space-y-3">
-              <h3 className="font-medium flex items-center gap-2 text-blue-900">
-                <UserCheck size={18} />
-                Mon profil
-              </h3>
-              
+          <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+            <h3 className="font-medium flex items-center gap-2 text-blue-900">
+              <UserCheck size={18} />
+              Mon profil
+            </h3>
+            
+            {!currentUser ? (
+              <div className="text-red-600 text-sm p-2 bg-red-50 rounded border border-red-200">
+                ⚠️ Impossible de vous identifier. Veuillez vous reconnecter.
+              </div>
+            ) : (
               <div className="space-y-3">
+                {/* Debug info */}
+                <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
+                  Debug: User ID: {currentUser.id} | Email: {currentUser.email} | Username: {currentUser.username || 'None'}
+                </div>
+
                 {/* Username editing */}
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-blue-900 min-w-[60px]">Pseudo:</span>
@@ -295,8 +357,8 @@ export function UserAssignmentDialog({
                   )}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Ajouter un nouvel utilisateur */}
           <div className="space-y-4">
