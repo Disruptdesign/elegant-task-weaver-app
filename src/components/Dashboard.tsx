@@ -113,7 +113,21 @@ function Dashboard({
       value: todayTasks.length,
       color: 'purple',
       icon: Calendar,
-      subtitle: `${todayEvents.length} événement${todayEvents.length > 1 ? 's' : ''}`,
+      subtitle: (
+        <div className="flex flex-col items-center gap-1">
+          <div className="text-xl sm:text-2xl font-bold text-purple-600">
+            {todayEvents.length}
+          </div>
+          <div className="text-xs text-gray-500">
+            événement{todayEvents.length > 1 ? 's' : ''} aujourd'hui
+          </div>
+          {upcomingEvents.length > 0 && (
+            <div className="text-xs text-gray-400">
+              +{upcomingEvents.length} à venir
+            </div>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -264,7 +278,9 @@ function Dashboard({
                     )}
                   </div>
                   <h3 className="text-xs sm:text-sm font-medium text-gray-700 mb-1">{stat.title}</h3>
-                  <p className="text-xs text-gray-500 break-words">{stat.subtitle}</p>
+                  <div className="text-xs text-gray-500 break-words">
+                    {typeof stat.subtitle === 'string' ? stat.subtitle : stat.subtitle}
+                  </div>
                 </div>
                 {stat.total && (
                   <div className="w-full">
