@@ -1,3 +1,4 @@
+
 import React, { lazy, Suspense } from 'react';
 import { AuthenticatedLayout } from './AuthenticatedLayout';
 import { useAppState } from '../hooks/useAppState';
@@ -127,15 +128,20 @@ export function AppContainer() {
         return <ProjectList 
           projects={projects} 
           tasks={tasks}
-          onAddProject={() => {}}
-          onUpdateProject={() => {}}
-          onDeleteProject={() => {}}
+          onAddProject={async (project) => addProject(project)}
+          onUpdateProject={async (id, updates) => updateProject(id, updates)}
+          onDeleteProject={async (id) => deleteProject(id)}
           onEditTask={async (taskId) => {
             const task = tasks.find(t => t.id === taskId);
             if (task) {
               await updateTask(taskId, task);
             }
           }}
+          projectTemplates={projectTemplates}
+          onAddTemplate={async (template) => addProjectTemplate(template)}
+          onUpdateTemplate={async (id, updates) => updateProjectTemplate(id, updates)}
+          onDeleteTemplate={async (id) => deleteProjectTemplate(id)}
+          onCreateProjectFromTemplate={async (templateId, projectData) => createProjectFromTemplate(templateId, projectData)}
         />;
       case 'inbox':
         return (
@@ -184,7 +190,7 @@ export function AppContainer() {
             onDeleteProject={async (id) => deleteProject(id)}
             onAddTaskType={async (taskType) => addTaskType(taskType)}
             onUpdateTaskType={async (id, updates) => updateTaskType(id, updates)}
-            onDeleteTaskType={async (id) => deleteTaskType}
+            onDeleteTaskType={async (id) => deleteTaskType(id)}
             onAddProjectTemplate={async (template) => addProjectTemplate(template)}
             onUpdateProjectTemplate={async (id, updates) => updateProjectTemplate(id, updates)}
             onDeleteProjectTemplate={async (id) => deleteProjectTemplate(id)}

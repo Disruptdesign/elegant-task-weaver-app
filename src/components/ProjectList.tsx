@@ -306,6 +306,16 @@ export function ProjectList({
     return task ? task.title : `Tâche ${taskId.slice(0, 8)}...`;
   };
 
+  const handleDeleteProject = async (projectId: string) => {
+    console.log('🗑️ Tentative de suppression du projet:', projectId);
+    try {
+      await onDeleteProject(projectId);
+      console.log('✅ Projet supprimé avec succès:', projectId);
+    } catch (error) {
+      console.error('❌ Erreur lors de la suppression du projet:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* En-tête avec onglets */}
@@ -412,7 +422,7 @@ export function ProjectList({
                         <Edit3 size={14} />
                       </button>
                       <button
-                        onClick={() => onDeleteProject(project.id)}
+                        onClick={() => handleDeleteProject(project.id)}
                         className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                       >
                         <Trash2 size={14} />
