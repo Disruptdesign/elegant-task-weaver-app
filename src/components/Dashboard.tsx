@@ -122,21 +122,14 @@ function Dashboard({
       color: 'purple',
       icon: Calendar,
       subtitle: (
-        <div className="flex flex-col items-center gap-1">
-          <div className="flex items-center gap-1">
-            <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600">
-              {todayEvents.length}
+        <div className="flex items-center justify-center gap-1">
+          <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600">
+            {todayEvents.length}
+          </span>
+          {todayEventsHours > 0 && (
+            <span className="text-sm font-normal text-gray-600">
+              ({todayEventsHours}h)
             </span>
-            {todayEventsHours > 0 && (
-              <span className="text-sm font-normal text-gray-600">
-                ({todayEventsHours}h)
-              </span>
-            )}
-          </div>
-          {upcomingEvents.length > 0 && (
-            <div className="text-xs text-gray-400">
-              +{upcomingEvents.length} à venir
-            </div>
           )}
         </div>
       ),
