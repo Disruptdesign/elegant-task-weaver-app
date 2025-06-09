@@ -6,7 +6,7 @@ import { useTasks } from '../hooks/useTasks';
 
 // Fix lazy loading for named exports
 const Dashboard = lazy(() => import('./Dashboard'));
-const TaskListContent = lazy(() => import('./TaskListContent').then(module => ({ default: module.TaskListContent })));
+const TaskList = lazy(() => import('./TaskList').then(module => ({ default: module.TaskList })));
 const CalendarView = lazy(() => import('./CalendarView').then(module => ({ default: module.CalendarView })));
 const ProjectList = lazy(() => import('./ProjectList').then(module => ({ default: module.ProjectList })));
 const Inbox = lazy(() => import('./Inbox'));
@@ -84,32 +84,32 @@ export function AppContainer() {
             onCreateProjectFromTemplate={async (templateId, projectData) => createProjectFromTemplate(templateId, projectData)}
             onRefreshData={async () => {}}
             onConvertToTask={async (item) => {
-              addTask({
+              await addTask({
                 title: item.title,
                 description: item.description,
                 priority: 'medium',
                 estimatedDuration: 30,
                 deadline: new Date()
               });
-              deleteInboxItem(item.id);
+              await deleteInboxItem(item.id);
             }}
           />
         );
       case 'tasks':
         return (
-          <TaskListContent
-            items={[
-              ...tasks.map(task => ({ ...task, type: 'task' as const })),
-              ...events.map(event => ({ ...event, type: 'event' as const }))
-            ]}
-            hasActiveFilters={false}
-            onToggleComplete={handleToggleTaskComplete}
-            onEditTask={async (task) => updateTask(task.id, task)}
-            onEditEvent={async (event) => updateEvent(event.id, event)}
+          <TaskList
+            tasks={tasks}
+            events={events}
+            onUpdateTask={async (id, updates) => updateTask(id, updates)}
             onDeleteTask={async (id) => deleteTask(id)}
+            onUpdateEvent={async (id, updates) => updateEvent(id, updates)}
             onDeleteEvent={async (id) => deleteEvent(id)}
-            onAddNew={() => setCurrentView('dashboard')}
+            onCompleteTask={handleToggleTaskComplete}
+            onAddTask={async (task) => addTask(task)}
+            onAddEvent={async (event) => addEvent(event)}
+            onReschedule={async () => {}}
             projects={projects}
+            taskTypes={taskTypes}
           />
         );
       case 'calendar':
@@ -134,15 +134,15 @@ export function AppContainer() {
             inboxItems={inboxItems}
             onAddInboxItem={addInboxItem}
             onDeleteInboxItem={deleteInboxItem}
-            onConvertToTask={(item) => {
-              addTask({
+            onConvertToTask={async (item) => {
+              await addTask({
                 title: item.title,
                 description: item.description,
                 priority: 'medium',
                 estimatedDuration: 30,
                 deadline: new Date()
               });
-              deleteInboxItem(item.id);
+              await deleteInboxItem(item.id);
             }}
           />
         );
@@ -182,14 +182,14 @@ export function AppContainer() {
             onCreateProjectFromTemplate={async (templateId, projectData) => createProjectFromTemplate(templateId, projectData)}
             onRefreshData={async () => {}}
             onConvertToTask={async (item) => {
-              addTask({
+              await addTask({
                 title: item.title,
                 description: item.description,
                 priority: 'medium',
                 estimatedDuration: 30,
                 deadline: new Date()
               });
-              deleteInboxItem(item.id);
+              await deleteInboxItem(item.id);
             }}
           />
         );
