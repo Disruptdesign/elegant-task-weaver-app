@@ -1,8 +1,8 @@
-
 import React, { lazy, Suspense } from 'react';
 import { AuthenticatedLayout } from './AuthenticatedLayout';
 import { useAppState } from '../hooks/useAppState';
 import { useTasks } from '../hooks/useTasks';
+import { useAlgorithmicScheduler } from '../hooks/useAlgorithmicScheduler';
 
 // Fix lazy loading for named exports
 const Dashboard = lazy(() => import('./Dashboard'));
@@ -46,11 +46,33 @@ export function AppContainer() {
     createProjectFromTemplate
   } = useTasks();
 
+  // Add the algorithmic scheduler for manual reschedule
+  const { rescheduleAllTasks } = useAlgorithmicScheduler();
+
   const handleToggleTaskComplete = async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
       await updateTask(taskId, { completed: !task.completed });
     }
+  };
+
+  const handleReschedule = async () => {
+    console.log('🔄 Replanification manuelle déclenchée avec contraintes projet');
+    const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects);
+    
+    // Update tasks with the rescheduled versions
+    rescheduledTasks.forEach(task => {
+      const originalTask = tasks.find(t => t.id === task.id);
+      if (originalTask && (
+        task.scheduledStart?.getTime() !== originalTask.scheduledStart?.getTime() ||
+        task.scheduledEnd?.getTime() !== originalTask.scheduledEnd?.getTime()
+      )) {
+        updateTask(task.id, {
+          scheduledStart: task.scheduledStart,
+          scheduledEnd: task.scheduledEnd
+        });
+      }
+    });
   };
 
   const renderContent = () => {
@@ -107,7 +129,7 @@ export function AppContainer() {
             onCompleteTask={handleToggleTaskComplete}
             onAddTask={async (task) => addTask(task)}
             onAddEvent={async (event) => addEvent(event)}
-            onReschedule={async () => {}}
+            onReschedule={handleReschedule}
             projects={projects}
             taskTypes={taskTypes}
           />

@@ -217,7 +217,7 @@ export function useTasks(): UseTasksReturn {
         setProjects(parsedProjects);
         console.log('✅ Projets chargés et traités:', {
           count: parsedProjects.length,
-          projects: parsedProjects.map(p => ({ id: p.id, title: p.title }))
+          projects: parsedProjects.map(p => ({ id: p.id, title: p.title, startDate: p.startDate, deadline: p.deadline }))
         });
       } else {
         console.log('❌ Aucun projet trouvé dans localStorage');
@@ -361,12 +361,12 @@ export function useTasks(): UseTasksReturn {
     }
   }, [filter, isInitialized]);
 
-  // Fonction pour déclencher la planification automatique
+  // Fonction pour déclencher la planification automatique avec support des projets
   const triggerAutoScheduling = useCallback(async () => {
     if (!isInitialized || isScheduling) return;
     
-    console.log('🎯 Déclenchement de la planification automatique');
-    const scheduledTasks = await scheduleAllTasks(tasks, events);
+    console.log('🎯 Déclenchement de la planification automatique avec contraintes projet');
+    const scheduledTasks = await scheduleAllTasks(tasks, events, projects);
     
     // Mettre à jour uniquement si il y a des changements
     const hasChanges = scheduledTasks.some((task, index) => {
@@ -378,10 +378,10 @@ export function useTasks(): UseTasksReturn {
     });
 
     if (hasChanges) {
-      console.log('📅 Mise à jour des tâches avec nouvelle planification');
+      console.log('📅 Mise à jour des tâches avec nouvelle planification (contraintes projet appliquées)');
       setTasks(scheduledTasks);
     }
-  }, [tasks, events, isInitialized, isScheduling, scheduleAllTasks]);
+  }, [tasks, events, projects, isInitialized, isScheduling, scheduleAllTasks]);
 
   // Déclencher la planification quand les tâches ou événements changent
   useEffect(() => {
@@ -629,18 +629,19 @@ export function useTasks(): UseTasksReturn {
   };
 
   // Enhanced debug final state
-  console.log('🔍 État final useTasks (NETTOYÉ):', { 
+  console.log('🔍 État final useTasks avec contraintes projet:', { 
     tasks: tasks.length, 
     events: events.length,
     projects: {
       count: projects.length,
-      details: projects.map(p => ({ id: p.id, title: p.title }))
+      details: projects.map(p => ({ id: p.id, title: p.title, startDate: p.startDate, deadline: p.deadline }))
     },
     taskTypes: {
       count: taskTypes.length,
       details: taskTypes.map(t => ({ id: t.id, name: t.name }))
     },
     tasksWithSchedule: tasks.filter(t => t.scheduledStart).length,
+    tasksWithProjects: tasks.filter(t => t.projectId).length,
     eventsToday: events.filter(e => new Date(e.startDate).toDateString() === new Date().toDateString()).length,
     isInitialized,
     isScheduling

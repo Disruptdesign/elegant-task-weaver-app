@@ -31,10 +31,12 @@ const DEFAULT_OPTIONS: SchedulingOptions = {
 export class AlgorithmicScheduler {
   private events: Event[];
   private options: SchedulingOptions;
+  private projects: any[]; // Will be passed from the calling context
 
-  constructor(events: Event[], options: Partial<SchedulingOptions> = {}) {
+  constructor(events: Event[], options: Partial<SchedulingOptions> = {}, projects: any[] = []) {
     this.events = events;
     this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.projects = projects;
   }
 
   /**
@@ -59,6 +61,75 @@ export class AlgorithmicScheduler {
     }
     
     return inProgress;
+  }
+
+  /**
+   * Vérifie si une tâche est en retard mais conserve sa priorité originale
+   */
+  private isTaskOverdue(task: Task): boolean {
+    if (task.completed || !task.deadline) return false;
+    
+    const now = new Date();
+    const deadline = new Date(task.deadline);
+    const isOverdue = deadline < now;
+    
+    if (isOverdue) {
+      console.log('⏰ Tâche en retard détectée:', task.title, 'deadline était', format(deadline, 'dd/MM HH:mm'));
+    }
+    
+    return isOverdue;
+  }
+
+  /**
+   * Valide les contraintes de projet pour une tâche
+   */
+  private validateProjectConstraints(task: Task): { isValid: boolean; adjustedDeadline?: Date; canStartFrom?: Date } {
+    if (!task.projectId) {
+      return { isValid: true };
+    }
+
+    const project = this.projects.find(p => p.id === task.projectId);
+    if (!project) {
+      console.warn('⚠️ Projet introuvable pour la tâche:', task.title, 'projectId:', task.projectId);
+      return { isValid: true };
+    }
+
+    const projectStart = new Date(project.startDate);
+    const projectEnd = new Date(project.deadline);
+    const taskDeadline = new Date(task.deadline);
+
+    console.log('🎯 Validation contraintes projet pour:', task.title);
+    console.log('   Projet:', project.title, format(projectStart, 'dd/MM'), '-', format(projectEnd, 'dd/MM'));
+    console.log('   Tâche deadline:', format(taskDeadline, 'dd/MM'));
+
+    // RÈGLE 1: La deadline de la tâche ne peut pas être après la fin du projet
+    let adjustedDeadline = taskDeadline;
+    if (taskDeadline > projectEnd) {
+      adjustedDeadline = projectEnd;
+      console.log('📅 Deadline tâche ajustée à la fin du projet:', format(adjustedDeadline, 'dd/MM'));
+    }
+
+    // RÈGLE 2: La deadline de la tâche ne peut pas être avant le début du projet
+    if (adjustedDeadline < projectStart) {
+      adjustedDeadline = projectStart;
+      console.log('📅 Deadline tâche ajustée au début du projet:', format(adjustedDeadline, 'dd/MM'));
+    }
+
+    // RÈGLE 3: La tâche ne peut pas commencer avant le début du projet
+    const canStartFrom = Math.max(
+      task.canStartFrom?.getTime() || projectStart.getTime(),
+      projectStart.getTime()
+    );
+
+    if (canStartFrom > projectStart.getTime()) {
+      console.log('🚫 Tâche ne peut pas commencer avant le début du projet:', format(new Date(canStartFrom), 'dd/MM HH:mm'));
+    }
+
+    return {
+      isValid: true,
+      adjustedDeadline: adjustedDeadline.getTime() !== taskDeadline.getTime() ? adjustedDeadline : undefined,
+      canStartFrom: canStartFrom > (task.canStartFrom?.getTime() || projectStart.getTime()) ? new Date(canStartFrom) : undefined
+    };
   }
 
   /**
@@ -119,25 +190,35 @@ export class AlgorithmicScheduler {
     console.log('✅ Ordre de résolution des dépendances:');
     resolved.forEach((task, index) => {
       const deps = task.dependencies?.length || 0;
-      console.log(`   ${index + 1}. ${task.title} ${deps > 0 ? `(dépend de ${deps} tâche(s))` : '(aucune dépendance)'}`);
+      const isOverdue = this.isTaskOverdue(task);
+      const overdueMsg = isOverdue ? ' (EN RETARD - priorité conservée)' : '';
+      console.log(`   ${index + 1}. ${task.title} ${deps > 0 ? `(dépend de ${deps} tâche(s))` : '(aucune dépendance)'}${overdueMsg}`);
     });
     
     return resolved;
   }
 
   /**
-   * Calcule la date de début la plus tôt possible pour une tâche en fonction de ses dépendances
+   * Calcule la date de début la plus tôt possible pour une tâche en fonction de ses dépendances et contraintes
    */
   private calculateEarliestStart(task: Task, completedTasks: Task[], scheduledTasks: Task[]): Date {
     const now = new Date();
     let earliestStart = now;
     
-    // Appliquer la contrainte canStartFrom si définie
+    // CONTRAINTE ABSOLUE 1: "can start from" - respecter cette date impérativement
     if (task.canStartFrom && task.canStartFrom > earliestStart) {
       earliestStart = task.canStartFrom;
+      console.log('📅 Contrainte "peut commencer à partir de":', format(task.canStartFrom, 'dd/MM HH:mm'));
+    }
+
+    // CONTRAINTE ABSOLUE 2: Contraintes de projet
+    const projectValidation = this.validateProjectConstraints(task);
+    if (projectValidation.canStartFrom && projectValidation.canStartFrom > earliestStart) {
+      earliestStart = projectValidation.canStartFrom;
+      console.log('🎯 Contrainte projet "peut commencer à partir de":', format(projectValidation.canStartFrom, 'dd/MM HH:mm'));
     }
     
-    // Vérifier les dépendances
+    // CONTRAINTE 3: Vérifier les dépendances
     if (task.dependencies && task.dependencies.length > 0) {
       console.log('🔗 Calcul de la date de début pour', task.title, 'avec', task.dependencies.length, 'dépendance(s)');
       
@@ -193,18 +274,38 @@ export class AlgorithmicScheduler {
       const completedTasks = protectedTasks.filter(task => task.completed);
       const tasksInProgress = protectedTasks.filter(task => this.isTaskInProgress(task));
       
-      // TOUTES les autres tâches seront replanifiées
+      // TOUTES les autres tâches seront replanifiées (y compris les tâches en retard)
       const otherTasks = tasks.filter(task => !task.completed && !this.isTaskInProgress(task));
       
-      tasksToSchedule = otherTasks.map(task => ({
-        ...task,
-        scheduledStart: undefined,
-        scheduledEnd: undefined
-      }));
+      tasksToSchedule = otherTasks.map(task => {
+        // Appliquer les contraintes de projet et ajuster si nécessaire
+        const projectValidation = this.validateProjectConstraints(task);
+        const adjustedTask = { ...task };
+        
+        if (projectValidation.adjustedDeadline) {
+          adjustedTask.deadline = projectValidation.adjustedDeadline;
+          console.log('📅 Deadline ajustée pour contraintes projet:', task.title);
+        }
+        
+        if (projectValidation.canStartFrom) {
+          adjustedTask.canStartFrom = projectValidation.canStartFrom;
+          console.log('🚫 Date début ajustée pour contraintes projet:', task.title);
+        }
+        
+        return {
+          ...adjustedTask,
+          scheduledStart: undefined,
+          scheduledEnd: undefined
+        };
+      });
       
       console.log('🔒 Tâches protégées (terminées):', completedTasks.length);
       console.log('🔒 Tâches protégées (EN COURS - INTOUCHABLES):', tasksInProgress.length);
-      console.log('🔄 Tâches à replanifier:', tasksToSchedule.length);
+      console.log('🔄 Tâches à replanifier (incluant celles en retard):', tasksToSchedule.length);
+      
+      // Compter les tâches en retard
+      const overdueTasks = tasksToSchedule.filter(task => this.isTaskOverdue(task));
+      console.log('⏰ Tâches en retard à replanifier (priorité conservée):', overdueTasks.length);
       
       // Afficher les détails des tâches en cours protégées
       tasksInProgress.forEach(task => {
@@ -215,10 +316,33 @@ export class AlgorithmicScheduler {
       
     } else {
       // Mode planification normale avec protection des tâches en cours
-      tasksToSchedule = tasks.filter(task => !task.scheduledStart && !task.completed);
+      // Inclure les tâches en retard dans la replanification
+      tasksToSchedule = tasks.filter(task => (!task.scheduledStart || this.isTaskOverdue(task)) && !task.completed);
+      
+      // Appliquer les contraintes de projet pour les nouvelles tâches
+      tasksToSchedule = tasksToSchedule.map(task => {
+        const projectValidation = this.validateProjectConstraints(task);
+        const adjustedTask = { ...task };
+        
+        if (projectValidation.adjustedDeadline) {
+          adjustedTask.deadline = projectValidation.adjustedDeadline;
+          console.log('📅 Deadline ajustée pour contraintes projet:', task.title);
+        }
+        
+        if (projectValidation.canStartFrom) {
+          adjustedTask.canStartFrom = projectValidation.canStartFrom;
+          console.log('🚫 Date début ajustée pour contraintes projet:', task.title);
+        }
+        
+        return {
+          ...adjustedTask,
+          scheduledStart: undefined,
+          scheduledEnd: undefined
+        };
+      });
       
       // Vérifier les tâches déjà programmées pour les conflits ou problèmes
-      const alreadyScheduled = tasks.filter(task => task.scheduledStart && !task.completed);
+      const alreadyScheduled = tasks.filter(task => task.scheduledStart && !task.completed && !this.isTaskOverdue(task));
       const validScheduledTasks: Task[] = [];
       
       alreadyScheduled.forEach(task => {
@@ -281,7 +405,7 @@ export class AlgorithmicScheduler {
     console.log(`🎯 Planification de ${sortedTasks.length} tâche(s) par ordre de priorité et dépendances...`);
 
     for (const task of sortedTasks) {
-      // Calculer la date de début la plus tôt possible en fonction des dépendances
+      // Calculer la date de début la plus tôt possible en fonction des dépendances et contraintes
       const earliestStart = this.calculateEarliestStart(task, protectedTasks, [...protectedTasks, ...newlyScheduledTasks]);
       
       const scheduledTask = this.scheduleTask(
@@ -293,7 +417,8 @@ export class AlgorithmicScheduler {
       
       if (scheduledTask) {
         newlyScheduledTasks.push(scheduledTask);
-        console.log('✅ Tâche programmée:', task.title, 'à', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm'));
+        const overdueNote = this.isTaskOverdue(task) ? ' (était en retard)' : '';
+        console.log('✅ Tâche programmée:', task.title, 'à', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm') + overdueNote);
       } else {
         console.log('❌ Impossible de programmer:', task.title);
         newlyScheduledTasks.push(task); // Garder la tâche même si non programmée
@@ -302,12 +427,13 @@ export class AlgorithmicScheduler {
 
     const result = [...protectedTasks, ...newlyScheduledTasks];
     
-    console.log('📊 Résumé de la planification avec dépendances:');
+    console.log('📊 Résumé de la planification avec contraintes projet:');
     console.log(`   - Tâches traitées: ${result.length}`);
     console.log(`   - Tâches programmées: ${result.filter(t => t.scheduledStart && !t.completed).length}`);
     console.log(`   - Tâches non programmées: ${result.filter(t => !t.scheduledStart && !t.completed).length}`);
     console.log(`   - Tâches terminées: ${result.filter(t => t.completed).length}`);
     console.log(`   - Tâches en cours (protégées): ${result.filter(t => this.isTaskInProgress(t)).length}`);
+    console.log(`   - Tâches en retard replanifiées: ${result.filter(t => this.isTaskOverdue(t) && t.scheduledStart).length}`);
     console.log(`   - Tâches avec dépendances: ${result.filter(t => t.dependencies && t.dependencies.length > 0).length}`);
 
     return result;
@@ -350,7 +476,7 @@ export class AlgorithmicScheduler {
   }
 
   /**
-   * Trie les tâches par priorité et proximité de deadline
+   * Trie les tâches par priorité et proximité de deadline (les tâches en retard conservent leur priorité originale)
    */
   private prioritizeTasks(tasks: Task[]): Task[] {
     const priorityWeight = {
@@ -361,7 +487,7 @@ export class AlgorithmicScheduler {
     };
 
     return tasks.sort((a, b) => {
-      // D'abord par priorité
+      // D'abord par priorité (les tâches en retard conservent leur priorité originale)
       const priorityDiff = priorityWeight[b.priority] - priorityWeight[a.priority];
       if (priorityDiff !== 0) return priorityDiff;
 
@@ -379,7 +505,7 @@ export class AlgorithmicScheduler {
     const now = new Date();
     
     // RÈGLE ABSOLUE : S'assurer que la tâche ne peut pas commencer avant maintenant
-    // MAIS si la tâche a une contrainte canStartFrom (par ex. après un événement), respecter cette contrainte
+    // MAIS si la tâche a une contrainte canStartFrom (par ex. après un événement ou contrainte projet), respecter cette contrainte
     let earliestStart = Math.max(
       startDate.getTime(), 
       task.canStartFrom?.getTime() || startDate.getTime(),
@@ -389,15 +515,17 @@ export class AlgorithmicScheduler {
     // Si canStartFrom est défini et est après maintenant, l'utiliser comme référence
     if (task.canStartFrom && task.canStartFrom.getTime() > now.getTime()) {
       earliestStart = task.canStartFrom.getTime();
-      console.log('📅 Tâche contrainte à commencer après:', format(task.canStartFrom, 'dd/MM HH:mm'), '(probablement après un événement ou dépendance)');
+      console.log('📅 Tâche contrainte à commencer après:', format(task.canStartFrom, 'dd/MM HH:mm'), '(contrainte absolue respectée)');
     }
     
     let currentDate = new Date(earliestStart);
     
     console.log('⏰ Recherche à partir de:', format(currentDate, 'dd/MM HH:mm'));
     
-    // Chercher jour par jour
-    while (currentDate <= endDate && currentDate <= task.deadline) {
+    // Chercher jour par jour jusqu'à la deadline (avec extension possible si en retard)
+    const searchEndDate = this.isTaskOverdue(task) ? endDate : task.deadline;
+    
+    while (currentDate <= endDate && currentDate <= searchEndDate) {
       // Vérifier si c'est un jour de travail
       if (!this.isWorkingDay(currentDate)) {
         currentDate = addDays(currentDate, 1);
@@ -572,9 +700,9 @@ export class AlgorithmicScheduler {
   /**
    * Replanifie toutes les tâches (utile après ajout/suppression d'événement)
    */
-  static rescheduleAll(tasks: Task[], events: Event[], options?: Partial<SchedulingOptions>): Task[] {
-    console.log('🔄 Replanification complète des tâches avec protection des tâches en cours');
-    const scheduler = new AlgorithmicScheduler(events, options);
+  static rescheduleAll(tasks: Task[], events: Event[], options?: Partial<SchedulingOptions>, projects: any[] = []): Task[] {
+    console.log('🔄 Replanification complète des tâches avec protection des tâches en cours et contraintes projet');
+    const scheduler = new AlgorithmicScheduler(events, options, projects);
     
     // Utiliser le mode replanification pour respecter les contraintes
     return scheduler.scheduleTasks(tasks, true);
@@ -587,9 +715,10 @@ export class AlgorithmicScheduler {
 export function scheduleTasksAutomatically(
   tasks: Task[], 
   events: Event[], 
-  options?: Partial<SchedulingOptions>
+  options?: Partial<SchedulingOptions>,
+  projects: any[] = []
 ): Task[] {
-  const scheduler = new AlgorithmicScheduler(events, options);
+  const scheduler = new AlgorithmicScheduler(events, options, projects);
   return scheduler.scheduleTasks(tasks, false);
 }
 
@@ -599,7 +728,8 @@ export function scheduleTasksAutomatically(
 export function rescheduleAfterEventChange(
   tasks: Task[], 
   events: Event[], 
-  options?: Partial<SchedulingOptions>
+  options?: Partial<SchedulingOptions>,
+  projects: any[] = []
 ): Task[] {
-  return AlgorithmicScheduler.rescheduleAll(tasks, events, options);
+  return AlgorithmicScheduler.rescheduleAll(tasks, events, options, projects);
 }

@@ -27,13 +27,13 @@ export function useAlgorithmicScheduler() {
   const [settings, setSettings] = useState<SchedulerSettings>(DEFAULT_SETTINGS);
   const [isScheduling, setIsScheduling] = useState(false);
 
-  const scheduleAllTasks = useCallback(async (tasks: Task[], events: Event[]): Promise<Task[]> => {
+  const scheduleAllTasks = useCallback(async (tasks: Task[], events: Event[], projects: any[] = []): Promise<Task[]> => {
     if (!settings.autoSchedule) {
       console.log('📴 Planification automatique désactivée');
       return tasks;
     }
 
-    console.log('🤖 Démarrage de la planification automatique...');
+    console.log('🤖 Démarrage de la planification automatique avec contraintes projet...');
     setIsScheduling(true);
 
     try {
@@ -41,9 +41,9 @@ export function useAlgorithmicScheduler() {
         workingHours: settings.workingHours,
         bufferBetweenTasks: settings.bufferBetweenTasks,
         allowWeekends: settings.allowWeekends
-      });
+      }, projects);
 
-      console.log('✅ Planification terminée');
+      console.log('✅ Planification terminée avec respect des contraintes projet');
       return scheduledTasks;
     } catch (error) {
       console.error('❌ Erreur lors de la planification:', error);
@@ -53,13 +53,13 @@ export function useAlgorithmicScheduler() {
     }
   }, [settings]);
 
-  const rescheduleAllTasks = useCallback(async (tasks: Task[], events: Event[]): Promise<Task[]> => {
+  const rescheduleAllTasks = useCallback(async (tasks: Task[], events: Event[], projects: any[] = []): Promise<Task[]> => {
     if (!settings.autoSchedule) {
       console.log('📴 Replanification automatique désactivée');
       return tasks;
     }
 
-    console.log('🔄 Démarrage de la replanification AGGRESSIVE (toutes les tâches seront replanifiées)...');
+    console.log('🔄 Démarrage de la replanification AGGRESSIVE avec contraintes projet (toutes les tâches seront replanifiées)...');
     setIsScheduling(true);
 
     try {
@@ -67,9 +67,9 @@ export function useAlgorithmicScheduler() {
         workingHours: settings.workingHours,
         bufferBetweenTasks: settings.bufferBetweenTasks,
         allowWeekends: settings.allowWeekends
-      });
+      }, projects);
 
-      console.log('✅ Replanification aggressive terminée - optimisation globale appliquée');
+      console.log('✅ Replanification aggressive terminée - optimisation globale avec contraintes projet appliquée');
       return rescheduledTasks;
     } catch (error) {
       console.error('❌ Erreur lors de la replanification:', error);
