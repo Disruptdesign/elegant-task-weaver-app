@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Task, Project } from '../types/task';
 import { Badge } from './ui/badge';
@@ -25,6 +24,7 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => Promise<void>;
   onClick: (task: Task) => void;
+  onAssignUser?: (task: Task) => void;
   projects: Project[];
   isLoading?: boolean;
 }
@@ -35,6 +35,7 @@ export function TaskCard({
   onEdit, 
   onDelete, 
   onClick, 
+  onAssignUser,
   projects, 
   isLoading = false 
 }: TaskCardProps) {
