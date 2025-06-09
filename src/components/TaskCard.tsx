@@ -102,10 +102,12 @@ export function TaskCard({
         <span className="font-medium">
           {assignments.map(assignment => {
             const user = assignment.user;
-            const displayName = user?.firstName && user?.lastName 
-              ? `${user.firstName} ${user.lastName}`
-              : user?.email?.split('@')[0] || 'Utilisateur';
-            return displayName;
+            if (!user) return 'Utilisateur inconnu';
+            
+            // Priorité : username > prénom nom > email
+            if (user.username) return user.username;
+            if (user.firstName && user.lastName) return `${user.firstName} ${user.lastName}`;
+            return user.email?.split('@')[0] || 'Utilisateur';
           }).join(', ')}
           {remaining > 0 && ` +${remaining} autre${remaining > 1 ? 's' : ''}`}
         </span>

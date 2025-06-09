@@ -15,6 +15,7 @@ export function useUsers() {
     firstName: dbUser.first_name,
     lastName: dbUser.last_name,
     avatarUrl: dbUser.avatar_url,
+    username: dbUser.username,
     role: dbUser.role,
     isActive: dbUser.is_active,
     createdAt: new Date(dbUser.created_at),

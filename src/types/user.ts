@@ -6,6 +6,7 @@ export interface AppUser {
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
+  username?: string;
   role: 'admin' | 'manager' | 'member';
   isActive: boolean;
   createdAt: Date;
