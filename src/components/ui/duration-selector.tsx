@@ -19,17 +19,15 @@ export function DurationSelector({ value, onChange, className = '' }: DurationSe
   const presets = [
     { label: '15 min', value: 15 },
     { label: '30 min', value: 30 },
-    { label: '45 min', value: 45 },
     { label: '1h', value: 60 },
     { label: '1h30', value: 90 },
     { label: '2h', value: 120 },
     { label: '3h', value: 180 },
-    { label: '4h', value: 240 },
   ];
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {presets.map((preset) => (
           <button
             key={preset.value}
@@ -67,22 +65,6 @@ export function DurationSelector({ value, onChange, className = '' }: DurationSe
         >
           +15min
         </button>
-      </div>
-      
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600 min-w-0">Durée personnalisée :</span>
-        <input
-          type="range"
-          min="15"
-          max="480"
-          step="15"
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-          style={{
-            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((value - 15) / (480 - 15)) * 100}%, #e5e7eb ${((value - 15) / (480 - 15)) * 100}%, #e5e7eb 100%)`
-          }}
-        />
       </div>
     </div>
   );
