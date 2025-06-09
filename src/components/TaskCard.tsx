@@ -50,10 +50,10 @@ export function TaskCard({
   });
 
   const priorityColors: { [key: string]: string } = {
-    urgent: 'bg-red-500 text-white border-red-600',
-    high: 'bg-orange-500 text-white border-orange-600',
-    medium: 'bg-yellow-500 text-white border-yellow-600',
-    low: 'bg-green-500 text-white border-green-600',
+    urgent: 'text-red-700 bg-red-100',
+    high: 'text-orange-700 bg-orange-100',
+    medium: 'text-yellow-700 bg-yellow-100',
+    low: 'text-green-700 bg-green-100',
   };
 
   const priorityLabels: { [key: string]: string } = {
@@ -217,10 +217,10 @@ export function TaskCard({
           {/* Metadata */}
           <div className="flex flex-wrap items-center gap-3 text-xs">
             {/* Priority */}
-            <Badge className={`${priorityColors[task.priority]} shadow-sm`}>
-              <span className="mr-1">{priorityEmojis[task.priority]}</span>
-              {priorityLabels[task.priority]}
-            </Badge>
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${priorityColors[task.priority]}`}>
+              <span>{priorityEmojis[task.priority]}</span>
+              <span className="font-medium">{priorityLabels[task.priority]}</span>
+            </div>
 
             {/* Deadline */}
             <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${
