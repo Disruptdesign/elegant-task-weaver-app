@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { AlertTriangle, Tag, FolderOpen, GitBranch } from 'lucide-react';
+import { AlertTriangle, Tag, FolderOpen, GitBranch, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -40,13 +41,14 @@ type TaskFormData = z.infer<typeof taskFormSchema>;
 interface ExtendedTaskFormProps {
   onSubmit: (data: TaskFormData) => void;
   onCancel: () => void;
+  onDelete?: (taskId: string) => void;
   initialData?: Partial<Task>;
   projects?: Project[];
   taskTypes?: TaskType[];
   tasks?: Task[];
 }
 
-export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [], taskTypes = [], tasks = [] }: ExtendedTaskFormProps) {
+export function ExtendedTaskForm({ onSubmit, onCancel, onDelete, initialData, projects = [], taskTypes = [], tasks = [] }: ExtendedTaskFormProps) {
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
@@ -89,6 +91,12 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
     onSubmit(finalData);
   };
 
+  const handleDelete = () => {
+    if (initialData?.id && onDelete) {
+      onDelete(initialData.id);
+    }
+  };
+
   // Obtenir le projet sélectionné
   const selectedProjectId = form.watch('projectId');
   const selectedProject = projects.find(p => p.id === selectedProjectId);
@@ -124,6 +132,9 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
     const project = projects.find(p => p.id === projectId);
     return project?.title || 'Projet inconnu';
   };
+
+  // Vérifier si on est en mode édition
+  const isEditMode = !!initialData?.id;
 
   return (
     <Form {...form}>
@@ -546,13 +557,32 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
         </div>
 
         {/* Boutons d'action */}
-        <div className="flex justify-end gap-3 pt-6 border-t">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
-          </Button>
-          <Button type="submit">
-            {initialData ? 'Modifier' : 'Créer'} la tâche
-          </Button>
+        <div className="flex justify-between items-center pt-6 border-t">
+          {/* Bouton supprimer à gauche si en mode édition */}
+          {isEditMode && onDelete && (
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleDelete}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              <Trash2 size={16} className="mr-2" />
+              Supprimer
+            </Button>
+          )}
+          
+          {/* Espaceur si pas de bouton supprimer */}
+          {(!isEditMode || !onDelete) && <div />}
+          
+          {/* Boutons d'action à droite */}
+          <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Annuler
+            </Button>
+            <Button type="submit">
+              {initialData ? 'Modifier' : 'Créer'} la tâche
+            </Button>
+          </div>
         </div>
       </form>
     </Form>
