@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3, Users, TrendingUp, FolderOpen } from 'lucide-react';
 import { Task, Event, Project, InboxItem, TaskType, ProjectTemplate } from '../types/task';
@@ -32,6 +33,7 @@ interface DashboardProps {
   onDeleteProjectTemplate: (id: string) => Promise<void>;
   onCreateProjectFromTemplate: (templateId: string, projectData: { title: string; description?: string; startDate: Date; deadline: Date }) => Promise<void>;
   onRefreshData: () => Promise<void>;
+  onConvertToTask: (item: InboxItem) => Promise<void>;
 }
 
 function Dashboard({ 
@@ -59,7 +61,8 @@ function Dashboard({
   onUpdateProjectTemplate,
   onDeleteProjectTemplate,
   onCreateProjectFromTemplate,
-  onRefreshData
+  onRefreshData,
+  onConvertToTask
 }: DashboardProps) {
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
