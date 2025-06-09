@@ -10,7 +10,7 @@ const TaskListContent = lazy(() => import('./TaskListContent').then(module => ({
 const CalendarView = lazy(() => import('./CalendarView').then(module => ({ default: module.CalendarView })));
 const ProjectList = lazy(() => import('./ProjectList').then(module => ({ default: module.ProjectList })));
 const Inbox = lazy(() => import('./Inbox'));
-const LazyComponents = lazy(() => import('./LazyComponents').then(module => ({ default: module.default })));
+const LazyComponents = lazy(() => import('./LazyComponents'));
 
 export function AppContainer() {
   const { 
@@ -32,7 +32,7 @@ export function AppContainer() {
     deleteEvent,
     addInboxItem,
     deleteInboxItem,
-    isLoading: loading
+    loading
   } = useTasks();
 
   const handleToggleTaskComplete = async (taskId: string) => {
@@ -61,21 +61,21 @@ export function AppContainer() {
             events={events}
             inboxItems={inboxItems}
             projects={projects}
-            onAddTask={addTask}
-            onAddEvent={addEvent}
-            onAddInboxItem={addInboxItem}
+            onAddTask={async (task) => addTask(task)}
+            onAddEvent={async (event) => addEvent(event)}
+            onAddInboxItem={async (item) => addInboxItem(item)}
             onToggleComplete={handleToggleTaskComplete}
-            onEditTask={(task) => updateTask(task.id, task)}
-            onEditEvent={(event) => updateEvent(event.id, event)}
-            onDeleteTask={deleteTask}
-            onDeleteEvent={deleteEvent}
-            onDeleteInboxItem={deleteInboxItem}
-            onConvertToTask={(item) => {
+            onEditTask={async (task) => updateTask(task.id, task)}
+            onEditEvent={async (event) => updateEvent(event.id, event)}
+            onDeleteTask={async (id) => deleteTask(id)}
+            onDeleteEvent={async (id) => deleteEvent(id)}
+            onDeleteInboxItem={async (id) => deleteInboxItem(id)}
+            onConvertToTask={async (item) => {
               addTask({
                 title: item.title,
                 description: item.description,
                 priority: 'medium',
-                estimated_duration: 30,
+                estimatedDuration: 30,
                 deadline: new Date()
               });
               deleteInboxItem(item.id);
@@ -91,10 +91,10 @@ export function AppContainer() {
             ]}
             hasActiveFilters={false}
             onToggleComplete={handleToggleTaskComplete}
-            onEditTask={(task) => updateTask(task.id, task)}
-            onEditEvent={(event) => updateEvent(event.id, event)}
-            onDeleteTask={deleteTask}
-            onDeleteEvent={deleteEvent}
+            onEditTask={async (task) => updateTask(task.id, task)}
+            onEditEvent={async (event) => updateEvent(event.id, event)}
+            onDeleteTask={async (id) => deleteTask(id)}
+            onDeleteEvent={async (id) => deleteEvent(id)}
             onAddNew={() => setCurrentView('dashboard')}
             projects={projects}
           />
@@ -108,7 +108,6 @@ export function AppContainer() {
           onAddProject={() => {}}
           onUpdateProject={() => {}}
           onDeleteProject={() => {}}
-          onViewProject={() => {}}
         />;
       case 'inbox':
         return (
@@ -121,7 +120,7 @@ export function AppContainer() {
                 title: item.title,
                 description: item.description,
                 priority: 'medium',
-                estimated_duration: 30,
+                estimatedDuration: 30,
                 deadline: new Date()
               });
               deleteInboxItem(item.id);
@@ -137,21 +136,21 @@ export function AppContainer() {
             events={events}
             inboxItems={inboxItems}
             projects={projects}
-            onAddTask={addTask}
-            onAddEvent={addEvent}
-            onAddInboxItem={addInboxItem}
+            onAddTask={async (task) => addTask(task)}
+            onAddEvent={async (event) => addEvent(event)}
+            onAddInboxItem={async (item) => addInboxItem(item)}
             onToggleComplete={handleToggleTaskComplete}
-            onEditTask={(task) => updateTask(task.id, task)}
-            onEditEvent={(event) => updateEvent(event.id, event)}
-            onDeleteTask={deleteTask}
-            onDeleteEvent={deleteEvent}
-            onDeleteInboxItem={deleteInboxItem}
-            onConvertToTask={(item) => {
+            onEditTask={async (task) => updateTask(task.id, task)}
+            onEditEvent={async (event) => updateEvent(event.id, event)}
+            onDeleteTask={async (id) => deleteTask(id)}
+            onDeleteEvent={async (id) => deleteEvent(id)}
+            onDeleteInboxItem={async (id) => deleteInboxItem(id)}
+            onConvertToTask={async (item) => {
               addTask({
                 title: item.title,
                 description: item.description,
                 priority: 'medium',
-                estimated_duration: 30,
+                estimatedDuration: 30,
                 deadline: new Date()
               });
               deleteInboxItem(item.id);
