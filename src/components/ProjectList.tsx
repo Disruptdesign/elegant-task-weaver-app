@@ -4,12 +4,14 @@ import { Project, Task, ProjectTemplate, TemplateTask, Priority } from '../types
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import { ProjectTaskManager } from './ProjectTaskManager';
+import { ProjectDatePicker } from './ProjectDatePicker';
 
 interface ProjectListProps {
   projects: Project[];
   tasks: Task[];
-  onAddProject: (project: Omit<Project, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
-  onUpdateProject: (id: string, updates: Partial<Project>) => void;
+  onAddProject: (project: Omit<Project, 'id' | 'completed' | 'createdAt' | 'updatedAt'>, projectTasks?: TemplateTask[]) => void;
+  onUpdateProject: (id: string, updates: Partial<Project>, projectTasks?: TemplateTask[]) => void;
   onDeleteProject: (id: string) => void;
   onEditTask: (id: string, updates: Partial<Task>) => void;
   // Nouvelles props pour les modèles
@@ -48,12 +50,14 @@ export function ProjectList({
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    startDate: '',
-    deadline: '',
+    startDate: undefined as Date | undefined,
+    deadline: undefined as Date | undefined,
     color: '#3B82F6',
   });
 
-  // États pour les modèles
+  // Tâches du projet en cours d'édition
+  const [projectTasks, setProjectTasks] = useState<TemplateTask[]>([]);
+
   const [templateFormData, setTemplateFormData] = useState({
     name: '',
     description: '',
@@ -78,7 +82,6 @@ export function ProjectList({
     dependencies: [] as string[],
   });
 
-  // État pour l'édition de tâche de projet
   const [editingTaskId, setEditingTaskId] = useState<string>('');
   const [editingTaskProjectId, setEditingTaskProjectId] = useState<string>('');
   const [editTaskFormData, setEditTaskFormData] = useState({
@@ -91,20 +94,20 @@ export function ProjectList({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim()) return;
+    if (!formData.title.trim() || !formData.startDate || !formData.deadline) return;
 
     const projectData = {
       title: formData.title.trim(),
       description: formData.description.trim() || undefined,
-      startDate: new Date(formData.startDate),
-      deadline: new Date(formData.deadline),
+      startDate: formData.startDate,
+      deadline: formData.deadline,
       color: formData.color,
     };
 
     if (editingProject) {
-      onUpdateProject(editingProject.id, projectData);
+      onUpdateProject(editingProject.id, projectData, projectTasks);
     } else {
-      onAddProject(projectData);
+      onAddProject(projectData, projectTasks);
     }
 
     handleCloseForm();
@@ -113,11 +116,12 @@ export function ProjectList({
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setEditingProject(undefined);
+    setProjectTasks([]);
     setFormData({
       title: '',
       description: '',
-      startDate: '',
-      deadline: '',
+      startDate: undefined,
+      deadline: undefined,
       color: '#3B82F6',
     });
   };
@@ -127,10 +131,25 @@ export function ProjectList({
     setFormData({
       title: project.title,
       description: project.description || '',
-      startDate: project.startDate.toISOString().slice(0, 16),
-      deadline: project.deadline.toISOString().slice(0, 16),
+      startDate: project.startDate,
+      deadline: project.deadline,
       color: project.color || '#3B82F6',
     });
+    
+    // Charger les tâches existantes du projet (simulé pour l'instant)
+    const existingProjectTasks = tasks
+      .filter(task => task.projectId === project.id)
+      .map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        estimatedDuration: task.estimatedDuration,
+        dayOffset: 0, // Calculé à partir de la date de début du projet
+        dependencies: task.dependencies || [],
+      } as TemplateTask));
+    
+    setProjectTasks(existingProjectTasks);
     setIsFormOpen(true);
   };
 
@@ -150,7 +169,6 @@ export function ProjectList({
     });
   };
 
-  // Fonctions pour les modèles
   const handleSubmitTemplate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!templateFormData.name.trim() || !onAddTemplate || !onUpdateTemplate) return;
@@ -300,7 +318,6 @@ export function ProjectList({
     setIsCreateProjectOpen(true);
   };
 
-  // Fonction pour obtenir le nom d'une tâche par son ID (pour les dépendances)
   const getTaskNameById = (taskId: string, tasksList: (Task | TemplateTask)[]) => {
     const task = tasksList.find(t => t.id === taskId);
     return task ? task.title : `Tâche ${taskId.slice(0, 8)}...`;
@@ -373,7 +390,6 @@ export function ProjectList({
 
       {/* Contenu des onglets */}
       {activeTab === 'projects' ? (
-        // Liste des projets
         <div className="space-y-6">
           {projects.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
@@ -460,7 +476,6 @@ export function ProjectList({
                     </div>
                   </div>
 
-                  {/* Bouton pour afficher/masquer les tâches */}
                   {projectTasks.length > 0 && (
                     <Collapsible open={isExpanded} onOpenChange={() => toggleProjectTasks(project.id)}>
                       <CollapsibleTrigger asChild>
@@ -526,7 +541,6 @@ export function ProjectList({
           )}
         </div>
       ) : (
-        // Liste des modèles
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projectTemplates.length === 0 ? (
             <div className="col-span-full text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
@@ -592,7 +606,6 @@ export function ProjectList({
                   </div>
                 </div>
 
-                {/* Aperçu des tâches du modèle avec dépendances */}
                 {template.tasks.length > 0 && (
                   <div className="mb-4">
                     <h5 className="text-xs font-medium text-gray-700 mb-2">Tâches du modèle :</h5>
@@ -641,10 +654,10 @@ export function ProjectList({
         </div>
       )}
 
-      {/* Formulaire de projet */}
+      {/* Formulaire de projet avec gestion des tâches */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <h2 className="text-xl font-semibold text-gray-900">
                 {editingProject ? 'Modifier le projet' : 'Nouveau projet'}
@@ -657,43 +670,20 @@ export function ProjectList({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nom du projet
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Ex: Refonte du site web"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Description du projet"
-                  rows={3}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Informations du projet */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-gray-900">Informations du projet</h3>
+                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date de début
+                    Nom du projet
                   </label>
                   <input
-                    type="datetime-local"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Ex: Refonte du site web"
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
@@ -701,31 +691,53 @@ export function ProjectList({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date limite
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Description du projet"
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <ProjectDatePicker
+                    date={formData.startDate || new Date()}
+                    onDateChange={(date) => setFormData({ ...formData, startDate: date })}
+                    label="Date de début"
+                    placeholder="Sélectionner la date de début"
+                  />
+
+                  <ProjectDatePicker
+                    date={formData.deadline || new Date()}
+                    onDateChange={(date) => setFormData({ ...formData, deadline: date })}
+                    label="Date limite"
+                    placeholder="Sélectionner la date limite"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Couleur
                   </label>
                   <input
-                    type="datetime-local"
-                    value={formData.deadline}
-                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
+                    type="color"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="w-full h-12 border border-gray-200 rounded-lg"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Couleur
-                </label>
-                <input
-                  type="color"
-                  value={formData.color}
-                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                  className="w-full h-12 border border-gray-200 rounded-lg"
-                />
-              </div>
+              {/* Gestion des tâches */}
+              <ProjectTaskManager
+                tasks={projectTasks}
+                onTasksChange={setProjectTasks}
+              />
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-4 border-t">
                 <button
                   type="button"
                   onClick={handleCloseForm}
@@ -762,7 +774,6 @@ export function ProjectList({
             </div>
 
             <form onSubmit={handleSubmitTemplate} className="p-6 space-y-6">
-              {/* Informations du modèle */}
               <div className="space-y-4">
                 <h3 className="font-medium text-gray-900">Informations du modèle</h3>
                 
@@ -821,11 +832,9 @@ export function ProjectList({
                 </div>
               </div>
 
-              {/* Tâches du modèle avec dépendances */}
               <div className="space-y-4">
                 <h3 className="font-medium text-gray-900">Tâches du modèle</h3>
                 
-                {/* Ajouter une tâche */}
                 <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                   <h4 className="text-sm font-medium text-gray-700">Ajouter une tâche</h4>
                   
@@ -874,7 +883,6 @@ export function ProjectList({
                     </div>
                   </div>
 
-                  {/* Dépendances */}
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Dépendances (tâches qui doivent être terminées avant)</label>
                     <div className="space-y-2">
@@ -920,7 +928,6 @@ export function ProjectList({
                   </button>
                 </div>
 
-                {/* Liste des tâches avec dépendances */}
                 {templateFormData.tasks.length > 0 && (
                   <div className="space-y-2">
                     {templateFormData.tasks.map(task => (
@@ -1165,7 +1172,6 @@ export function ProjectList({
                 </div>
               </div>
 
-              {/* Dépendances */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Dépendances (tâches qui doivent être terminées avant)
