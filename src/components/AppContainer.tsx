@@ -1,4 +1,3 @@
-
 import React, { lazy, Suspense } from 'react';
 import { AuthenticatedLayout } from './AuthenticatedLayout';
 import { useAppState } from '../hooks/useAppState';
@@ -113,7 +112,17 @@ export function AppContainer() {
           />
         );
       case 'calendar':
-        return <CalendarView tasks={tasks} events={events} />;
+        return (
+          <CalendarView 
+            tasks={tasks} 
+            events={events} 
+            projects={projects}
+            onUpdateTask={async (id, updates) => updateTask(id, updates)}
+            onUpdateEvent={async (id, updates) => updateEvent(id, updates)}
+            addTask={async (task) => addTask(task)}
+            addEvent={async (event) => addEvent(event)}
+          />
+        );
       case 'projects':
         return <ProjectList 
           projects={projects} 
@@ -175,7 +184,7 @@ export function AppContainer() {
             onDeleteProject={async (id) => deleteProject(id)}
             onAddTaskType={async (taskType) => addTaskType(taskType)}
             onUpdateTaskType={async (id, updates) => updateTaskType(id, updates)}
-            onDeleteTaskType={async (id) => deleteTaskType(id)}
+            onDeleteTaskType={async (id) => deleteTaskType}
             onAddProjectTemplate={async (template) => addProjectTemplate(template)}
             onUpdateProjectTemplate={async (id, updates) => updateProjectTemplate(id, updates)}
             onDeleteProjectTemplate={async (id) => deleteProjectTemplate(id)}
