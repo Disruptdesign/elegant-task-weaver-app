@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Clock, Check, X } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 interface DurationSelectorProps {
   value: number; // durée en minutes
@@ -9,10 +9,6 @@ interface DurationSelectorProps {
 }
 
 export function DurationSelector({ value, onChange, className = '' }: DurationSelectorProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const [isValid, setIsValid] = useState(true);
-
   const formatDuration = (minutes: number) => {
     if (minutes < 60) return `${minutes} min`;
     const hours = Math.floor(minutes / 60);
@@ -21,153 +17,133 @@ export function DurationSelector({ value, onChange, className = '' }: DurationSe
   };
 
   const presets = [
-    { label: '15 min', value: 15 },
-    { label: '30 min', value: 30 },
+    { label: '15min', value: 15 },
+    { label: '30min', value: 30 },
     { label: '1h', value: 60 },
     { label: '1h30', value: 90 },
     { label: '2h', value: 120 },
     { label: '3h', value: 180 },
   ];
 
-  const validateInput = (val: string) => {
-    const numValue = parseInt(val);
-    return !isNaN(numValue) && numValue >= 15 && numValue <= 999;
+  // Convertir les minutes en heures et minutes pour l'affichage
+  const hours = Math.floor(value / 60);
+  const minutes = value % 60;
+
+  const handleHoursChange = (newHours: number) => {
+    const totalMinutes = newHours * 60 + minutes;
+    onChange(Math.max(15, totalMinutes));
   };
 
-  const handleDurationClick = () => {
-    setIsEditing(true);
-    setInputValue(value.toString());
-    setIsValid(true);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setInputValue(val);
-    setIsValid(validateInput(val));
-  };
-
-  const handleConfirm = () => {
-    if (isValid && inputValue) {
-      const newValue = parseInt(inputValue);
-      onChange(Math.max(15, newValue));
-    }
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setInputValue('');
-    setIsValid(true);
-  };
-
-  const handleInputKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && isValid) {
-      handleConfirm();
-    } else if (e.key === 'Escape') {
-      handleCancel();
-    }
+  const handleMinutesChange = (newMinutes: number) => {
+    const totalMinutes = hours * 60 + newMinutes;
+    onChange(Math.max(15, totalMinutes));
   };
 
   return (
-    <div className={`space-y-3 ${className}`}>
-      <div className="grid grid-cols-3 gap-2">
-        {presets.map((preset) => (
-          <button
-            key={preset.value}
-            type="button"
-            onClick={() => onChange(preset.value)}
-            className={`px-3 py-2 text-sm rounded-lg transition-all font-medium ${
-              value === preset.value
-                ? 'bg-blue-500 text-white shadow-md'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-            }`}
-          >
-            {preset.label}
-          </button>
-        ))}
+    <div className={`space-y-4 ${className}`}>
+      {/* Raccourcis prédéfinis */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Raccourcis
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {presets.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => onChange(preset.value)}
+              className={`px-3 py-2 text-sm rounded-lg transition-all font-medium ${
+                value === preset.value
+                  ? 'bg-blue-500 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
       </div>
-      
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onChange(Math.max(15, value - 15))}
-          className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm transition-colors font-medium"
-        >
-          -15min
-        </button>
+
+      {/* Sélection personnalisée */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-3">
+          <Clock size={16} className="inline mr-2" />
+          Durée personnalisée
+        </label>
         
-        {isEditing ? (
-          <div className="flex-1 flex items-center gap-2 animate-fade-in">
-            <div className="flex-1 relative">
-              <input
-                type="number"
-                value={inputValue}
-                onChange={handleInputChange}
-                onKeyDown={handleInputKeyPress}
-                min="15"
-                max="999"
-                step="15"
-                placeholder="Durée"
-                className={`w-full text-center py-2 px-3 pr-12 rounded-lg focus:ring-2 focus:outline-none transition-all ${
-                  isValid 
-                    ? 'border-blue-500 focus:ring-blue-500' 
-                    : 'border-red-500 focus:ring-red-500 bg-red-50'
-                }`}
-                autoFocus
-              />
-              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">
+        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+          {/* Sélecteur d'heures */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleHoursChange(Math.max(0, hours - 1))}
+              className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-gray-600 font-medium"
+            >
+              −
+            </button>
+            
+            <div className="flex flex-col items-center">
+              <span className="text-2xl font-bold text-gray-900 w-12 text-center">
+                {hours}
+              </span>
+              <span className="text-xs text-gray-500 font-medium">
+                heure{hours > 1 ? 's' : ''}
+              </span>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => handleHoursChange(hours + 1)}
+              className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-gray-600 font-medium"
+            >
+              +
+            </button>
+          </div>
+
+          <div className="text-gray-400 font-bold text-xl">:</div>
+
+          {/* Sélecteur de minutes */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleMinutesChange(Math.max(0, Math.floor((minutes - 15) / 15) * 15))}
+              className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-gray-600 font-medium"
+            >
+              −
+            </button>
+            
+            <div className="flex flex-col items-center">
+              <span className="text-2xl font-bold text-gray-900 w-12 text-center">
+                {minutes.toString().padStart(2, '0')}
+              </span>
+              <span className="text-xs text-gray-500 font-medium">
                 min
               </span>
             </div>
+            
             <button
               type="button"
-              onClick={handleConfirm}
-              disabled={!isValid}
-              className={`p-2 rounded-lg transition-colors ${
-                isValid
-                  ? 'bg-green-500 text-white hover:bg-green-600'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-              title="Confirmer"
+              onClick={() => handleMinutesChange((Math.floor(minutes / 15) + 1) * 15)}
+              className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-gray-600 font-medium"
             >
-              <Check size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="p-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              title="Annuler"
-            >
-              <X size={16} />
+              +
             </button>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleDurationClick}
-            className="flex-1 text-center py-2 px-3 border border-gray-200 rounded-lg bg-blue-50 border-blue-200 hover:bg-blue-100 transition-all cursor-pointer group relative"
-            title="Cliquer pour modifier"
-          >
-            <span className="font-semibold text-blue-900 flex items-center justify-center gap-1">
-              <Clock size={16} />
-              {formatDuration(value)}
-            </span>
-            <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-blue-300 transition-colors opacity-0 group-hover:opacity-100"></div>
-          </button>
-        )}
-        
-        <button
-          type="button"
-          onClick={() => onChange(value + 15)}
-          className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm transition-colors font-medium"
-        >
-          +15min
-        </button>
+        </div>
+
+        {/* Affichage du total */}
+        <div className="mt-3 text-center">
+          <span className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium border border-blue-200">
+            <Clock size={14} className="mr-1" />
+            Total: {formatDuration(value)}
+          </span>
+        </div>
       </div>
-      
-      {isEditing && !isValid && (
-        <div className="text-sm text-red-600 animate-fade-in">
-          Veuillez entrer une durée entre 15 et 999 minutes
+
+      {/* Validation pour durée minimum */}
+      {value < 15 && (
+        <div className="text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-lg p-2">
+          ⚠️ Durée minimum recommandée : 15 minutes
         </div>
       )}
     </div>
