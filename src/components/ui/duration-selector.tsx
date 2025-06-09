@@ -29,13 +29,15 @@ export function DurationSelector({ value, onChange, className = '' }: DurationSe
   const hours = Math.floor(value / 60);
   const minutes = value % 60;
 
-  const handleHoursChange = (newHours: number) => {
-    const totalMinutes = newHours * 60 + minutes;
+  const handleHoursChange = (newHours: string) => {
+    const hoursNum = Math.max(0, Math.min(23, parseInt(newHours) || 0));
+    const totalMinutes = hoursNum * 60 + minutes;
     onChange(Math.max(15, totalMinutes));
   };
 
-  const handleMinutesChange = (newMinutes: number) => {
-    const totalMinutes = hours * 60 + newMinutes;
+  const handleMinutesChange = (newMinutes: string) => {
+    const minutesNum = Math.max(0, Math.min(59, parseInt(newMinutes) || 0));
+    const totalMinutes = hours * 60 + minutesNum;
     onChange(Math.max(15, totalMinutes));
   };
 
@@ -71,63 +73,37 @@ export function DurationSelector({ value, onChange, className = '' }: DurationSe
           Durée personnalisée
         </label>
         
-        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+        <div className="flex items-center justify-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
           {/* Sélecteur d'heures */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleHoursChange(Math.max(0, hours - 1))}
-              className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-gray-600 font-medium"
-            >
-              −
-            </button>
-            
-            <div className="flex flex-col items-center">
-              <span className="text-2xl font-bold text-gray-900 w-12 text-center">
-                {hours}
-              </span>
-              <span className="text-xs text-gray-500 font-medium">
-                heure{hours > 1 ? 's' : ''}
-              </span>
-            </div>
-            
-            <button
-              type="button"
-              onClick={() => handleHoursChange(hours + 1)}
-              className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-gray-600 font-medium"
-            >
-              +
-            </button>
+          <div className="flex flex-col items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              max="23"
+              value={hours}
+              onChange={(e) => handleHoursChange(e.target.value)}
+              className="w-16 h-12 text-2xl font-bold text-gray-900 text-center bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <span className="text-xs text-gray-500 font-medium">
+              heure{hours > 1 ? 's' : ''}
+            </span>
           </div>
 
-          <div className="text-gray-400 font-bold text-xl">:</div>
+          <div className="text-gray-400 font-bold text-xl mt-[-20px]">:</div>
 
           {/* Sélecteur de minutes */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleMinutesChange(Math.max(0, Math.floor((minutes - 15) / 15) * 15))}
-              className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-gray-600 font-medium"
-            >
-              −
-            </button>
-            
-            <div className="flex flex-col items-center">
-              <span className="text-2xl font-bold text-gray-900 w-12 text-center">
-                {minutes.toString().padStart(2, '0')}
-              </span>
-              <span className="text-xs text-gray-500 font-medium">
-                min
-              </span>
-            </div>
-            
-            <button
-              type="button"
-              onClick={() => handleMinutesChange((Math.floor(minutes / 15) + 1) * 15)}
-              className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-gray-600 font-medium"
-            >
-              +
-            </button>
+          <div className="flex flex-col items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={minutes.toString().padStart(2, '0')}
+              onChange={(e) => handleMinutesChange(e.target.value)}
+              className="w-16 h-12 text-2xl font-bold text-gray-900 text-center bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <span className="text-xs text-gray-500 font-medium">
+              min
+            </span>
           </div>
         </div>
 
