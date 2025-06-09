@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -71,8 +70,23 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
   });
 
   const handleSubmit = (data: TaskFormData) => {
-    console.log('Extended task form submitted:', data);
-    onSubmit(data);
+    // S'assurer que les dates du projet sont bien utilisées si un projet est sélectionné
+    const selectedProject = projects.find(p => p.id === data.projectId);
+    
+    const finalData = {
+      ...data,
+      deadline: selectedProject ? new Date(selectedProject.deadline) : data.deadline,
+      canStartFrom: selectedProject ? new Date(selectedProject.startDate) : data.canStartFrom,
+    };
+
+    console.log('ExtendedTaskForm: Submitting task with final dates from project:', {
+      projectId: data.projectId,
+      selectedProject: selectedProject ? { id: selectedProject.id, deadline: selectedProject.deadline, startDate: selectedProject.startDate } : null,
+      originalData: data,
+      finalData
+    });
+    
+    onSubmit(finalData);
   };
 
   // Obtenir le projet sélectionné
@@ -83,11 +97,16 @@ export function ExtendedTaskForm({ onSubmit, onCancel, initialData, projects = [
   // Mettre à jour automatiquement les dates quand un projet est sélectionné
   React.useEffect(() => {
     if (selectedProject) {
+      console.log('ExtendedTaskForm: Applying project dates', {
+        projectDeadline: selectedProject.deadline,
+        projectStartDate: selectedProject.startDate
+      });
       form.setValue('deadline', new Date(selectedProject.deadline));
       form.setValue('canStartFrom', new Date(selectedProject.startDate));
     }
   }, [selectedProject, form]);
 
+  // Grouper les tâches disponibles par projet pour une meilleure organisation
   const availableTasksForDependencies = tasks.filter(task => task.id !== initialData?.id && !task.completed);
 
   // Grouper les tâches disponibles par projet pour une meilleure organisation

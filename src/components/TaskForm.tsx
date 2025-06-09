@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Flag, Plus, FolderOpen, Tag, Zap, GitBranch } from 'lucide-react';
 import { Task, Priority, Project, TaskType } from '../types/task';
@@ -48,6 +49,10 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
   // Mettre à jour automatiquement les dates quand un projet est sélectionné
   useEffect(() => {
     if (selectedProject) {
+      console.log('TaskForm: Applying project dates', {
+        projectDeadline: selectedProject.deadline,
+        projectStartDate: selectedProject.startDate
+      });
       setDeadline(new Date(selectedProject.deadline));
       setCanStartFrom(new Date(selectedProject.startDate));
     }
@@ -112,15 +117,19 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
     e.preventDefault();
     if (!title.trim() || !deadline) return;
 
+    // S'assurer que les dates du projet sont bien utilisées si un projet est sélectionné
+    const finalDeadline = selectedProject ? new Date(selectedProject.deadline) : deadline;
+    const finalCanStartFrom = selectedProject ? new Date(selectedProject.startDate) : canStartFrom;
+
     const taskData = {
       title: title.trim(),
       description: description.trim() || undefined,
-      deadline,
+      deadline: finalDeadline,
       priority,
       estimatedDuration,
       projectId: projectId === 'no-project' ? undefined : projectId,
       taskTypeId: taskTypeId === 'no-task-type' ? undefined : taskTypeId,
-      canStartFrom,
+      canStartFrom: finalCanStartFrom,
       bufferBefore: bufferBefore > 0 ? bufferBefore : undefined,
       bufferAfter: bufferAfter > 0 ? bufferAfter : undefined,
       allowSplitting,
@@ -132,10 +141,11 @@ export function TaskForm({ isOpen, onClose, onSubmit, editingTask, initialData, 
       }),
     };
 
-    console.log('TaskForm: Submitting task with data:', {
+    console.log('TaskForm: Submitting task with final dates from project:', {
       projectId,
-      taskTypeId,
-      dependencies,
+      selectedProject: selectedProject ? { id: selectedProject.id, deadline: selectedProject.deadline, startDate: selectedProject.startDate } : null,
+      finalDeadline,
+      finalCanStartFrom,
       taskData
     });
     onSubmit(taskData);
