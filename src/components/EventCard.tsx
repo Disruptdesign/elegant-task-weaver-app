@@ -56,21 +56,19 @@ export function EventCard({
           </div>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            {onAssignUser && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!isLoading) onAssignUser(event);
-                }}
-                disabled={isLoading}
-                className="h-8 w-8 p-0 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-colors duration-200"
-                title="Assigner des utilisateurs"
-              >
-                <Users size={16} />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isLoading && onAssignUser) onAssignUser(event);
+              }}
+              disabled={isLoading}
+              className="h-8 w-8 p-0 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-colors duration-200"
+              title="Assigner des utilisateurs"
+            >
+              <Users size={16} />
+            </Button>
             <Button
               variant="ghost"
               size="sm"
