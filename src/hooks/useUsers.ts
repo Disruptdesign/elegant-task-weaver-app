@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AppUser, TaskAssignment, EventAssignment } from '../types/user';
@@ -22,6 +21,63 @@ export function useUsers() {
     updatedAt: new Date(dbUser.updated_at),
   });
 
+  const ensureCurrentUserExists = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      console.log('🔍 Checking if current user exists in app_users...', {
+        authUserId: session.user.id,
+        email: session.user.email
+      });
+
+      // Check if user exists in app_users
+      const { data: existingUser, error: checkError } = await supabase
+        .from('app_users')
+        .select('*')
+        .eq('auth_user_id', session.user.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Error checking for existing user:', checkError);
+        return;
+      }
+
+      if (!existingUser) {
+        console.log('⚠️ User not found in app_users, creating new record...');
+        
+        // Create new app_user record
+        const { data: newUser, error: insertError } = await supabase
+          .from('app_users')
+          .insert({
+            auth_user_id: session.user.id,
+            email: session.user.email,
+            first_name: session.user.user_metadata?.first_name || '',
+            last_name: session.user.user_metadata?.last_name || '',
+            username: session.user.user_metadata?.username || null,
+            role: 'member',
+            is_active: true
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('❌ Error creating app_user:', insertError);
+          throw insertError;
+        }
+
+        console.log('✅ Created new app_user:', newUser);
+        return newUser;
+      } else {
+        console.log('✅ User found in app_users:', existingUser);
+        return existingUser;
+      }
+    } catch (err) {
+      console.error('❌ Error in ensureCurrentUserExists:', err);
+      throw err;
+    }
+  };
+
   const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -33,6 +89,9 @@ export function useUsers() {
         return;
       }
 
+      // Ensure current user exists in app_users
+      await ensureCurrentUserExists();
+
       const { data, error } = await supabase
         .from('app_users')
         .select('*')
@@ -41,7 +100,14 @@ export function useUsers() {
 
       if (error) throw error;
 
-      setUsers((data || []).map(convertDbUserToAppUser));
+      const convertedUsers = (data || []).map(convertDbUserToAppUser);
+      console.log('👥 Fetched users:', {
+        totalUsers: convertedUsers.length,
+        currentUserInList: convertedUsers.some(u => u.authUserId === session.user.id),
+        users: convertedUsers.map(u => ({ id: u.id, email: u.email, authUserId: u.authUserId }))
+      });
+
+      setUsers(convertedUsers);
     } catch (err) {
       console.error('❌ Error fetching users:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch users');

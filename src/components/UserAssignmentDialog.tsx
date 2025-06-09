@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
@@ -6,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { AppUser, TaskAssignment, EventAssignment } from '../types/user';
-import { Users, UserPlus, X, Edit2, Check, UserCheck } from 'lucide-react';
+import { Users, UserPlus, X, Edit2, Check, UserCheck, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '../hooks/use-toast';
 
@@ -40,12 +39,16 @@ export function UserAssignmentDialog({
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
+  const [isCheckingUser, setIsCheckingUser] = useState(false);
   const { toast } = useToast();
 
   // Get current user information
   useEffect(() => {
     const getCurrentUser = async () => {
+      if (!isOpen) return;
+      
       try {
+        setIsCheckingUser(true);
         console.log('🔍 Getting current user session...');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
@@ -71,9 +74,35 @@ export function UserAssignmentDialog({
         } else {
           console.log('❌ Current user NOT found in users list. Auth user ID:', session.user.id);
           console.log('🔍 Users auth IDs:', users.map(u => ({ id: u.id, authUserId: u.authUserId, email: u.email })));
+          
+          // Try to create the missing user
+          console.log('🛠️ Attempting to create missing user record...');
+          const { data: newUser, error: createError } = await supabase
+            .from('app_users')
+            .insert({
+              auth_user_id: session.user.id,
+              email: session.user.email,
+              first_name: session.user.user_metadata?.first_name || '',
+              last_name: session.user.user_metadata?.last_name || '',
+              username: session.user.user_metadata?.username || null,
+              role: 'member',
+              is_active: true
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('❌ Error creating user record:', createError);
+          } else {
+            console.log('✅ Created user record:', newUser);
+            // Refresh the users list
+            window.location.reload();
+          }
         }
       } catch (error) {
         console.error('❌ Error in getCurrentUser:', error);
+      } finally {
+        setIsCheckingUser(false);
       }
     };
 
@@ -96,8 +125,19 @@ export function UserAssignmentDialog({
     isCurrentUserAssigned,
     assignmentsCount: assignments.length,
     usersCount: users.length,
-    availableUsersCount: availableUsers.length
+    availableUsersCount: availableUsers.length,
+    isCheckingUser
   });
+
+  const handleRefreshUsers = async () => {
+    try {
+      setIsCheckingUser(true);
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Error refreshing:', error);
+      setIsCheckingUser(false);
+    }
+  };
 
   const handleAssign = async () => {
     if (!selectedUserId || !selectedRole) return;
@@ -269,11 +309,36 @@ export function UserAssignmentDialog({
             <h3 className="font-medium flex items-center gap-2 text-blue-900">
               <UserCheck size={18} />
               Mon profil
+              {isCheckingUser && <RefreshCw size={14} className="animate-spin" />}
             </h3>
             
             {!currentUser ? (
-              <div className="text-red-600 text-sm p-2 bg-red-50 rounded border border-red-200">
-                ⚠️ Impossible de vous identifier. Veuillez vous reconnecter.
+              <div className="space-y-3">
+                <div className="text-red-600 text-sm p-3 bg-red-50 rounded border border-red-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span>⚠️</span>
+                    <span className="font-medium">Problème d'identification</span>
+                  </div>
+                  <p>Votre compte n'est pas encore synchronisé avec l'application.</p>
+                </div>
+                
+                <Button 
+                  onClick={handleRefreshUsers}
+                  disabled={isCheckingUser}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {isCheckingUser ? (
+                    <>
+                      <RefreshCw size={16} className="mr-2 animate-spin" />
+                      Synchronisation...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={16} className="mr-2" />
+                      Synchroniser mon compte
+                    </>
+                  )}
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
