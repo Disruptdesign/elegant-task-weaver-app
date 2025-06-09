@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3, Users, TrendingUp, FolderOpen } from 'lucide-react';
 import { Task, Event, Project, InboxItem, TaskType, ProjectTemplate } from '../types/task';
@@ -124,16 +123,13 @@ function Dashboard({
       icon: Calendar,
       subtitle: (
         <div className="flex flex-col items-center gap-1">
-          <div className="text-xl sm:text-2xl font-bold text-purple-600">
-            {todayEvents.length}
+          <div className="text-xs text-gray-500">
+            événement{todayEvents.length > 1 ? 's' : ''} aujourd'hui
             {todayEventsHours > 0 && (
-              <span className="text-sm font-normal text-gray-600 ml-1">
+              <span className="text-gray-600 ml-1">
                 ({todayEventsHours}h)
               </span>
             )}
-          </div>
-          <div className="text-xs text-gray-500">
-            événement{todayEvents.length > 1 ? 's' : ''} aujourd'hui
           </div>
           {upcomingEvents.length > 0 && (
             <div className="text-xs text-gray-400">
@@ -407,9 +403,7 @@ function Dashboard({
                     {event.allDay ? 'Toute la journée' : `${format(event.startDate, 'HH:mm')} - ${format(event.endDate, 'HH:mm')}`}
                   </div>
                   {event.location && (
-                    <div className="text-xs sm:text-sm text-gray-600 mt-1 truncate">
-                      📍 {event.location}
-                    </div>
+                    <div className="text-xs sm:text-sm text-gray-600 mt-1 truncate">📍 {event.location}</div>
                   )}
                 </div>
                 {onUpdateEvent && (
