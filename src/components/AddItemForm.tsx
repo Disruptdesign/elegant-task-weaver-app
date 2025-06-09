@@ -55,7 +55,19 @@ export function AddItemForm({
 
   // Si on édite une tâche ou un événement, déterminer le type automatiquement
   const currentType = editingTask ? 'task' : editingEvent ? 'event' : itemType;
-  const isEditing = editingTask || editingEvent;
+  const isEditing = !!(editingTask || editingEvent);
+
+  const handleTaskTypeSelect = () => {
+    if (!isEditing) {
+      setItemType('task');
+    }
+  };
+
+  const handleEventTypeSelect = () => {
+    if (!isEditing) {
+      setItemType('event');
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -74,11 +86,7 @@ export function AddItemForm({
               <Button
                 type="button"
                 variant={currentType === 'task' ? 'default' : 'outline'}
-                onClick={() => {
-                  if (!isEditing) {
-                    setItemType('task');
-                  }
-                }}
+                onClick={handleTaskTypeSelect}
                 disabled={isEditing}
                 className="flex items-center gap-2"
               >
@@ -88,11 +96,7 @@ export function AddItemForm({
               <Button
                 type="button"
                 variant={currentType === 'event' ? 'default' : 'outline'}
-                onClick={() => {
-                  if (!isEditing) {
-                    setItemType('event');
-                  }
-                }}
+                onClick={handleEventTypeSelect}
                 disabled={isEditing}
                 className="flex items-center gap-2"
               >
