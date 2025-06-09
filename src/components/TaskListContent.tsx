@@ -15,6 +15,8 @@ interface TaskListContentProps {
   onDeleteTask: (taskId: string) => Promise<void>;
   onDeleteEvent: (eventId: string) => Promise<void>;
   onAddNew: () => void;
+  onAssignTask?: (task: Task) => void;
+  onAssignEvent?: (event: Event) => void;
   projects: Project[];
   loadingStates?: Record<string, boolean>;
 }
@@ -28,6 +30,8 @@ export function TaskListContent({
   onDeleteTask,
   onDeleteEvent,
   onAddNew,
+  onAssignTask,
+  onAssignEvent,
   projects,
   loadingStates = {}
 }: TaskListContentProps) {
@@ -82,6 +86,7 @@ export function TaskListContent({
                 onEdit={onEditTask}
                 onDelete={onDeleteTask}
                 onClick={onEditTask}
+                onAssignUser={onAssignTask}
                 projects={projects}
                 isLoading={loadingStates[item.id]}
               />
@@ -96,6 +101,7 @@ export function TaskListContent({
                 onEdit={onEditEvent}
                 onDelete={onDeleteEvent}
                 onClick={onEditEvent}
+                onAssignUser={onAssignEvent}
                 isLoading={loadingStates[item.id]}
               />
             </div>

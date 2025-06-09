@@ -3,7 +3,7 @@ import React from 'react';
 import { Event } from '../types/task';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Calendar, Clock, Edit, Trash2, MapPin, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Edit, Trash2, MapPin, Loader2, Users } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -12,6 +12,7 @@ interface EventCardProps {
   onEdit: (event: Event) => void;
   onDelete: (eventId: string) => Promise<void>;
   onClick: (event: Event) => void;
+  onAssignUser?: (event: Event) => void;
   isLoading?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function EventCard({
   onEdit, 
   onDelete, 
   onClick, 
+  onAssignUser,
   isLoading = false 
 }: EventCardProps) {
   return (
@@ -54,6 +56,21 @@ export function EventCard({
           </div>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            {onAssignUser && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isLoading) onAssignUser(event);
+                }}
+                disabled={isLoading}
+                className="h-8 w-8 p-0 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-colors duration-200"
+                title="Assigner des utilisateurs"
+              >
+                <Users size={16} />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
