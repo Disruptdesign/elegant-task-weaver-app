@@ -5,7 +5,6 @@ import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { DurationSelector } from './ui/duration-selector';
 import { DateTimeSelector } from './ui/datetime-selector';
-
 interface TaskFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,7 +18,6 @@ interface TaskFormProps {
   taskTypes?: TaskType[];
   tasks?: Task[];
 }
-
 export function TaskForm({
   isOpen,
   onClose,
@@ -201,8 +199,7 @@ export function TaskForm({
     setDependencies(prev => prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]);
   };
   if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+  return <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
         <div className="sticky top-0 bg-white flex items-center justify-between p-6 border-b border-gray-100 rounded-t-2xl">
           <div>
@@ -225,28 +222,14 @@ export function TaskForm({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Titre de la tâche *
               </label>
-              <input 
-                type="text" 
-                value={title} 
-                onChange={e => setTitle(e.target.value)} 
-                placeholder="Que devez-vous faire ?" 
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-lg" 
-                required 
-                autoFocus 
-              />
+              <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Que devez-vous faire ?" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-lg" required autoFocus />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description (optionnel)
               </label>
-              <textarea 
-                value={description} 
-                onChange={e => setDescription(e.target.value)} 
-                placeholder="Ajoutez des détails..." 
-                rows={2} 
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all" 
-              />
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Ajoutez des détails..." rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all" />
             </div>
           </div>
 
@@ -259,13 +242,7 @@ export function TaskForm({
                   {isProjectSelected && <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>}
                 </label>
                 <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
-                  <DateTimeSelector 
-                    value={deadline} 
-                    onChange={isProjectSelected ? () => {} : setDeadline} 
-                    placeholder="Sélectionnez une date limite" 
-                    includeTime={false} 
-                    required 
-                  />
+                  <DateTimeSelector value={deadline} onChange={isProjectSelected ? () => {} : setDeadline} placeholder="Sélectionnez une date limite" includeTime={false} required />
                 </div>
               </div>
 
@@ -275,67 +252,38 @@ export function TaskForm({
                   {isProjectSelected && <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>}
                 </label>
                 <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
-                  <DateTimeSelector 
-                    value={canStartFrom} 
-                    onChange={isProjectSelected ? () => {} : setCanStartFrom} 
-                    placeholder="Choisir une date" 
-                    includeTime={false} 
-                  />
+                  <DateTimeSelector value={canStartFrom} onChange={isProjectSelected ? () => {} : setCanStartFrom} placeholder="Choisir une date" includeTime={false} />
                 </div>
               </div>
             </div>
 
-            {/* Section Durée et Options avancées */}
-            <div className="bg-gray-50 rounded-xl p-4 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
-                <Zap size={16} className="text-gray-500" />
-                <span>Durée et options</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Durée estimée
+                </label>
+                <DurationSelector value={estimatedDuration} onChange={setEstimatedDuration} />
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Durée estimée
-                  </label>
-                  <DurationSelector value={estimatedDuration} onChange={setEstimatedDuration} />
-                </div>
 
-                <div className="space-y-3">
-                  <label className="flex items-start space-x-3 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={allowSplitting} 
-                      onChange={e => setAllowSplitting(e.target.checked)} 
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 mt-0.5" 
-                    />
-                    <div>
-                      <span className="text-sm font-medium text-gray-700 block">
-                        Autoriser le découpage
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        Cette tâche peut être divisée en plusieurs créneaux
-                      </span>
-                    </div>
-                  </label>
+              <div className="space-y-3">
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input type="checkbox" checked={allowSplitting} onChange={e => setAllowSplitting(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Autoriser le découpage de cette tâche
+                  </span>
+                </label>
 
-                  {allowSplitting && (
-                    <div className="ml-7">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Durée minimum par créneau
-                      </label>
-                      <select 
-                        value={splitDuration} 
-                        onChange={e => setSplitDuration(Number(e.target.value))} 
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      >
-                        <option value={30}>30 min</option>
-                        <option value={60}>1 heure</option>
-                        <option value={90}>1h 30</option>
-                        <option value={120}>2 heures</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
+                {allowSplitting && <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Durée minimum pour le découpage
+                    </label>
+                    <select value={splitDuration} onChange={e => setSplitDuration(Number(e.target.value))} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                      <option value={30}>30 min</option>
+                      <option value={60}>1 heure</option>
+                      <option value={90}>1h 30</option>
+                      <option value={120}>2 heures</option>
+                    </select>
+                  </div>}
               </div>
             </div>
           </div>
@@ -347,21 +295,10 @@ export function TaskForm({
               Priorité
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {priorityOptions.map(option => (
-                <button 
-                  key={option.value} 
-                  type="button" 
-                  onClick={() => setPriority(option.value)} 
-                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-all border-2 flex items-center gap-2 ${
-                    priority === option.value 
-                      ? `${option.bg} ${option.color} border-current shadow-md` 
-                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                  }`}
-                >
+              {priorityOptions.map(option => <button key={option.value} type="button" onClick={() => setPriority(option.value)} className={`px-4 py-3 rounded-xl text-sm font-medium transition-all border-2 flex items-center gap-2 ${priority === option.value ? `${option.bg} ${option.color} border-current shadow-md` : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'}`}>
                   <span>{option.icon}</span>
                   {option.label}
-                </button>
-              ))}
+                </button>)}
             </div>
           </div>
 
@@ -378,19 +315,14 @@ export function TaskForm({
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-lg z-50">
                   <SelectItem value="no-project">Aucun projet</SelectItem>
-                  {projects.map(project => (
-                    <SelectItem key={project.id} value={project.id}>
+                  {projects.map(project => <SelectItem key={project.id} value={project.id}>
                       <div className="flex items-center gap-2">
-                        {project.color && (
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: project.color }} 
-                          />
-                        )}
+                        {project.color && <div className="w-3 h-3 rounded-full" style={{
+                      backgroundColor: project.color
+                    }} />}
                         {project.title}
                       </div>
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -406,84 +338,56 @@ export function TaskForm({
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-gray-200 rounded-xl shadow-lg z-50">
                   <SelectItem value="no-task-type">Aucun type</SelectItem>
-                  {taskTypes.map(taskType => (
-                    <SelectItem key={taskType.id} value={taskType.id}>
+                  {taskTypes.map(taskType => <SelectItem key={taskType.id} value={taskType.id}>
                       <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: taskType.color }} 
-                        />
+                        <div className="w-3 h-3 rounded-full" style={{
+                      backgroundColor: taskType.color
+                    }} />
                         {taskType.name}
                       </div>
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           {/* Dépendances - affichées seulement s'il y a des tâches disponibles */}
-          {availableTasksForDependencies.length > 0 && (
-            <div className="space-y-3">
+          {availableTasksForDependencies.length > 0 && <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                 <GitBranch size={16} />
                 Dépendances (cette tâche ne peut pas démarrer avant que les tâches sélectionnées soient terminées)
               </label>
               <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-2">
-                {availableTasksForDependencies.map(task => (
-                  <label key={task.id} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={dependencies.includes(task.id)} 
-                      onChange={() => handleDependencyToggle(task.id)} 
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4" 
-                    />
+                {availableTasksForDependencies.map(task => <label key={task.id} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" checked={dependencies.includes(task.id)} onChange={() => handleDependencyToggle(task.id)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-gray-900 block truncate">
                         {task.title}
                       </span>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
-                          task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                          task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {task.priority === 'urgent' ? 'Urgente' :
-                           task.priority === 'high' ? 'Haute' :
-                           task.priority === 'medium' ? 'Moyenne' : 'Faible'}
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${task.priority === 'urgent' ? 'bg-red-100 text-red-800' : task.priority === 'high' ? 'bg-orange-100 text-orange-800' : task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                          {task.priority === 'urgent' ? 'Urgente' : task.priority === 'high' ? 'Haute' : task.priority === 'medium' ? 'Moyenne' : 'Faible'}
                         </span>
                         <span className="text-xs text-gray-500">
                           {formatDuration(task.estimatedDuration)}
                         </span>
                       </div>
                     </div>
-                  </label>
-                ))}
+                  </label>)}
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-gray-100">
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
-            >
+            <button type="button" onClick={onClose} className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium">
               Annuler
             </button>
-            <button 
-              type="submit" 
-              disabled={!title.trim() || !deadline} 
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-            >
+            <button type="submit" disabled={!title.trim() || !deadline} className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl">
               <Plus size={16} />
               {editingTask ? 'Modifier' : 'Créer'}
             </button>
           </div>
         </form>
       </div>
-    </div>
-  );
+    </div>;
 }
