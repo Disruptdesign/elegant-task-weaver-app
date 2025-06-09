@@ -35,7 +35,6 @@ export function TaskForm({
   const [estimatedDuration, setEstimatedDuration] = useState(60);
   const [projectId, setProjectId] = useState('');
   const [taskTypeId, setTaskTypeId] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [canStartFrom, setCanStartFrom] = useState<Date | undefined>();
   const [bufferBefore, setBufferBefore] = useState(0);
   const [bufferAfter, setBufferAfter] = useState(0);
@@ -86,7 +85,6 @@ export function TaskForm({
       setAllowSplitting(editingTask.allowSplitting || false);
       setSplitDuration(editingTask.splitDuration || 60);
       setDependencies(editingTask.dependencies || []);
-      setShowAdvanced(Boolean(editingTask.canStartFrom || editingTask.bufferBefore || editingTask.bufferAfter || editingTask.allowSplitting || editingTask.dependencies && editingTask.dependencies.length > 0));
     } else if (initialData) {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
@@ -104,7 +102,6 @@ export function TaskForm({
       setAllowSplitting(false);
       setSplitDuration(60);
       setDependencies([]);
-      setShowAdvanced(false);
     } else {
       setTitle('');
       setDescription('');
@@ -122,7 +119,6 @@ export function TaskForm({
       setAllowSplitting(false);
       setSplitDuration(60);
       setDependencies([]);
-      setShowAdvanced(false);
     }
   }, [editingTask, initialData, isOpen]);
   const handleSubmit = (e: React.FormEvent) => {
@@ -238,22 +234,57 @@ export function TaskForm({
           </div>
 
           {/* Planification essentielle */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date limite *
-                {isProjectSelected && <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>}
-              </label>
-              <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
-                <DateTimeSelector value={deadline} onChange={isProjectSelected ? () => {} : setDeadline} placeholder="Sélectionnez une date limite" includeTime={false} required />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date limite *
+                  {isProjectSelected && <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>}
+                </label>
+                <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
+                  <DateTimeSelector value={deadline} onChange={isProjectSelected ? () => {} : setDeadline} placeholder="Sélectionnez une date limite" includeTime={false} required />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Peut commencer à partir de
+                  {isProjectSelected && <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>}
+                </label>
+                <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
+                  <DateTimeSelector value={canStartFrom} onChange={isProjectSelected ? () => {} : setCanStartFrom} placeholder="Choisir une date" includeTime={false} />
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Durée estimée
-              </label>
-              <DurationSelector value={estimatedDuration} onChange={setEstimatedDuration} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Durée estimée
+                </label>
+                <DurationSelector value={estimatedDuration} onChange={setEstimatedDuration} />
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input type="checkbox" checked={allowSplitting} onChange={e => setAllowSplitting(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Autoriser le découpage de cette tâche
+                  </span>
+                </label>
+
+                {allowSplitting && <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Durée minimum pour le découpage
+                    </label>
+                    <select value={splitDuration} onChange={e => setSplitDuration(Number(e.target.value))} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                      <option value={30}>30 min</option>
+                      <option value={60}>1 heure</option>
+                      <option value={90}>1h 30</option>
+                      <option value={120}>2 heures</option>
+                    </select>
+                  </div>}
+              </div>
             </div>
           </div>
 
@@ -320,78 +351,31 @@ export function TaskForm({
             </div>
           </div>
 
-          {/* Options avancées */}
-          <div className="border-t border-gray-100 pt-4">
-            <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
-              <Zap size={16} />
-              Options avancées {dependencies.length > 0 && <span className="text-blue-600">({dependencies.length} dépendance{dependencies.length > 1 ? 's' : ''})</span>}
-              <span className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`}>▶</span>
-            </button>
-            
-            {showAdvanced && <div className="mt-4 space-y-4 animate-fade-in">
-                {/* Dépendances */}
-                {availableTasksForDependencies.length > 0 && <div className="space-y-3">
-                    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <GitBranch size={16} />
-                      Dépendances (cette tâche ne peut pas démarrer avant que les tâches sélectionnées soient terminées)
-                    </label>
-                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-2">
-                      {availableTasksForDependencies.map(task => <label key={task.id} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
-                          <input type="checkbox" checked={dependencies.includes(task.id)} onChange={() => handleDependencyToggle(task.id)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm font-medium text-gray-900 block truncate">
-                              {task.title}
-                            </span>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${task.priority === 'urgent' ? 'bg-red-100 text-red-800' : task.priority === 'high' ? 'bg-orange-100 text-orange-800' : task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-                                {task.priority === 'urgent' ? 'Urgente' : task.priority === 'high' ? 'Haute' : task.priority === 'medium' ? 'Moyenne' : 'Faible'}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {formatDuration(task.estimatedDuration)}
-                              </span>
-                            </div>
-                          </div>
-                        </label>)}
+          {/* Dépendances - affichées seulement s'il y a des tâches disponibles */}
+          {availableTasksForDependencies.length > 0 && <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                <GitBranch size={16} />
+                Dépendances (cette tâche ne peut pas démarrer avant que les tâches sélectionnées soient terminées)
+              </label>
+              <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-2">
+                {availableTasksForDependencies.map(task => <label key={task.id} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" checked={dependencies.includes(task.id)} onChange={() => handleDependencyToggle(task.id)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium text-gray-900 block truncate">
+                        {task.title}
+                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${task.priority === 'urgent' ? 'bg-red-100 text-red-800' : task.priority === 'high' ? 'bg-orange-100 text-orange-800' : task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                          {task.priority === 'urgent' ? 'Urgente' : task.priority === 'high' ? 'Haute' : task.priority === 'medium' ? 'Moyenne' : 'Faible'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {formatDuration(task.estimatedDuration)}
+                        </span>
+                      </div>
                     </div>
-                  </div>}
-
-                {/* Date de début */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Peut commencer à partir de
-                    {isProjectSelected && <span className="text-xs text-gray-500 ml-2">(définie par le projet)</span>}
-                  </label>
-                  <div className={isProjectSelected ? 'opacity-50 pointer-events-none' : ''}>
-                    <DateTimeSelector value={canStartFrom} onChange={isProjectSelected ? () => {} : setCanStartFrom} placeholder="Choisir une date" includeTime={false} />
-                  </div>
-                </div>
-
-                {/* Temps de pause */}
-                
-
-                {/* Découpage */}
-                <div className="space-y-3">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input type="checkbox" checked={allowSplitting} onChange={e => setAllowSplitting(e.target.checked)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
-                    <span className="text-sm font-medium text-gray-700">
-                      Autoriser le découpage de cette tâche
-                    </span>
-                  </label>
-
-                  {allowSplitting && <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Durée minimum pour le découpage
-                      </label>
-                      <select value={splitDuration} onChange={e => setSplitDuration(Number(e.target.value))} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
-                        <option value={30}>30 min</option>
-                        <option value={60}>1 heure</option>
-                        <option value={90}>1h 30</option>
-                        <option value={120}>2 heures</option>
-                      </select>
-                    </div>}
-                </div>
-              </div>}
-          </div>
+                  </label>)}
+              </div>
+            </div>}
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-gray-100">
