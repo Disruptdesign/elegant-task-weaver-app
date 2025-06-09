@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { X, Calendar, CheckSquare } from 'lucide-react';
 import { Task, Event, Project, TaskType } from '../types/task';
@@ -54,18 +55,43 @@ export function AddItemForm({
 
   // Si on édite une tâche ou un événement, déterminer le type automatiquement
   const currentType = editingTask ? 'task' : editingEvent ? 'event' : itemType;
+  const isEditing = editingTask || editingEvent;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-scale-in">
         <div className="sticky top-0 bg-white flex items-center justify-between p-6 border-b border-gray-100 rounded-t-2xl">
-          <div>
+          <div className="flex-1">
             <h2 className="text-xl font-semibold text-gray-900">
-              {editingTask ? 'Modifier' : editingEvent ? 'Modifier' : 'Ajouter'}
+              {editingTask ? 'Modifier la tâche' : editingEvent ? 'Modifier l\'événement' : 'Ajouter un nouvel élément'}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Ajoutez une nouvelle tâche ou un événement.'}
+              {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Choisissez le type d\'élément à créer.'}
             </p>
+            
+            {/* Sélecteur de type seulement si on n'édite pas */}
+            {!isEditing && (
+              <div className="flex gap-2 mt-4">
+                <Button
+                  type="button"
+                  variant={currentType === 'task' ? 'default' : 'outline'}
+                  onClick={() => setItemType('task')}
+                  className="flex items-center gap-2"
+                >
+                  <CheckSquare size={16} />
+                  Tâche
+                </Button>
+                <Button
+                  type="button"
+                  variant={currentType === 'event' ? 'default' : 'outline'}
+                  onClick={() => setItemType('event')}
+                  className="flex items-center gap-2"
+                >
+                  <Calendar size={16} />
+                  Événement
+                </Button>
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
