@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Task, Event, Project } from '../types/task';
+import { Task, Event, Project, TaskType } from '../types/task';
 import { format, startOfWeek, addDays, isSameDay, startOfDay, addHours, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, Calendar, CalendarDays, Users, Edit, Check, Square, RefreshCw, AlertTriangle } from 'lucide-react';
@@ -13,6 +14,7 @@ interface CalendarViewProps {
   tasks: Task[];
   events: Event[];
   projects?: Project[];
+  taskTypes?: TaskType[];
   onUpdateTask?: (id: string, updates: Partial<Task>) => void;
   onUpdateEvent?: (id: string, updates: Partial<Event>) => void;
   addTask?: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
@@ -43,6 +45,7 @@ export function CalendarView({
   tasks, 
   events, 
   projects = [],
+  taskTypes = [],
   onUpdateTask, 
   onUpdateEvent, 
   addTask, 
