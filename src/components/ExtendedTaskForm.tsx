@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -71,6 +70,17 @@ export function ExtendedTaskForm({ onSubmit, onCancel, onDelete, initialData, pr
     },
   });
 
+  // Vérifier si on est en mode édition
+  const isEditMode = !!initialData?.id;
+  
+  // Debug logging pour comprendre pourquoi le bouton n'apparaît pas
+  console.log('ExtendedTaskForm Debug:', {
+    isEditMode,
+    hasOnDelete: !!onDelete,
+    initialDataId: initialData?.id,
+    shouldShowDeleteButton: isEditMode && !!onDelete
+  });
+
   const handleSubmit = (data: TaskFormData) => {
     // S'assurer que les dates du projet sont bien utilisées si un projet est sélectionné
     const selectedProject = projects.find(p => p.id === data.projectId);
@@ -93,6 +103,7 @@ export function ExtendedTaskForm({ onSubmit, onCancel, onDelete, initialData, pr
 
   const handleDelete = () => {
     if (initialData?.id && onDelete) {
+      console.log('ExtendedTaskForm: Suppression de la tâche', initialData.id);
       onDelete(initialData.id);
     }
   };
@@ -132,9 +143,6 @@ export function ExtendedTaskForm({ onSubmit, onCancel, onDelete, initialData, pr
     const project = projects.find(p => p.id === projectId);
     return project?.title || 'Projet inconnu';
   };
-
-  // Vérifier si on est en mode édition
-  const isEditMode = !!initialData?.id;
 
   return (
     <Form {...form}>
@@ -558,21 +566,31 @@ export function ExtendedTaskForm({ onSubmit, onCancel, onDelete, initialData, pr
 
         {/* Boutons d'action */}
         <div className="flex justify-between items-center pt-6 border-t">
-          {/* Bouton supprimer à gauche si en mode édition */}
-          {isEditMode && onDelete && (
+          {/* Debug: Toujours afficher le bouton pour tester */}
+          <div className="flex gap-2">
+            {/* Bouton supprimer en mode édition */}
+            {isEditMode && onDelete && (
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleDelete}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              >
+                <Trash2 size={16} className="mr-2" />
+                Supprimer
+              </Button>
+            )}
+            
+            {/* Bouton de debug temporaire pour vérifier */}
             <Button 
               type="button" 
               variant="outline" 
-              onClick={handleDelete}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+              onClick={() => console.log('Debug button clicked - Edit mode:', isEditMode, 'Has onDelete:', !!onDelete)}
             >
-              <Trash2 size={16} className="mr-2" />
-              Supprimer
+              Debug (Edit: {isEditMode ? 'Yes' : 'No'}, Delete: {onDelete ? 'Yes' : 'No'})
             </Button>
-          )}
-          
-          {/* Espaceur si pas de bouton supprimer */}
-          {(!isEditMode || !onDelete) && <div />}
+          </div>
           
           {/* Boutons d'action à droite */}
           <div className="flex gap-3">
