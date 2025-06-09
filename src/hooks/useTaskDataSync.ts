@@ -1,8 +1,6 @@
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Task, Event, Project } from '../types/task';
-import { useTaskDependencyCleanup } from './useTaskDependencyCleanup';
-import { useDataValidation } from './useDataValidation';
 
 interface UseTaskDataSyncProps {
   tasks: Task[];
@@ -12,46 +10,87 @@ interface UseTaskDataSyncProps {
 }
 
 export function useTaskDataSync({ tasks, events, projects, onTasksUpdate }: UseTaskDataSyncProps) {
-  const { cleanupInvalidDependencies } = useTaskDependencyCleanup();
-  const { validateAndLogData } = useDataValidation();
+  
+  const cleanupInvalidDependencies = useCallback((tasksToClean: Task[]): Task[] => {
+    const taskIds = new Set(tasksToClean.map(task => task.id));
+    let hasChanges = false;
+    
+    const cleanedTasks = tasksToClean.map(task => {
+      if (task.dependencies && task.dependencies.length > 0) {
+        const validDependencies = task.dependencies.filter(depId => {
+          const isValid = taskIds.has(depId);
+          if (!isValid) {
+            console.warn(`🧹 Suppression de la dépendance invalide ${depId} de la tâche ${task.title}`);
+            hasChanges = true;
+          }
+          return isValid;
+        });
+        
+        if (validDependencies.length !== task.dependencies.length) {
+          console.log(`🔧 Nettoyage des dépendances pour ${task.title}: ${task.dependencies.length} -> ${validDependencies.length}`);
+          return {
+            ...task,
+            dependencies: validDependencies
+          };
+        }
+      }
+      
+      return task;
+    });
+    
+    return hasChanges ? cleanedTasks : tasksToClean;
+  }, []);
 
-  useEffect(() => {
-    console.log('🔄 Synchronisation des données - État actuel:', {
-      tasksLength: tasks.length,
-      eventsLength: events.length,
-      projectsLength: projects.length,
-      hasTasksUpdate: !!onTasksUpdate
+  const validateAndLogData = useCallback((tasksToValidate: Task[]) => {
+    const taskIds = new Set(tasksToValidate.map(t => t.id));
+    let hasInvalidDependencies = false;
+    
+    tasksToValidate.forEach(task => {
+      if (task.dependencies) {
+        const invalidDeps = task.dependencies.filter(depId => !taskIds.has(depId));
+        if (invalidDeps.length > 0) {
+          console.warn(`⚠️ Dépendances invalides dans ${task.title}:`, invalidDeps);
+          hasInvalidDependencies = true;
+        }
+      }
     });
 
+    return {
+      isValid: !hasInvalidDependencies,
+      issues: {
+        invalidDependencies: hasInvalidDependencies,
+        totalTasks: tasksToValidate.length,
+        totalProjects: projects.length
+      }
+    };
+  }, [projects.length]);
+
+  useEffect(() => {
     if (tasks.length === 0) {
       console.log('⚠️ Aucune tâche à synchroniser');
       return;
     }
 
-    console.log('🔄 Synchronisation des données en cours...');
+    console.log('🔄 Vérification de la synchronisation des données...');
     
-    // Valider les données actuelles
-    const validation = validateAndLogData(tasks, events, projects);
+    // Vérifier s'il y a des dépendances invalides
+    const validation = validateAndLogData(tasks);
     
     if (!validation.isValid) {
-      console.log('🔧 Correction des données invalides détectées');
+      console.log('🔧 Correction des dépendances invalides détectées');
       
       // Nettoyer les dépendances invalides
       const cleanedTasks = cleanupInvalidDependencies(tasks);
       
-      // Mettre à jour les tâches si des changements ont été effectués
-      const hasChanges = cleanedTasks.some((task, index) => 
-        JSON.stringify(task.dependencies) !== JSON.stringify(tasks[index].dependencies)
-      );
-      
-      if (hasChanges) {
+      // Si des changements ont été effectués, mettre à jour
+      if (cleanedTasks !== tasks) {
         console.log('✅ Mise à jour des tâches avec des dépendances corrigées');
         onTasksUpdate(cleanedTasks);
       }
     } else {
-      console.log('✅ Toutes les données sont valides');
+      console.log('✅ Toutes les dépendances sont valides');
     }
-  }, [tasks, events, projects, onTasksUpdate, cleanupInvalidDependencies, validateAndLogData]);
+  }, [tasks, cleanupInvalidDependencies, validateAndLogData, onTasksUpdate]);
 
   return { validateAndLogData };
 }

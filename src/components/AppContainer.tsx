@@ -1,4 +1,3 @@
-
 import React, { lazy, Suspense } from 'react';
 import { AuthenticatedLayout } from './AuthenticatedLayout';
 import { useAppState } from '../hooks/useAppState';
@@ -49,15 +48,17 @@ export function AppContainer() {
     createProjectFromTemplate
   } = useTasks();
 
-  // Add data synchronization to clean up invalid dependencies
+  // Add data synchronization to clean up invalid dependencies immediately
   useTaskDataSync({ 
     tasks, 
     events, 
     projects, 
     onTasksUpdate: (updatedTasks) => {
+      console.log('🔄 Mise à jour forcée des tâches suite au nettoyage');
       updatedTasks.forEach(task => {
         const originalTask = tasks.find(t => t.id === task.id);
         if (originalTask && JSON.stringify(task.dependencies) !== JSON.stringify(originalTask.dependencies)) {
+          console.log(`🔧 Correction dépendances tâche: ${task.title}`);
           updateTask(task.id, { dependencies: task.dependencies });
         }
       });
@@ -76,7 +77,21 @@ export function AppContainer() {
 
   const handleReschedule = async () => {
     console.log('🔄 Replanification manuelle déclenchée avec contraintes projet');
-    const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects);
+    
+    // Nettoyer d'abord les dépendances invalides
+    const taskIds = new Set(tasks.map(t => t.id));
+    const cleanTasks = tasks.map(task => {
+      if (task.dependencies) {
+        const validDeps = task.dependencies.filter(depId => taskIds.has(depId));
+        if (validDeps.length !== task.dependencies.length) {
+          console.log(`🧹 Nettoyage auto des dépendances pour: ${task.title}`);
+          return { ...task, dependencies: validDeps };
+        }
+      }
+      return task;
+    });
+    
+    const rescheduledTasks = await rescheduleAllTasks(cleanTasks, events, projects);
     
     // Update tasks with the rescheduled versions
     rescheduledTasks.forEach(task => {

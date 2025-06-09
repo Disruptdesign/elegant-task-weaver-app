@@ -1,16 +1,19 @@
 
+import { useCallback } from 'react';
 import { Task } from '../types/task';
 
 export function useTaskDependencyCleanup() {
-  const cleanupInvalidDependencies = (tasks: Task[]): Task[] => {
+  const cleanupInvalidDependencies = useCallback((tasks: Task[]): Task[] => {
     const taskIds = new Set(tasks.map(task => task.id));
+    let hasChanges = false;
     
-    return tasks.map(task => {
+    const cleanedTasks = tasks.map(task => {
       if (task.dependencies && task.dependencies.length > 0) {
         const validDependencies = task.dependencies.filter(depId => {
           const isValid = taskIds.has(depId);
           if (!isValid) {
             console.warn(`🧹 Suppression de la dépendance invalide ${depId} de la tâche ${task.title}`);
+            hasChanges = true;
           }
           return isValid;
         });
@@ -26,7 +29,9 @@ export function useTaskDependencyCleanup() {
       
       return task;
     });
-  };
+    
+    return cleanedTasks;
+  }, []);
 
   return { cleanupInvalidDependencies };
 }

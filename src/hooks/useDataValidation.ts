@@ -1,8 +1,9 @@
 
+import { useCallback } from 'react';
 import { Task, Event, Project } from '../types/task';
 
 export function useDataValidation() {
-  const validateAndLogData = (tasks: Task[], events: Event[], projects: Project[]) => {
+  const validateAndLogData = useCallback((tasks: Task[], events: Event[], projects: Project[]) => {
     const tasksWithProjects = tasks.filter(t => t.projectId);
     const tasksWithDependencies = tasks.filter(t => t.dependencies?.length);
     const scheduledTasks = tasks.filter(t => t.scheduledStart);
@@ -13,19 +14,8 @@ export function useDataValidation() {
       projects: projects.length,
       tasksWithProjects: tasksWithProjects.length,
       tasksWithDependencies: tasksWithDependencies.length,
-      scheduledTasks: scheduledTasks.length,
-      taskTitles: tasks.map(t => t.title),
-      projectTitles: projects.map(p => p.title),
-      eventTitles: events.map(e => e.title)
+      scheduledTasks: scheduledTasks.length
     });
-
-    if (tasksWithProjects.length > 0) {
-      console.log('📋 Tâches avec projets:', tasksWithProjects.map(t => ({
-        taskTitle: t.title,
-        projectId: t.projectId,
-        hasScheduledStart: !!t.scheduledStart
-      })));
-    }
 
     // Vérifier les références de projet invalides
     const projectIds = new Set(projects.map(p => p.id));
@@ -41,24 +31,28 @@ export function useDataValidation() {
 
     // Vérifier les dépendances invalides
     const taskIds = new Set(tasks.map(t => t.id));
+    let hasInvalidDependencies = false;
+    
     tasks.forEach(task => {
       if (task.dependencies) {
         const invalidDeps = task.dependencies.filter(depId => !taskIds.has(depId));
         if (invalidDeps.length > 0) {
           console.warn(`⚠️ Dépendances invalides dans ${task.title}:`, invalidDeps);
+          hasInvalidDependencies = true;
         }
       }
     });
 
     return {
-      isValid: tasksWithInvalidProject.length === 0,
+      isValid: tasksWithInvalidProject.length === 0 && !hasInvalidDependencies,
       issues: {
         invalidProjectReferences: tasksWithInvalidProject.length,
+        invalidDependencies: hasInvalidDependencies,
         totalTasks: tasks.length,
         totalProjects: projects.length
       }
     };
-  };
+  }, []);
 
   return { validateAndLogData };
 }
