@@ -59,18 +59,69 @@ export function useAlgorithmicScheduler() {
       return tasks;
     }
 
-    console.log('🔄 Démarrage de la replanification AGGRESSIVE (toutes les tâches seront replanifiées)...');
+    console.log('🔄 Démarrage de la replanification AMÉLIORÉE pour tâches en retard/du jour...');
     setIsScheduling(true);
 
     try {
-      const rescheduledTasks = rescheduleAfterEventChange(tasks, events, {
-        workingHours: settings.workingHours,
-        bufferBetweenTasks: settings.bufferBetweenTasks,
-        allowWeekends: settings.allowWeekends
+      // Séparer les tâches par statut
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      const tasksToReschedule = tasks.filter(task => {
+        if (task.completed) return false;
+        
+        // Détecter les tâches en cours (démarrées mais pas terminées)
+        if (task.scheduledStart && task.scheduledEnd) {
+          const taskStart = new Date(task.scheduledStart);
+          const taskEnd = new Date(task.scheduledEnd);
+          const isInProgress = now >= taskStart && now <= taskEnd;
+          if (isInProgress) {
+            console.log(`🔒 Tâche en cours protégée: ${task.title}`);
+            return false; // Ne pas replanifier les tâches en cours
+          }
+        }
+        
+        return true;
       });
 
-      console.log('✅ Replanification aggressive terminée - optimisation globale appliquée');
-      return rescheduledTasks;
+      console.log(`📊 Analyse des tâches à replanifier:`, {
+        total: tasks.length,
+        toReschedule: tasksToReschedule.length,
+        completed: tasks.filter(t => t.completed).length,
+        inProgress: tasks.length - tasksToReschedule.length - tasks.filter(t => t.completed).length
+      });
+
+      // Utiliser des paramètres plus flexibles pour la replanification
+      const flexibleSettings = {
+        workingHours: {
+          start: "08:00", // Commencer plus tôt
+          end: "20:00"    // Finir plus tard
+        },
+        bufferBetweenTasks: 10, // Réduire le buffer
+        allowWeekends: true     // Autoriser les weekends
+      };
+
+      console.log('⚙️ Utilisation de paramètres flexibles pour la replanification:', flexibleSettings);
+
+      const rescheduledTasks = rescheduleAfterEventChange(tasksToReschedule, events, flexibleSettings);
+
+      // Fusionner avec les tâches non modifiées
+      const finalTasks = tasks.map(originalTask => {
+        const rescheduledTask = rescheduledTasks.find(rt => rt.id === originalTask.id);
+        return rescheduledTask || originalTask;
+      });
+
+      const updatedCount = rescheduledTasks.filter(rt => {
+        const original = tasks.find(t => t.id === rt.id);
+        return original && (
+          original.scheduledStart !== rt.scheduledStart ||
+          original.scheduledEnd !== rt.scheduledEnd
+        );
+      }).length;
+
+      console.log(`✅ Replanification flexible terminée - ${updatedCount} tâche(s) replanifiée(s)`);
+      return finalTasks;
+
     } catch (error) {
       console.error('❌ Erreur lors de la replanification:', error);
       return tasks;
