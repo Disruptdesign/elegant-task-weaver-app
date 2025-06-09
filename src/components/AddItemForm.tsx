@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Calendar, CheckSquare } from 'lucide-react';
 import { Task, Event, Project, TaskType } from '../types/task';
 import { TaskForm } from './TaskForm';
-import { ExtendedTaskForm } from './ExtendedTaskForm';
 import { EventForm } from './EventForm';
 import { Button } from './ui/button';
 
@@ -27,7 +26,6 @@ export function AddItemForm({
   taskTypes = []
 }: AddItemFormProps) {
   const [itemType, setItemType] = useState<'task' | 'event'>('task');
-  const [useExtendedForm, setUseExtendedForm] = useState(false);
 
   console.log('AddItemForm: Rendering with', {
     projectsCount: projects.length,
@@ -62,6 +60,16 @@ export function AddItemForm({
     if (!isEditing) {
       setItemType('event');
     }
+  };
+
+  const handleTaskSubmit = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
+    await onSubmitTask(taskData);
+    onCancel(); // Fermer le formulaire après soumission
+  };
+
+  const handleEventSubmit = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await onSubmitEvent(eventData);
+    onCancel(); // Fermer le formulaire après soumission
   };
 
   return (
@@ -99,40 +107,34 @@ export function AddItemForm({
             </Button>
           </div>
         </div>
+        
+        <button 
+          onClick={onCancel} 
+          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          ✕
+        </button>
       </div>
 
       <div className="p-6">
         {currentType === 'task' ? (
-          useExtendedForm ? (
-            <ExtendedTaskForm
-              onSubmit={onSubmitTask}
-              onCancel={onCancel}
-              onDelete={editingTask ? (taskId: string) => {
-                console.log('AddItemForm: Tentative de suppression de tâche', taskId);
-                // TODO: Implémenter la suppression
-              } : undefined}
-              initialData={editingTask}
-              projects={projects}
-              taskTypes={taskTypes}
-              tasks={[]} // Pas de dépendances pour l'instant
-            />
-          ) : (
-            <TaskForm
-              isOpen={false}
-              onClose={onCancel}
-              onSubmit={onSubmitTask}
-              editingTask={editingTask}
-              projects={projects}
-              taskTypes={taskTypes}
-              tasks={[]}
-            />
-          )
+          <TaskForm
+            isOpen={true}
+            onClose={() => {}} // Pas utilisé en mode inline
+            onSubmit={handleTaskSubmit}
+            editingTask={editingTask}
+            projects={projects}
+            taskTypes={taskTypes}
+            tasks={[]}
+            inline={true} // Mode inline activé
+          />
         ) : (
           <EventForm
-            isOpen={false}
-            onClose={onCancel}
-            onSubmit={onSubmitEvent}
+            isOpen={true}
+            onClose={() => {}} // Pas utilisé en mode inline
+            onSubmit={handleEventSubmit}
             editingEvent={editingEvent}
+            inline={true} // Mode inline activé
           />
         )}
       </div>
