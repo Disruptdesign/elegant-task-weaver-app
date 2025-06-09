@@ -1,3 +1,4 @@
+
 import React, { lazy, Suspense } from 'react';
 import { AuthenticatedLayout } from './AuthenticatedLayout';
 import { useAppState } from '../hooks/useAppState';
@@ -11,6 +12,7 @@ const CalendarView = lazy(() => import('./CalendarView').then(module => ({ defau
 const ProjectList = lazy(() => import('./ProjectList').then(module => ({ default: module.ProjectList })));
 const Inbox = lazy(() => import('./Inbox'));
 const LazyTaskTypeSettings = lazy(() => import('./TaskTypeSettings').then(module => ({ default: module.TaskTypeSettings })));
+const ProjectTemplates = lazy(() => import('./ProjectTemplates').then(module => ({ default: module.ProjectTemplates })));
 
 export function AppContainer() {
   const { 
@@ -150,10 +152,15 @@ export function AppContainer() {
         return <ProjectList 
           projects={projects} 
           tasks={tasks}
+          projectTemplates={projectTemplates}
           onAddProject={async (project) => addProject(project)}
           onUpdateProject={async (id, updates) => updateProject(id, updates)}
           onDeleteProject={async (id) => deleteProject(id)}
           onAddTask={async (task) => addTask(task)}
+          onAddTemplate={async (template) => addProjectTemplate(template)}
+          onUpdateTemplate={async (id, updates) => updateProjectTemplate(id, updates)}
+          onDeleteTemplate={async (id) => deleteProjectTemplate(id)}
+          onCreateProjectFromTemplate={async (templateId, projectData) => createProjectFromTemplate(templateId, projectData)}
         />;
       case 'inbox':
         return (
@@ -173,6 +180,14 @@ export function AppContainer() {
             }}
           />
         );
+      case 'templates':
+        return <ProjectTemplates 
+          templates={projectTemplates}
+          onAddTemplate={addProjectTemplate}
+          onUpdateTemplate={updateProjectTemplate}
+          onDeleteTemplate={deleteProjectTemplate}
+          onCreateProjectFromTemplate={createProjectFromTemplate}
+        />;
       case 'settings':
         return <LazyTaskTypeSettings 
           taskTypes={taskTypes}
