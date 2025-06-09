@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Search, Filter, ArrowUpDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -108,12 +107,10 @@ export function TaskListFilters({
                   key={option.value}
                   value={option.value}
                   aria-label={option.label}
-                  className="px-3 py-2.5 text-sm font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg border border-input hover:border-primary/50 transition-all text-center"
+                  className="px-3 py-3 text-sm font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg border border-input hover:border-primary/50 transition-all text-center h-auto min-h-[3rem] flex flex-col items-center justify-center"
                 >
-                  <div className="flex flex-col items-center gap-1">
-                    <span>{option.label}</span>
-                    <span className="text-xs opacity-75">({option.count})</span>
-                  </div>
+                  <span className="leading-tight">{option.label}</span>
+                  <span className="text-xs opacity-75 mt-1 leading-none">({option.count})</span>
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
@@ -137,12 +134,10 @@ export function TaskListFilters({
                   value={option.value}
                   aria-label={option.label}
                   disabled={filterType === 'events' && option.value === 'completed'}
-                  className="px-3 py-2.5 text-sm font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg border border-input hover:border-primary/50 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-3 text-sm font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg border border-input hover:border-primary/50 transition-all text-center disabled:opacity-50 disabled:cursor-not-allowed h-auto min-h-[3rem] flex flex-col items-center justify-center"
                 >
-                  <div className="flex flex-col items-center gap-1">
-                    <span>{option.label}</span>
-                    <span className="text-xs opacity-75">({option.count})</span>
-                  </div>
+                  <span className="leading-tight">{option.label}</span>
+                  <span className="text-xs opacity-75 mt-1 leading-none">({option.count})</span>
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
