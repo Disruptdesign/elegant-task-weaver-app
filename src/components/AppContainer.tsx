@@ -10,7 +10,7 @@ const TaskListContent = lazy(() => import('./TaskListContent').then(module => ({
 const CalendarView = lazy(() => import('./CalendarView').then(module => ({ default: module.CalendarView })));
 const ProjectList = lazy(() => import('./ProjectList').then(module => ({ default: module.ProjectList })));
 const Inbox = lazy(() => import('./Inbox'));
-const LazyComponents = lazy(() => import('./LazyComponents'));
+const LazyTaskTypeSettings = lazy(() => import('./TaskTypeSettings').then(module => ({ default: module.TaskTypeSettings })));
 
 export function AppContainer() {
   const { 
@@ -31,8 +31,7 @@ export function AppContainer() {
     updateEvent,
     deleteEvent,
     addInboxItem,
-    deleteInboxItem,
-    loading
+    deleteInboxItem
   } = useTasks();
 
   const handleToggleTaskComplete = async (taskId: string) => {
@@ -43,16 +42,6 @@ export function AppContainer() {
   };
 
   const renderContent = () => {
-    // Show loading state while data is being fetched
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="ml-3 text-gray-600">Chargement des données...</p>
-        </div>
-      );
-    }
-
     switch (currentView) {
       case 'dashboard':
         return (
@@ -64,7 +53,6 @@ export function AppContainer() {
             onAddTask={async (task) => addTask(task)}
             onAddEvent={async (event) => addEvent(event)}
             onAddInboxItem={async (item) => addInboxItem(item)}
-            onToggleComplete={handleToggleTaskComplete}
             onEditTask={async (task) => updateTask(task.id, task)}
             onEditEvent={async (event) => updateEvent(event.id, event)}
             onDeleteTask={async (id) => deleteTask(id)}
@@ -108,6 +96,7 @@ export function AppContainer() {
           onAddProject={() => {}}
           onUpdateProject={() => {}}
           onDeleteProject={() => {}}
+          onEditTask={async (task) => updateTask(task.id, task)}
         />;
       case 'inbox':
         return (
@@ -128,7 +117,7 @@ export function AppContainer() {
           />
         );
       case 'settings':
-        return <LazyComponents />;
+        return <LazyTaskTypeSettings />;
       default:
         return (
           <Dashboard 
@@ -139,7 +128,6 @@ export function AppContainer() {
             onAddTask={async (task) => addTask(task)}
             onAddEvent={async (event) => addEvent(event)}
             onAddInboxItem={async (item) => addInboxItem(item)}
-            onToggleComplete={handleToggleTaskComplete}
             onEditTask={async (task) => updateTask(task.id, task)}
             onEditEvent={async (event) => updateEvent(event.id, event)}
             onDeleteTask={async (id) => deleteTask(id)}
