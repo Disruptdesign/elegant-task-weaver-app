@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   LazyDashboard,
@@ -99,6 +98,7 @@ export const AppContent: React.FC<AppContentProps> = ({
           onDeleteEvent={onDeleteTask}
           onAddInboxItem={onAddInboxItem}
           onDeleteInboxItem={onDeleteInboxItem}
+          onConvertToTask={onConvertToTask}
           onAddProject={onAddProject}
           onUpdateProject={onUpdateProject}
           onDeleteProject={onDeleteProject}
@@ -193,6 +193,7 @@ export const AppContent: React.FC<AppContentProps> = ({
           onDeleteEvent={onDeleteTask}
           onAddInboxItem={onAddInboxItem}
           onDeleteInboxItem={onDeleteInboxItem}
+          onConvertToTask={onConvertToTask}
           onAddProject={onAddProject}
           onUpdateProject={onUpdateProject}
           onDeleteProject={onDeleteProject}
