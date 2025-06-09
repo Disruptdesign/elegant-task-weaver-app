@@ -281,7 +281,7 @@ export function CalendarView({
     }
   };
 
-  const handleFormSubmit = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
+  const handleFormSubmit = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
     if (selectedTask && onUpdateTask) {
       onUpdateTask(selectedTask.id, taskData);
     } else if (addTask) {
@@ -290,7 +290,7 @@ export function CalendarView({
     setSelectedTask(undefined);
   };
 
-  const handleEventFormSubmit = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleEventFormSubmit = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (selectedEvent && onUpdateEvent) {
       const normalizedData = {
         ...eventData,

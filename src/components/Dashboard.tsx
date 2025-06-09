@@ -191,14 +191,14 @@ function Dashboard({
       });
     }
   };
-  const handleFormSubmit = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
+  const handleFormSubmit = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
     if (selectedTask && onUpdateTask) {
       onUpdateTask(selectedTask.id, taskData);
     }
     setSelectedTask(undefined);
     setIsFormOpen(false);
   };
-  const handleEventFormSubmit = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleEventFormSubmit = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (selectedEvent && onUpdateEvent) {
       onUpdateEvent(selectedEvent.id, eventData);
     }
@@ -336,7 +336,7 @@ function Dashboard({
                   </div>
                   {event.location && <div className="text-xs sm:text-sm text-gray-600 mt-1 truncate">📍 {event.location}</div>}
                 </div>
-                {onUpdateEvent && <button type="button" onClick={() => handleEventClick(event)} className="p-1.5 sm:p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors flex-shrink-0" title="Modifier l'événement">
+                {onUpdateEvent && <button type="button" onClick={() => handleEventClick(event)} className="p-1.5 sm:p-2 text-gray-400 hover:text-purple-600 hover:bg-white rounded-md transition-colors opacity-0 group-hover:opacity-100" title="Modifier l'événement">
                     <Edit3 size={14} />
                   </button>}
               </div>)}
