@@ -116,7 +116,10 @@ export function useUsers() {
     }
   }, []);
 
+  // Improved validation - now more flexible with text IDs
   const isValidAppId = (id: string) => {
+    if (!id || typeof id !== 'string') return false;
+    
     // UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     // App-generated format (task-timestamp-randomstring or event-timestamp-randomstring)
@@ -138,12 +141,12 @@ export function useUsers() {
         throw new Error('Les tâches de démonstration ne peuvent pas être assignées. Créez vos propres tâches pour utiliser les assignations.');
       }
       
-      // Validate app-generated IDs
-      if (!isValidAppId(taskId)) {
-        throw new Error(`ID de tâche invalide: "${taskId}". Cette tâche ne peut pas être assignée car elle n'a pas un ID valide.`);
+      // Basic validation - now more flexible
+      if (!taskId || typeof taskId !== 'string') {
+        throw new Error(`ID de tâche invalide: "${taskId}". Cette tâche ne peut pas être assignée.`);
       }
       
-      if (!isValidAppId(userId)) {
+      if (!userId || typeof userId !== 'string') {
         throw new Error(`ID d'utilisateur invalide: "${userId}". Veuillez vous reconnecter.`);
       }
 
@@ -198,12 +201,12 @@ export function useUsers() {
         throw new Error('Les événements de démonstration ne peuvent pas être assignés. Créez vos propres événements pour utiliser les assignations.');
       }
       
-      // Validate app-generated IDs
-      if (!isValidAppId(eventId)) {
-        throw new Error(`ID d'événement invalide: "${eventId}". Cet événement ne peut pas être assigné car il n'a pas un ID valide.`);
+      // Basic validation - now more flexible
+      if (!eventId || typeof eventId !== 'string') {
+        throw new Error(`ID d'événement invalide: "${eventId}". Cet événement ne peut pas être assigné.`);
       }
       
-      if (!isValidAppId(userId)) {
+      if (!userId || typeof userId !== 'string') {
         throw new Error(`ID d'utilisateur invalide: "${userId}". Veuillez vous reconnecter.`);
       }
 

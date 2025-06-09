@@ -42,12 +42,14 @@ export function UserAssignmentDialog({
   const [isCheckingUser, setIsCheckingUser] = useState(false);
   const { toast } = useToast();
 
-  // Check if the itemId is a valid UUID or a valid app-generated ID
+  // Improved ID validation - now supports both UUIDs and app-generated IDs
   const isValidAppId = (id: string) => {
+    if (!id || typeof id !== 'string') return false;
+    
     // UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     // App-generated format (task-timestamp-randomstring or event-timestamp-randomstring)
-    const appIdRegex = /^(task|event|project|demo)-([\d]+|task|event)-[a-z0-9]+$/i;
+    const appIdRegex = /^(task|event|project)-([\d]+)-[a-z0-9]+$/i;
     
     return uuidRegex.test(id) || appIdRegex.test(id);
   };

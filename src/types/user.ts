@@ -15,7 +15,7 @@ export interface AppUser {
 
 export interface TaskAssignment {
   id: string;
-  taskId: string;
+  taskId: string; // Now accepts text IDs (app-generated or UUIDs)
   userId: string;
   role: 'assignee' | 'reviewer' | 'observer';
   assignedAt: Date;
@@ -25,7 +25,7 @@ export interface TaskAssignment {
 
 export interface EventAssignment {
   id: string;
-  eventId: string;
+  eventId: string; // Now accepts text IDs (app-generated or UUIDs)
   userId: string;
   role: 'organizer' | 'attendee' | 'optional';
   assignedAt: Date;
