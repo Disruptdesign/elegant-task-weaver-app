@@ -1,12 +1,12 @@
-
 import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Calendar, Users } from 'lucide-react';
-import { Project, TemplateTask } from '../types/task';
+import { Project, TemplateTask, Task } from '../types/task';
 import { ProjectDatePicker } from './ProjectDatePicker';
 import { ProjectTaskManager } from './ProjectTaskManager';
 
 interface ProjectListProps {
   projects: Project[];
+  tasks: Task[];
   onAddProject: (project: Omit<Project, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateProject: (id: string, updates: Partial<Project>) => void;
   onDeleteProject: (id: string) => void;
@@ -15,6 +15,7 @@ interface ProjectListProps {
 
 export function ProjectList({ 
   projects, 
+  tasks,
   onAddProject, 
   onUpdateProject, 
   onDeleteProject,
