@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Clock, AlertTriangle, Calendar, Edit3, Users, TrendingUp, FolderOpen } from 'lucide-react';
 import { Task, Event, Project, InboxItem, TaskType, ProjectTemplate } from '../types/task';
-import { format, isToday, isTomorrow, isThisWeek, isPast, isFuture } from 'date-fns';
+import { format, isToday, isTomorrow, isThisWeek, isPast, isFuture, differenceInHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { AddItemForm } from './AddItemForm';
 import { getTaskStatus } from '../utils/taskStatus';
@@ -85,6 +85,15 @@ function Dashboard({
   const todayEvents = events.filter(event => isToday(new Date(event.startDate)));
   const upcomingEvents = events.filter(event => isFuture(new Date(event.startDate)));
 
+  // Calcul du nombre total d'heures des événements d'aujourd'hui
+  const todayEventsHours = todayEvents.reduce((total, event) => {
+    if (event.allDay) {
+      return total + 8; // Considérer qu'un événement de toute la journée dure 8h
+    }
+    const duration = differenceInHours(new Date(event.endDate), new Date(event.startDate));
+    return total + Math.max(duration, 0);
+  }, 0);
+
   const stats = [
     {
       title: 'Terminées',
@@ -110,13 +119,18 @@ function Dashboard({
     },
     {
       title: "Aujourd'hui",
-      value: todayTasks.length,
+      value: todayEvents.length,
       color: 'purple',
       icon: Calendar,
       subtitle: (
         <div className="flex flex-col items-center gap-1">
           <div className="text-xl sm:text-2xl font-bold text-purple-600">
             {todayEvents.length}
+            {todayEventsHours > 0 && (
+              <span className="text-sm font-normal text-gray-600 ml-1">
+                ({todayEventsHours}h)
+              </span>
+            )}
           </div>
           <div className="text-xs text-gray-500">
             événement{todayEvents.length > 1 ? 's' : ''} aujourd'hui
