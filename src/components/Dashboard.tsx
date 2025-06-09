@@ -117,7 +117,6 @@ function Dashboard({
     icon: Calendar,
     subtitle: <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1">
-            
             {todayEventsHours > 0 && <span className="text-sm font-normal text-gray-600">
                 ({todayEventsHours}h)
               </span>}
