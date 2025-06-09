@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { AppUser, TaskAssignment, EventAssignment } from '../types/user';
+import { AppUser } from '../types/user';
 
 export function useUsers() {
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -31,7 +32,6 @@ export function useUsers() {
         email: session.user.email
       });
 
-      // Check if user exists in app_users
       const { data: existingUser, error: checkError } = await supabase
         .from('app_users')
         .select('*')
@@ -46,7 +46,6 @@ export function useUsers() {
       if (!existingUser) {
         console.log('⚠️ User not found in app_users, creating new record...');
         
-        // Create new app_user record
         const { data: newUser, error: insertError } = await supabase
           .from('app_users')
           .insert({
@@ -89,7 +88,6 @@ export function useUsers() {
         return;
       }
 
-      // Ensure current user exists in app_users
       await ensureCurrentUserExists();
 
       const { data, error } = await supabase
@@ -116,44 +114,29 @@ export function useUsers() {
     }
   }, []);
 
-  // Improved validation - now more flexible with text IDs
-  const isValidAppId = (id: string) => {
-    if (!id || typeof id !== 'string') return false;
-    
-    // UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    // App-generated format (task-timestamp-randomstring or event-timestamp-randomstring)
-    const appIdRegex = /^(task|event|project)-([\d]+)-[a-z0-9]+$/i;
-    
-    return uuidRegex.test(id) || appIdRegex.test(id);
-  };
-
   const isDemoItem = (id: string) => {
     return id.startsWith('demo-') || id === 'demo-task-1' || id === 'demo-task-2' || id === 'demo-event-1';
   };
 
   const assignUserToTask = async (taskId: string, userId: string, role: 'assignee' | 'reviewer' | 'observer' = 'assignee') => {
     try {
-      console.log('🔍 Validating task assignment:', { taskId, userId, role });
+      console.log('🔍 Assigning user to task:', { taskId, userId, role });
       
-      // Check if it's a demo item
       if (isDemoItem(taskId)) {
-        throw new Error('Les tâches de démonstration ne peuvent pas être assignées. Créez vos propres tâches pour utiliser les assignations.');
+        throw new Error('Les tâches de démonstration ne peuvent pas être assignées.');
       }
       
-      // Basic validation - now more flexible
       if (!taskId || typeof taskId !== 'string') {
-        throw new Error(`ID de tâche invalide: "${taskId}". Cette tâche ne peut pas être assignée.`);
+        throw new Error(`ID de tâche invalide: "${taskId}".`);
       }
       
       if (!userId || typeof userId !== 'string') {
-        throw new Error(`ID d'utilisateur invalide: "${userId}". Veuillez vous reconnecter.`);
+        throw new Error(`ID d'utilisateur invalide: "${userId}".`);
       }
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('User not authenticated');
 
-      // Get the current user's app_users record to use as assigned_by
       const { data: currentUserData } = await supabase
         .from('app_users')
         .select('id')
@@ -161,7 +144,19 @@ export function useUsers() {
         .single();
 
       if (!currentUserData) {
-        throw new Error('Votre profil utilisateur n\'est pas configuré. Veuillez synchroniser votre compte.');
+        throw new Error('Votre profil utilisateur n\'est pas configuré.');
+      }
+
+      // First, check if assignment already exists
+      const { data: existingAssignment } = await supabase
+        .from('task_assignments')
+        .select('id')
+        .eq('task_id', taskId)
+        .eq('user_id', userId)
+        .single();
+
+      if (existingAssignment) {
+        throw new Error('Cet utilisateur est déjà assigné à cette tâche.');
       }
 
       console.log('📝 Inserting task assignment:', {
@@ -182,6 +177,9 @@ export function useUsers() {
 
       if (error) {
         console.error('❌ Supabase error:', error);
+        if (error.code === '23505') {
+          throw new Error('Cet utilisateur est déjà assigné à cette tâche.');
+        }
         throw error;
       }
       
@@ -194,26 +192,23 @@ export function useUsers() {
 
   const assignUserToEvent = async (eventId: string, userId: string, role: 'organizer' | 'attendee' | 'optional' = 'attendee') => {
     try {
-      console.log('🔍 Validating event assignment:', { eventId, userId, role });
+      console.log('🔍 Assigning user to event:', { eventId, userId, role });
       
-      // Check if it's a demo item
       if (isDemoItem(eventId)) {
-        throw new Error('Les événements de démonstration ne peuvent pas être assignés. Créez vos propres événements pour utiliser les assignations.');
+        throw new Error('Les événements de démonstration ne peuvent pas être assignés.');
       }
       
-      // Basic validation - now more flexible
       if (!eventId || typeof eventId !== 'string') {
-        throw new Error(`ID d'événement invalide: "${eventId}". Cet événement ne peut pas être assigné.`);
+        throw new Error(`ID d'événement invalide: "${eventId}".`);
       }
       
       if (!userId || typeof userId !== 'string') {
-        throw new Error(`ID d'utilisateur invalide: "${userId}". Veuillez vous reconnecter.`);
+        throw new Error(`ID d'utilisateur invalide: "${userId}".`);
       }
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('User not authenticated');
 
-      // Get the current user's app_users record to use as assigned_by
       const { data: currentUserData } = await supabase
         .from('app_users')
         .select('id')
@@ -221,7 +216,19 @@ export function useUsers() {
         .single();
 
       if (!currentUserData) {
-        throw new Error('Votre profil utilisateur n\'est pas configuré. Veuillez synchroniser votre compte.');
+        throw new Error('Votre profil utilisateur n\'est pas configuré.');
+      }
+
+      // First, check if assignment already exists
+      const { data: existingAssignment } = await supabase
+        .from('event_assignments')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+        .single();
+
+      if (existingAssignment) {
+        throw new Error('Cet utilisateur est déjà assigné à cet événement.');
       }
 
       const { error } = await supabase
@@ -235,6 +242,9 @@ export function useUsers() {
 
       if (error) {
         console.error('❌ Supabase error:', error);
+        if (error.code === '23505') {
+          throw new Error('Cet utilisateur est déjà assigné à cet événement.');
+        }
         throw error;
       }
       
@@ -296,7 +306,6 @@ export function useUsers() {
   useEffect(() => {
     fetchUsers();
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         fetchUsers();
