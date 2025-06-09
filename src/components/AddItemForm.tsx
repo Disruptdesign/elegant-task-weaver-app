@@ -74,7 +74,11 @@ export function AddItemForm({
               <Button
                 type="button"
                 variant={currentType === 'task' ? 'default' : 'outline'}
-                onClick={() => !isEditing && setItemType('task')}
+                onClick={() => {
+                  if (!isEditing) {
+                    setItemType('task');
+                  }
+                }}
                 disabled={isEditing}
                 className="flex items-center gap-2"
               >
@@ -84,7 +88,11 @@ export function AddItemForm({
               <Button
                 type="button"
                 variant={currentType === 'event' ? 'default' : 'outline'}
-                onClick={() => !isEditing && setItemType('event')}
+                onClick={() => {
+                  if (!isEditing) {
+                    setItemType('event');
+                  }
+                }}
                 disabled={isEditing}
                 className="flex items-center gap-2"
               >
