@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Task, Project, TaskType, Event } from '../types/task';
 import { AddItemForm } from './AddItemForm';
@@ -38,7 +37,7 @@ export function TaskList({
   projects = [],
   taskTypes = [],
 }: TaskListProps) {
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>();
   const [editingEvent, setEditingEvent] = useState<Event | undefined>();
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
@@ -89,13 +88,13 @@ export function TaskList({
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
     setEditingEvent(undefined);
-    setIsFormOpen(true);
+    setShowForm(true);
   };
 
   const handleEditEvent = (event: Event) => {
     setEditingEvent(event);
     setEditingTask(undefined);
-    setIsFormOpen(true);
+    setShowForm(true);
   };
 
   const handleTaskFormSubmit = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
@@ -115,7 +114,7 @@ export function TaskList({
         });
       }
       setEditingTask(undefined);
-      setIsFormOpen(false);
+      setShowForm(false);
     } catch (error) {
       console.error('Error saving task:', error);
       toast({
@@ -147,7 +146,7 @@ export function TaskList({
         });
       }
       setEditingEvent(undefined);
-      setIsFormOpen(false);
+      setShowForm(false);
     } catch (error) {
       console.error('Error saving event:', error);
       toast({
@@ -163,7 +162,7 @@ export function TaskList({
   };
 
   const handleFormClose = () => {
-    setIsFormOpen(false);
+    setShowForm(false);
     setEditingTask(undefined);
     setEditingEvent(undefined);
   };
@@ -232,7 +231,7 @@ export function TaskList({
     }
   };
 
-  const handleAddNew = () => setIsFormOpen(true);
+  const handleAddNew = () => setShowForm(true);
 
   const handleRescheduleWithFeedback = async () => {
     try {
@@ -297,16 +296,19 @@ export function TaskList({
         loadingStates={loadingStates}
       />
 
-      <AddItemForm
-        isOpen={isFormOpen}
-        onClose={handleFormClose}
-        onSubmitTask={handleTaskFormSubmit}
-        onSubmitEvent={handleEventFormSubmit}
-        editingTask={editingTask}
-        editingEvent={editingEvent}
-        projects={projects}
-        taskTypes={taskTypes}
-      />
+      {showForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <AddItemForm
+            onSubmitTask={handleTaskFormSubmit}
+            onSubmitEvent={handleEventFormSubmit}
+            onCancel={handleFormClose}
+            editingTask={editingTask}
+            editingEvent={editingEvent}
+            projects={projects}
+            taskTypes={taskTypes}
+          />
+        </div>
+      )}
     </div>
   );
 }

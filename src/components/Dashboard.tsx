@@ -5,6 +5,7 @@ import { format, isToday, isTomorrow, isThisWeek, isPast, isFuture, differenceIn
 import { fr } from 'date-fns/locale';
 import { AddItemForm } from './AddItemForm';
 import { getTaskStatus } from '../utils/taskStatus';
+
 interface DashboardProps {
   tasks: Task[];
   events: Event[];
@@ -68,16 +69,14 @@ function Dashboard({
 }: DashboardProps) {
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const completedTasks = tasks.filter(task => task.completed);
-  const pendingTasks = tasks.filter(task => !task.completed);
+  const [showForm, setShowForm] = useState(false);
 
   // Utiliser getTaskStatus pour les tâches en retard
-  const overdueTasks = pendingTasks.filter(task => getTaskStatus(task) === 'overdue');
-  const todayTasks = pendingTasks.filter(task => task.scheduledStart && isToday(task.scheduledStart));
+  const overdueTasks = tasks.filter(task => getTaskStatus(task) === 'overdue');
+  const todayTasks = tasks.filter(task => task.scheduledStart && isToday(task.scheduledStart));
 
   // Calcul du taux de completion
-  const completionRate = tasks.length > 0 ? Math.round(completedTasks.length / tasks.length * 100) : 0;
+  const completionRate = tasks.length > 0 ? Math.round(tasks.filter(task => task.completed).length / tasks.length * 100) : 0;
 
   // Événements d'aujourd'hui et à venir
   const todayEvents = events.filter(event => isToday(new Date(event.startDate)));
@@ -93,17 +92,17 @@ function Dashboard({
   }, 0);
   const stats = [{
     title: 'Terminées',
-    value: completedTasks.length,
+    value: tasks.filter(task => task.completed).length,
     total: tasks.length,
     color: 'green',
     icon: CheckCircle2,
     subtitle: `${completionRate}% de réussite`
   }, {
     title: 'En attente',
-    value: pendingTasks.length,
+    value: tasks.filter(task => !task.completed).length,
     color: 'blue',
     icon: Clock,
-    subtitle: `${Math.round(pendingTasks.reduce((acc, task) => acc + task.estimatedDuration, 0) / 60)}h de travail`
+    subtitle: `${Math.round(tasks.filter(task => !task.completed).reduce((acc, task) => acc + task.estimatedDuration, 0) / 60)}h de travail`
   }, {
     title: 'En retard',
     value: overdueTasks.length,
@@ -133,7 +132,7 @@ function Dashboard({
     return projects.find(project => project.id === projectId)?.title;
   };
   const getUpcomingTasks = () => {
-    return pendingTasks.filter(task => task.scheduledStart && !isPast(new Date(task.deadline))).sort((a, b) => new Date(a.scheduledStart!).getTime() - new Date(b.scheduledStart!).getTime()).slice(0, 5);
+    return tasks.filter(task => task.scheduledStart && !isPast(new Date(task.deadline))).sort((a, b) => new Date(a.scheduledStart!).getTime() - new Date(b.scheduledStart!).getTime()).slice(0, 5);
   };
   const getUpcomingEvents = () => {
     return upcomingEvents.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()).slice(0, 5);
@@ -173,13 +172,13 @@ function Dashboard({
     console.log('Task clicked from dashboard:', task.id);
     setSelectedTask(task);
     setSelectedEvent(undefined);
-    setIsFormOpen(true);
+    setShowForm(true);
   };
   const handleEventClick = (event: Event) => {
     console.log('Event clicked from dashboard:', event.id);
     setSelectedEvent(event);
     setSelectedTask(undefined);
-    setIsFormOpen(true);
+    setShowForm(true);
   };
   const handleTaskCompletion = (task: Task, e: React.MouseEvent) => {
     e.preventDefault();
@@ -196,17 +195,17 @@ function Dashboard({
       onUpdateTask(selectedTask.id, taskData);
     }
     setSelectedTask(undefined);
-    setIsFormOpen(false);
+    setShowForm(false);
   };
   const handleEventFormSubmit = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (selectedEvent && onUpdateEvent) {
       onUpdateEvent(selectedEvent.id, eventData);
     }
     setSelectedEvent(undefined);
-    setIsFormOpen(false);
+    setShowForm(false);
   };
   const handleFormClose = () => {
-    setIsFormOpen(false);
+    setShowForm(false);
     setSelectedTask(undefined);
     setSelectedEvent(undefined);
   };
@@ -222,7 +221,7 @@ function Dashboard({
         {tasks.length > 0 && <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-500 px-4">
             <TrendingUp size={14} className="sm:size-4" />
             <span>
-              {completionRate}% de tâches terminées · {pendingTasks.length} tâches restantes
+              {completionRate}% de tâches terminées · {tasks.filter(task => !task.completed).length} tâches restantes
             </span>
           </div>}
       </div>
@@ -439,7 +438,18 @@ function Dashboard({
       </div>
 
       {/* Formulaire de modification */}
-      {(onUpdateTask || onUpdateEvent) && <AddItemForm isOpen={isFormOpen} onClose={handleFormClose} onSubmitTask={handleFormSubmit} onSubmitEvent={handleEventFormSubmit} editingTask={selectedTask} editingEvent={selectedEvent} projects={projects} />}
+      {showForm && (onUpdateTask || onUpdateEvent) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <AddItemForm
+            onSubmitTask={handleFormSubmit}
+            onSubmitEvent={handleEventFormSubmit}
+            onCancel={handleFormClose}
+            editingTask={selectedTask}
+            editingEvent={selectedEvent}
+            projects={projects}
+          />
+        </div>
+      )}
     </div>;
 }
 export default Dashboard;

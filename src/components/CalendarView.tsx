@@ -51,7 +51,7 @@ export function CalendarView({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [showOverloadWarning, setShowOverloadWarning] = useState(false);
   
@@ -263,13 +263,13 @@ export function CalendarView({
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
     setSelectedEvent(undefined);
-    setIsFormOpen(true);
+    setShowForm(true);
   };
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event);
     setSelectedTask(undefined);
-    setIsFormOpen(true);
+    setShowForm(true);
   };
 
   const handleTaskCompletion = (task: Task, e: React.MouseEvent) => {
@@ -288,6 +288,7 @@ export function CalendarView({
       addTask(taskData);
     }
     setSelectedTask(undefined);
+    setShowForm(false);
   };
 
   const handleEventFormSubmit = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -307,10 +308,11 @@ export function CalendarView({
       addEvent(normalizedData);
     }
     setSelectedEvent(undefined);
+    setShowForm(false);
   };
 
   const handleFormClose = () => {
-    setIsFormOpen(false);
+    setShowForm(false);
     setSelectedTask(undefined);
     setSelectedEvent(undefined);
   };
@@ -821,16 +823,17 @@ export function CalendarView({
         </div>
       )}
 
-      {(onUpdateTask || onUpdateEvent || addTask || addEvent) && (
-        <AddItemForm
-          isOpen={isFormOpen}
-          onClose={handleFormClose}
-          onSubmitTask={handleFormSubmit}
-          onSubmitEvent={handleEventFormSubmit}
-          editingTask={selectedTask}
-          editingEvent={selectedEvent}
-          projects={projects}
-        />
+      {showForm && (onUpdateTask || onUpdateEvent || addTask || addEvent) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <AddItemForm
+            onSubmitTask={handleFormSubmit}
+            onSubmitEvent={handleEventFormSubmit}
+            onCancel={handleFormClose}
+            editingTask={selectedTask}
+            editingEvent={selectedEvent}
+            projects={projects}
+          />
+        </div>
       )}
     </div>
   );
