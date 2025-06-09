@@ -116,21 +116,34 @@ export function useUsers() {
     }
   }, []);
 
-  const isValidUUID = (uuid: string) => {
+  const isValidAppId = (id: string) => {
+    // UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(uuid);
+    // App-generated format (task-timestamp-randomstring or event-timestamp-randomstring)
+    const appIdRegex = /^(task|event|project)-([\d]+)-[a-z0-9]+$/i;
+    
+    return uuidRegex.test(id) || appIdRegex.test(id);
+  };
+
+  const isDemoItem = (id: string) => {
+    return id.startsWith('demo-') || id === 'demo-task-1' || id === 'demo-task-2' || id === 'demo-event-1';
   };
 
   const assignUserToTask = async (taskId: string, userId: string, role: 'assignee' | 'reviewer' | 'observer' = 'assignee') => {
     try {
       console.log('🔍 Validating task assignment:', { taskId, userId, role });
       
-      // Validate UUIDs
-      if (!isValidUUID(taskId)) {
+      // Check if it's a demo item
+      if (isDemoItem(taskId)) {
+        throw new Error('Les tâches de démonstration ne peuvent pas être assignées. Créez vos propres tâches pour utiliser les assignations.');
+      }
+      
+      // Validate app-generated IDs
+      if (!isValidAppId(taskId)) {
         throw new Error(`ID de tâche invalide: "${taskId}". Cette tâche ne peut pas être assignée car elle n'a pas un ID valide.`);
       }
       
-      if (!isValidUUID(userId)) {
+      if (!isValidAppId(userId)) {
         throw new Error(`ID d'utilisateur invalide: "${userId}". Veuillez vous reconnecter.`);
       }
 
@@ -180,12 +193,17 @@ export function useUsers() {
     try {
       console.log('🔍 Validating event assignment:', { eventId, userId, role });
       
-      // Validate UUIDs
-      if (!isValidUUID(eventId)) {
+      // Check if it's a demo item
+      if (isDemoItem(eventId)) {
+        throw new Error('Les événements de démonstration ne peuvent pas être assignés. Créez vos propres événements pour utiliser les assignations.');
+      }
+      
+      // Validate app-generated IDs
+      if (!isValidAppId(eventId)) {
         throw new Error(`ID d'événement invalide: "${eventId}". Cet événement ne peut pas être assigné car il n'a pas un ID valide.`);
       }
       
-      if (!isValidUUID(userId)) {
+      if (!isValidAppId(userId)) {
         throw new Error(`ID d'utilisateur invalide: "${userId}". Veuillez vous reconnecter.`);
       }
 

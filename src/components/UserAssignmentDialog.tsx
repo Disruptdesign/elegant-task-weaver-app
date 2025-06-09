@@ -42,13 +42,23 @@ export function UserAssignmentDialog({
   const [isCheckingUser, setIsCheckingUser] = useState(false);
   const { toast } = useToast();
 
-  // Check if the itemId is a valid UUID
-  const isValidUUID = (uuid: string) => {
+  // Check if the itemId is a valid UUID or a valid app-generated ID
+  const isValidAppId = (id: string) => {
+    // UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(uuid);
+    // App-generated format (task-timestamp-randomstring or event-timestamp-randomstring)
+    const appIdRegex = /^(task|event|project|demo)-([\d]+|task|event)-[a-z0-9]+$/i;
+    
+    return uuidRegex.test(id) || appIdRegex.test(id);
   };
 
-  const isValidItemId = isValidUUID(itemId);
+  // Check if it's a demo item (should not be assignable)
+  const isDemoItem = (id: string) => {
+    return id.startsWith('demo-') || id === 'demo-task-1' || id === 'demo-task-2' || id === 'demo-event-1';
+  };
+
+  const isValidItemId = isValidAppId(itemId);
+  const isDemo = isDemoItem(itemId);
 
   // Get current user information
   useEffect(() => {
@@ -130,6 +140,7 @@ export function UserAssignmentDialog({
     type,
     itemId,
     isValidItemId,
+    isDemo,
     currentUser: currentUser ? { id: currentUser.id, email: currentUser.email, username: currentUser.username } : null,
     isCurrentUserAssigned,
     assignmentsCount: assignments.length,
@@ -151,10 +162,19 @@ export function UserAssignmentDialog({
   const handleAssign = async () => {
     if (!selectedUserId || !selectedRole) return;
 
+    if (isDemo) {
+      toast({
+        title: "Assignation impossible",
+        description: `Cette ${type === 'task' ? 'tâche' : 'événement'} est un exemple et ne peut pas être assignée. Les assignations ne fonctionnent qu'avec les ${type === 'task' ? 'tâches' : 'événements'} que vous créez.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!isValidItemId) {
       toast({
         title: "Assignation impossible",
-        description: `Cette ${type === 'task' ? 'tâche' : 'événement'} ne peut pas être assignée car elle utilise un identifiant de démonstration.`,
+        description: `Cette ${type === 'task' ? 'tâche' : 'événement'} a un identifiant invalide et ne peut pas être assignée.`,
         variant: "destructive",
       });
       return;
@@ -194,10 +214,19 @@ export function UserAssignmentDialog({
       return;
     }
 
+    if (isDemo) {
+      toast({
+        title: "Auto-assignation impossible",
+        description: `Cette ${type === 'task' ? 'tâche' : 'événement'} est un exemple et ne peut pas être assignée. Les assignations ne fonctionnent qu'avec les ${type === 'task' ? 'tâches' : 'événements'} que vous créez.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!isValidItemId) {
       toast({
         title: "Auto-assignation impossible",
-        description: `Cette ${type === 'task' ? 'tâche' : 'événement'} de démonstration ne peut pas être assignée. Les assignations ne fonctionnent qu'avec les ${type === 'task' ? 'tâches' : 'événements'} que vous créez.`,
+        description: `Cette ${type === 'task' ? 'tâche' : 'événement'} a un identifiant invalide et ne peut pas être assignée.`,
         variant: "destructive",
       });
       return;
@@ -219,7 +248,7 @@ export function UserAssignmentDialog({
       
       toast({
         title: "Auto-assignation réussie",
-        description: `Vous avez été assigné à ce ${type === 'task' ? 'tâche' : 'événement'}.`,
+        description: `Vous avez été assigné à cette ${type === 'task' ? 'tâche' : 'événement'}.`,
       });
     } catch (error) {
       console.error('❌ Error self-assigning:', error);
@@ -334,7 +363,7 @@ export function UserAssignmentDialog({
 
         <div className="space-y-6">
           {/* Warning for demo items */}
-          {!isValidItemId && (
+          {isDemo && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="text-amber-600 mt-0.5 flex-shrink-0" size={18} />
@@ -345,6 +374,23 @@ export function UserAssignmentDialog({
                   <p className="text-sm text-amber-800">
                     Cette {type === 'task' ? 'tâche' : 'événement'} est un exemple et ne peut pas être assignée. 
                     Les assignations ne fonctionnent qu'avec les {type === 'task' ? 'tâches' : 'événements'} que vous créez.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Warning for invalid ID items */}
+          {!isValidItemId && !isDemo && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="text-red-600 mt-0.5 flex-shrink-0" size={18} />
+                <div className="space-y-2">
+                  <h3 className="font-medium text-red-900">
+                    Identifiant invalide
+                  </h3>
+                  <p className="text-sm text-red-800">
+                    Cette {type === 'task' ? 'tâche' : 'événement'} a un identifiant invalide et ne peut pas être assignée.
                   </p>
                 </div>
               </div>
@@ -453,11 +499,11 @@ export function UserAssignmentDialog({
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-blue-800">
                     {isCurrentUserAssigned 
-                      ? `Vous êtes assigné à ce ${type === 'task' ? 'tâche' : 'événement'}`
-                      : `Vous n'êtes pas assigné à ce ${type === 'task' ? 'tâche' : 'événement'}`
+                      ? `Vous êtes assigné à cette ${type === 'task' ? 'tâche' : 'événement'}`
+                      : `Vous n'êtes pas assigné à cette ${type === 'task' ? 'tâche' : 'événement'}`
                     }
                   </span>
-                  {!isCurrentUserAssigned && isValidItemId && (
+                  {!isCurrentUserAssigned && isValidItemId && !isDemo && (
                     <Button
                       size="sm"
                       onClick={handleSelfAssign}
@@ -473,7 +519,7 @@ export function UserAssignmentDialog({
           </div>
 
           {/* Ajouter un nouvel utilisateur */}
-          {isValidItemId && (
+          {isValidItemId && !isDemo && (
             <div className="space-y-4">
               <h3 className="font-medium flex items-center gap-2">
                 <UserPlus size={18} />
@@ -576,7 +622,7 @@ export function UserAssignmentDialog({
                         </Badge>
                       )}
                     </div>
-                    {isValidItemId && (
+                    {isValidItemId && !isDemo && (
                       <Button
                         variant="ghost"
                         size="sm"
