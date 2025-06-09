@@ -36,7 +36,8 @@ export function useCalendarDragAndDrop(
       title: task.title,
       action, 
       resizeHandle,
-      hasScheduledStart: !!task.scheduledStart
+      hasScheduledStart: !!task.scheduledStart,
+      projectId: task.projectId || 'none'
     });
     
     if (!task.scheduledStart) {
