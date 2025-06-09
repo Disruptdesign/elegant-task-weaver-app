@@ -24,6 +24,7 @@ export function AppContainer() {
     events = [],
     projects = [],
     inboxItems = [],
+    taskTypes = [],
     addTask,
     updateTask,
     deleteTask,
@@ -31,7 +32,10 @@ export function AppContainer() {
     updateEvent,
     deleteEvent,
     addInboxItem,
-    deleteInboxItem
+    deleteInboxItem,
+    addTaskType,
+    updateTaskType,
+    deleteTaskType
   } = useTasks();
 
   const handleToggleTaskComplete = async (taskId: string) => {
@@ -53,7 +57,6 @@ export function AppContainer() {
             onAddTask={async (task) => addTask(task)}
             onAddEvent={async (event) => addEvent(event)}
             onAddInboxItem={async (item) => addInboxItem(item)}
-            onEditTask={async (task) => updateTask(task.id, task)}
             onEditEvent={async (event) => updateEvent(event.id, event)}
             onDeleteTask={async (id) => deleteTask(id)}
             onDeleteEvent={async (id) => deleteEvent(id)}
@@ -117,7 +120,12 @@ export function AppContainer() {
           />
         );
       case 'settings':
-        return <LazyTaskTypeSettings />;
+        return <LazyTaskTypeSettings 
+          taskTypes={taskTypes}
+          onAddTaskType={addTaskType}
+          onUpdateTaskType={updateTaskType}
+          onDeleteTaskType={deleteTaskType}
+        />;
       default:
         return (
           <Dashboard 
@@ -128,7 +136,6 @@ export function AppContainer() {
             onAddTask={async (task) => addTask(task)}
             onAddEvent={async (event) => addEvent(event)}
             onAddInboxItem={async (item) => addInboxItem(item)}
-            onEditTask={async (task) => updateTask(task.id, task)}
             onEditEvent={async (event) => updateEvent(event.id, event)}
             onDeleteTask={async (id) => deleteTask(id)}
             onDeleteEvent={async (id) => deleteEvent(id)}
