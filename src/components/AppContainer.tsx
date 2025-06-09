@@ -25,6 +25,7 @@ export function AppContainer() {
     projects = [],
     inboxItems = [],
     taskTypes = [],
+    projectTemplates = [],
     addTask,
     updateTask,
     deleteTask,
@@ -33,9 +34,16 @@ export function AppContainer() {
     deleteEvent,
     addInboxItem,
     deleteInboxItem,
+    addProject,
+    updateProject,
+    deleteProject,
     addTaskType,
     updateTaskType,
-    deleteTaskType
+    deleteTaskType,
+    addProjectTemplate,
+    updateProjectTemplate,
+    deleteProjectTemplate,
+    createProjectFromTemplate
   } = useTasks();
 
   const handleToggleTaskComplete = async (taskId: string) => {
@@ -54,13 +62,27 @@ export function AppContainer() {
             events={events}
             inboxItems={inboxItems}
             projects={projects}
+            taskTypes={taskTypes}
+            projectTemplates={projectTemplates}
             onAddTask={async (task) => addTask(task)}
-            onAddEvent={async (event) => addEvent(event)}
-            onAddInboxItem={async (item) => addInboxItem(item)}
-            onEditEvent={async (event) => updateEvent(event.id, event)}
+            onUpdateTask={async (id, updates) => updateTask(id, updates)}
             onDeleteTask={async (id) => deleteTask(id)}
+            onAddEvent={async (event) => addEvent(event)}
+            onUpdateEvent={async (id, updates) => updateEvent(id, updates)}
             onDeleteEvent={async (id) => deleteEvent(id)}
+            onAddInboxItem={async (item) => addInboxItem(item)}
             onDeleteInboxItem={async (id) => deleteInboxItem(id)}
+            onAddProject={async (project) => addProject(project)}
+            onUpdateProject={async (id, updates) => updateProject(id, updates)}
+            onDeleteProject={async (id) => deleteProject(id)}
+            onAddTaskType={async (taskType) => addTaskType(taskType)}
+            onUpdateTaskType={async (id, updates) => updateTaskType(id, updates)}
+            onDeleteTaskType={async (id) => deleteTaskType(id)}
+            onAddProjectTemplate={async (template) => addProjectTemplate(template)}
+            onUpdateProjectTemplate={async (id, updates) => updateProjectTemplate(id, updates)}
+            onDeleteProjectTemplate={async (id) => deleteProjectTemplate(id)}
+            onCreateProjectFromTemplate={async (templateId, projectData) => createProjectFromTemplate(templateId, projectData)}
+            onRefreshData={async () => {}}
             onConvertToTask={async (item) => {
               addTask({
                 title: item.title,
@@ -99,7 +121,12 @@ export function AppContainer() {
           onAddProject={() => {}}
           onUpdateProject={() => {}}
           onDeleteProject={() => {}}
-          onEditTask={async (task) => updateTask(task.id, task)}
+          onEditTask={async (taskId) => {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+              await updateTask(taskId, task);
+            }
+          }}
         />;
       case 'inbox':
         return (
@@ -133,13 +160,27 @@ export function AppContainer() {
             events={events}
             inboxItems={inboxItems}
             projects={projects}
+            taskTypes={taskTypes}
+            projectTemplates={projectTemplates}
             onAddTask={async (task) => addTask(task)}
-            onAddEvent={async (event) => addEvent(event)}
-            onAddInboxItem={async (item) => addInboxItem(item)}
-            onEditEvent={async (event) => updateEvent(event.id, event)}
+            onUpdateTask={async (id, updates) => updateTask(id, updates)}
             onDeleteTask={async (id) => deleteTask(id)}
+            onAddEvent={async (event) => addEvent(event)}
+            onUpdateEvent={async (id, updates) => updateEvent(id, updates)}
             onDeleteEvent={async (id) => deleteEvent(id)}
+            onAddInboxItem={async (item) => addInboxItem(item)}
             onDeleteInboxItem={async (id) => deleteInboxItem(id)}
+            onAddProject={async (project) => addProject(project)}
+            onUpdateProject={async (id, updates) => updateProject(id, updates)}
+            onDeleteProject={async (id) => deleteProject(id)}
+            onAddTaskType={async (taskType) => addTaskType(taskType)}
+            onUpdateTaskType={async (id, updates) => updateTaskType(id, updates)}
+            onDeleteTaskType={async (id) => deleteTaskType(id)}
+            onAddProjectTemplate={async (template) => addProjectTemplate(template)}
+            onUpdateProjectTemplate={async (id, updates) => updateProjectTemplate(id, updates)}
+            onDeleteProjectTemplate={async (id) => deleteProjectTemplate(id)}
+            onCreateProjectFromTemplate={async (templateId, projectData) => createProjectFromTemplate(templateId, projectData)}
+            onRefreshData={async () => {}}
             onConvertToTask={async (item) => {
               addTask({
                 title: item.title,
