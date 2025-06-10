@@ -1,7 +1,6 @@
-
 import { useState, useCallback } from 'react';
 import { Task, Event } from '../types/task';
-import { scheduleTasksAutomatically, rescheduleAfterEventChange } from '../utils/algorithmicScheduler';
+import { scheduleTasksAutomatically, rescheduleAfterEventChange } from '../utils/scheduling';
 
 interface SchedulerSettings {
   autoSchedule: boolean;

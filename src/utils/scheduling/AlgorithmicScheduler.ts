@@ -1,4 +1,3 @@
-
 import { addMinutes, addDays, format } from 'date-fns';
 import { Task, Event } from '../../types/task';
 import { SchedulingOptions, SchedulingContext } from '../../types/scheduling';
@@ -89,7 +88,7 @@ export class AlgorithmicScheduler {
     return allTasks;
   }
 
-  private categorizeTask(tasks: Task[]): SchedulingContext {
+  private categorizeTasks(tasks: Task[]): SchedulingContext {
     const completedTasks = tasks.filter(task => task.completed);
     const tasksInProgress = tasks.filter(task => this.constraintResolver.isTaskInProgress(task));
     

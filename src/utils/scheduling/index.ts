@@ -13,6 +13,7 @@ export function scheduleTasksAutomatically(
   options?: any,
   projects: any[] = []
 ): any[] {
+  const { AlgorithmicScheduler } = require('./AlgorithmicScheduler');
   const scheduler = new AlgorithmicScheduler(events, options, projects);
   return scheduler.scheduleTasks(tasks, false);
 }
@@ -24,5 +25,6 @@ export function rescheduleAfterEventChange(
   projects: any[] = []
 ): any[] {
   console.log('🔄 REPLANIFICATION BIDIRECTIONNELLE avec préservation ABSOLUE des contraintes canStartFrom');
+  const { AlgorithmicScheduler } = require('./AlgorithmicScheduler');
   return AlgorithmicScheduler.rescheduleAll(tasks, events, options, projects);
 }
