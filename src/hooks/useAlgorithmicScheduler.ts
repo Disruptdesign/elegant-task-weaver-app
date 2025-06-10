@@ -1,6 +1,8 @@
+
 import { useState, useCallback } from 'react';
 import { Task, Event } from '../types/task';
-import { scheduleTasksAutomatically, rescheduleAfterEventChange } from '../utils/scheduling';
+import { AlgorithmicScheduler } from '../utils/scheduling/AlgorithmicScheduler';
+import { mergeSchedulingOptions } from '../utils/scheduling/SchedulingOptions';
 
 interface SchedulerSettings {
   autoSchedule: boolean;
@@ -32,15 +34,22 @@ export function useAlgorithmicScheduler() {
       return tasks;
     }
 
-    console.log('🤖 Démarrage de la planification automatique avec contraintes projet...');
+    console.log('🤖 Démarrage de la planification automatique avec contraintes projet...', {
+      tasksCount: tasks.length,
+      eventsCount: events.length,
+      projectsCount: projects.length
+    });
     setIsScheduling(true);
 
     try {
-      const scheduledTasks = scheduleTasksAutomatically(tasks, events, {
+      const options = mergeSchedulingOptions({
         workingHours: settings.workingHours,
         bufferBetweenTasks: settings.bufferBetweenTasks,
         allowWeekends: settings.allowWeekends
-      }, projects);
+      });
+
+      const scheduler = new AlgorithmicScheduler(events, options, projects);
+      const scheduledTasks = scheduler.scheduleTasks(tasks, false);
 
       console.log('✅ Planification terminée avec respect des contraintes projet');
       return scheduledTasks;
@@ -52,7 +61,6 @@ export function useAlgorithmicScheduler() {
     }
   }, [settings]);
 
-  // Version flexible qui accepte des paramètres optionnels pour être utilisée depuis d'autres composants
   const rescheduleAllTasks = useCallback(async (
     tasks: Task[], 
     events: Event[], 
@@ -66,15 +74,21 @@ export function useAlgorithmicScheduler() {
       return tasks;
     }
 
-    console.log('🔄 Démarrage de la replanification AGGRESSIVE avec contraintes projet ET préservation des contraintes canStartFrom...');
+    console.log('🔄 Démarrage de la replanification AGGRESSIVE avec contraintes projet ET préservation des contraintes canStartFrom...', {
+      tasksCount: tasks.length,
+      eventsCount: events.length,
+      projectsCount: projects.length
+    });
     setIsScheduling(true);
 
     try {
-      const rescheduledTasks = rescheduleAfterEventChange(tasks, events, {
+      const options = mergeSchedulingOptions({
         workingHours: effectiveSettings.workingHours,
         bufferBetweenTasks: effectiveSettings.bufferBetweenTasks,
         allowWeekends: effectiveSettings.allowWeekends
-      }, projects);
+      });
+
+      const rescheduledTasks = AlgorithmicScheduler.rescheduleAll(tasks, events, options, projects);
 
       console.log('✅ Replanification aggressive terminée - contraintes canStartFrom PRÉSERVÉES et contraintes projet appliquées');
       return rescheduledTasks;

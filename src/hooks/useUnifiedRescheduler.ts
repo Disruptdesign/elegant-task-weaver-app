@@ -105,7 +105,7 @@ export function useUnifiedRescheduler() {
                 now.getTime()
               ));
               
-              console.log('🎯 APPLICATION FINALE contrainte projet pour:', task.title, format(finalConstraint, 'dd/MM HH:mm'));
+              console.log('🎯 APPLICATION FINALE contrainte projet pour:', task.title, formatDate(finalConstraint, 'dd/MM HH:mm'));
               
               return {
                 ...task,
@@ -139,7 +139,7 @@ export function useUnifiedRescheduler() {
 }
 
 // Fonction utilitaire pour formater les dates
-function format(date: Date, formatString: string): string {
+function formatDate(date: Date, formatString: string): string {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');

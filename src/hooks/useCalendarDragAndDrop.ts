@@ -33,6 +33,11 @@ export function useCalendarDragAndDrop(
     projectsCount: projects.length
   });
 
+  // CORRECTION CRITIQUE: Vérifier les données reçues
+  if (tasks.length === 0 && events.length === 0 && projects.length === 0) {
+    console.warn('⚠️ CALENDRIER: Aucune donnée reçue pour le drag and drop - vérifier la transmission des props');
+  }
+
   // Fonction de replanification unifiée qui respecte ABSOLUMENT les contraintes canStartFrom
   const rescheduleAllTasksWithConstraints = async () => {
     console.log('🔄 CALENDRIER: Replanification UNIFIÉE avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
@@ -41,6 +46,12 @@ export function useCalendarDragAndDrop(
       events: events.length,
       projects: projects.length
     });
+
+    // VALIDATION CRITIQUE: S'assurer qu'on a des données
+    if (tasks.length === 0) {
+      console.warn('⚠️ CALENDRIER: Aucune tâche à replanifier');
+      return;
+    }
 
     const onTasksUpdateForCalendar = (updatedTasks: Task[]) => {
       console.log('📅 CALENDRIER: Application des mises à jour depuis le calendrier');
