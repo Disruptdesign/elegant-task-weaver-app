@@ -1,3 +1,4 @@
+
 import { Task, Event } from '../types/task';
 import { addMinutes, startOfDay, endOfDay, isAfter, isBefore, isWithinInterval, addDays, format } from 'date-fns';
 
@@ -64,7 +65,8 @@ export class AlgorithmicScheduler {
   }
 
   /**
-   * Vérifie si une tâche est en retard mais conserve sa priorité originale
+   * CORRECTION MAJEURE: Vérifie si une tâche est en retard UNIQUEMENT basé sur sa deadline
+   * La date canStartFrom ne doit JAMAIS influencer le statut "en retard"
    */
   private isTaskOverdue(task: Task): boolean {
     if (task.completed || !task.deadline) return false;
@@ -74,15 +76,21 @@ export class AlgorithmicScheduler {
     const isOverdue = deadline < now;
     
     if (isOverdue) {
-      console.log('⏰ Tâche en retard détectée:', task.title, 'deadline était', format(deadline, 'dd/MM HH:mm'));
+      console.log('⏰ Tâche en retard détectée (DEADLINE DÉPASSÉE):', task.title, 'deadline était', format(deadline, 'dd/MM HH:mm'));
+    } else {
+      // Debug pour les tâches qui ne sont PAS en retard
+      console.log('✅ Tâche dans les temps:', task.title, 'deadline', format(deadline, 'dd/MM HH:mm'));
+      if (task.canStartFrom) {
+        console.log('   canStartFrom:', format(task.canStartFrom, 'dd/MM HH:mm'), '(ne détermine PAS le statut en retard)');
+      }
     }
     
     return isOverdue;
   }
 
   /**
-   * Valide les contraintes de projet pour une tâche et applique les corrections
-   * CORRECTION MAJEURE : Respecter la contrainte canStartFrom même pour les tâches de projet
+   * CORRECTION MAJEURE: Valide les contraintes de projet sans affecter le statut "en retard"
+   * Sépare clairement les contraintes de planification et le calcul du retard
    */
   private applyProjectConstraints(task: Task): Task {
     if (!task.projectId) {
@@ -104,41 +112,45 @@ export class AlgorithmicScheduler {
     console.log('   Projet:', project.title, format(projectStart, 'dd/MM'), '-', format(projectEnd, 'dd/MM'));
     console.log('   Tâche deadline originale:', format(taskDeadline, 'dd/MM'));
     
-    // NOUVELLE LOGIQUE : Afficher la contrainte canStartFrom existante
+    // CLARIFICATION : Afficher les contraintes existantes
     if (task.canStartFrom) {
       console.log('   Contrainte canStartFrom existante:', format(task.canStartFrom, 'dd/MM HH:mm'));
     }
 
     let updatedTask = { ...task };
 
-    // CONTRAINTE 1: La deadline de la tâche ne peut pas être après la fin du projet
+    // CONTRAINTE 1: Ajuster la deadline si nécessaire (mais sans affecter le statut en retard)
+    // Note : Cette contrainte ne change que la planification future, pas le calcul du retard
     if (taskDeadline > projectEnd) {
       updatedTask.deadline = projectEnd;
       console.log('📅 Deadline tâche ajustée à la fin du projet:', format(projectEnd, 'dd/MM'));
+      console.log('   ⚠️ IMPORTANT: Cet ajustement ne change pas le statut "en retard" de la tâche');
     }
 
-    // CONTRAINTE 2: La deadline de la tâche ne peut pas être avant le début du projet
     if (new Date(updatedTask.deadline) < projectStart) {
       updatedTask.deadline = projectStart;
       console.log('📅 Deadline tâche ajustée au début du projet:', format(projectStart, 'dd/MM'));
+      console.log('   ⚠️ IMPORTANT: Cet ajustement ne change pas le statut "en retard" de la tâche');
     }
 
-    // CONTRAINTE 3 CORRIGÉE : Calculer la date de début effective en respectant TOUTES les contraintes
+    // CONTRAINTE 2 CORRIGÉE : Calculer la date de début effective pour la PLANIFICATION SEULEMENT
+    // Cette contrainte ne doit JAMAIS affecter si une tâche est considérée comme "en retard"
     const constraints = [
       projectStart.getTime(),                           // Contrainte projet
       task.canStartFrom?.getTime() || projectStart.getTime(),  // Contrainte tâche (si elle existe)
       now.getTime()                                     // Contrainte temps (maintenant)
     ];
 
-    // PRENDRE LA DATE LA PLUS RESTRICTIVE (la plus tardive)
+    // PRENDRE LA DATE LA PLUS RESTRICTIVE (la plus tardive) POUR LA PLANIFICATION
     const effectiveEarliestStart = Math.max(...constraints);
     updatedTask.canStartFrom = new Date(effectiveEarliestStart);
 
-    console.log('🚀 Date de début effective calculée (TOUTES CONTRAINTES RESPECTÉES):', format(updatedTask.canStartFrom, 'dd/MM HH:mm'));
+    console.log('🚀 Date de début effective calculée (PLANIFICATION SEULEMENT - ne détermine PAS le retard):', format(updatedTask.canStartFrom, 'dd/MM HH:mm'));
     console.log('   - Contrainte projet (début):', format(projectStart, 'dd/MM HH:mm'));
     console.log('   - Contrainte tâche (canStartFrom):', task.canStartFrom ? format(task.canStartFrom, 'dd/MM HH:mm') : 'aucune');
     console.log('   - Contrainte temps (maintenant):', format(now, 'dd/MM HH:mm'));
-    console.log('   - RÉSULTAT FINAL (le plus restrictif):', format(updatedTask.canStartFrom, 'dd/MM HH:mm'));
+    console.log('   - RÉSULTAT FINAL (le plus restrictif pour PLANIFICATION):', format(updatedTask.canStartFrom, 'dd/MM HH:mm'));
+    console.log('   ✅ RAPPEL: Le statut "en retard" dépend UNIQUEMENT de la deadline:', format(updatedTask.deadline, 'dd/MM HH:mm'));
 
     return updatedTask;
   }
@@ -309,9 +321,9 @@ export class AlgorithmicScheduler {
       console.log('🔒 Tâches protégées (EN COURS - INTOUCHABLES):', tasksInProgress.length);
       console.log('🔄 Tâches à replanifier (incluant celles en retard):', tasksToSchedule.length);
       
-      // Compter les tâches en retard
+      // CORRECTION : Compter les tâches en retard CORRECTEMENT (deadline dépassée seulement)
       const overdueTasks = tasksToSchedule.filter(task => this.isTaskOverdue(task));
-      console.log('⏰ Tâches en retard à replanifier (priorité conservée):', overdueTasks.length);
+      console.log('⏰ Tâches VRAIMENT en retard à replanifier (deadline dépassée):', overdueTasks.length);
       
       // Afficher les détails des tâches en cours protégées
       tasksInProgress.forEach(task => {
@@ -322,7 +334,7 @@ export class AlgorithmicScheduler {
       
     } else {
       // Mode planification normale avec protection des tâches en cours
-      // Inclure les tâches en retard dans la replanification
+      // CORRECTION : Inclure SEULEMENT les tâches vraiment en retard (deadline dépassée)
       const tasksNeedingScheduling = tasks.filter(task => (!task.scheduledStart || this.isTaskOverdue(task)) && !task.completed);
       
       // Appliquer les contraintes de projet AVANT la planification
@@ -420,7 +432,9 @@ export class AlgorithmicScheduler {
       
       if (scheduledTask) {
         newlyScheduledTasks.push(scheduledTask);
-        const overdueNote = this.isTaskOverdue(task) ? ' (était en retard)' : '';
+        // CORRECTION : Affichage plus précis du statut
+        const isReallyOverdue = this.isTaskOverdue(task);
+        const overdueNote = isReallyOverdue ? ' (était VRAIMENT en retard - deadline dépassée)' : '';
         const projectNote = task.projectId ? ' (contraintes projet appliquées)' : '';
         console.log('✅ Tâche programmée:', task.title, 'à', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm') + overdueNote + projectNote);
       } else {
@@ -431,13 +445,16 @@ export class AlgorithmicScheduler {
 
     const result = [...protectedTasks, ...newlyScheduledTasks];
     
-    console.log('📊 Résumé de la planification avec contraintes projet:');
+    // CORRECTION : Statistiques plus précises
+    const reallyOverdueTasks = result.filter(t => this.isTaskOverdue(t));
+    
+    console.log('📊 Résumé de la planification avec contraintes projet CORRIGÉES:');
     console.log(`   - Tâches traitées: ${result.length}`);
     console.log(`   - Tâches programmées: ${result.filter(t => t.scheduledStart && !t.completed).length}`);
     console.log(`   - Tâches non programmées: ${result.filter(t => !t.scheduledStart && !t.completed).length}`);
     console.log(`   - Tâches terminées: ${result.filter(t => t.completed).length}`);
     console.log(`   - Tâches en cours (protégées): ${result.filter(t => this.isTaskInProgress(t)).length}`);
-    console.log(`   - Tâches en retard replanifiées: ${result.filter(t => this.isTaskOverdue(t) && t.scheduledStart).length}`);
+    console.log(`   - Tâches VRAIMENT en retard (deadline dépassée): ${reallyOverdueTasks.length}`);
     console.log(`   - Tâches avec dépendances: ${result.filter(t => t.dependencies && t.dependencies.length > 0).length}`);
     console.log(`   - Tâches liées à des projets: ${result.filter(t => t.projectId).length}`);
 
