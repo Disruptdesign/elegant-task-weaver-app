@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Calendar, CheckSquare } from 'lucide-react';
+import { Calendar, CheckSquare, X } from 'lucide-react';
 import { Task, Event, Project, TaskType } from '../types/task';
 import { TaskForm } from './TaskForm';
 import { EventForm } from './EventForm';
@@ -73,13 +73,13 @@ export function AddItemForm({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-      <div className="sticky top-0 bg-white flex items-center justify-between p-6 border-b border-gray-100 rounded-t-2xl">
+    <div className="card-base w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="sticky top-0 bg-background flex items-center justify-between spacing-lg border-b border-border rounded-t-unified">
         <div className="flex-1">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-unified-xl font-semibold text-foreground">
             {editingTask ? 'Modifier la tâche' : editingEvent ? 'Modifier l\'événement' : 'Ajouter un nouvel élément'}
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-unified-sm text-muted-foreground mt-1">
             {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Choisissez le type d\'élément à créer.'}
           </p>
           
@@ -87,9 +87,10 @@ export function AddItemForm({
           <div className="flex gap-2 mt-4">
             <Button
               type="button"
-              variant={currentType === 'task' ? 'default' : 'outline'}
+              variant={currentType === 'task' ? 'primary' : 'outline'}
               onClick={handleTaskTypeSelect}
               disabled={isEditing}
+              size="sm"
               className="flex items-center gap-2"
             >
               <CheckSquare size={16} />
@@ -97,9 +98,10 @@ export function AddItemForm({
             </Button>
             <Button
               type="button"
-              variant={currentType === 'event' ? 'default' : 'outline'}
+              variant={currentType === 'event' ? 'primary' : 'outline'}
               onClick={handleEventTypeSelect}
               disabled={isEditing}
+              size="sm"
               className="flex items-center gap-2"
             >
               <Calendar size={16} />
@@ -108,15 +110,17 @@ export function AddItemForm({
           </div>
         </div>
         
-        <button 
-          onClick={onCancel} 
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        <Button
+          onClick={onCancel}
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground hover:text-foreground"
         >
-          ✕
-        </button>
+          <X size={16} />
+        </Button>
       </div>
 
-      <div className="p-6">
+      <div className="spacing-lg">
         {currentType === 'task' ? (
           <TaskForm
             isOpen={true}

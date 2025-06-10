@@ -10,21 +10,25 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-unified-md hover:shadow-unified-lg",
+        default: "bg-foreground text-background hover:bg-foreground/90 shadow-unified-md hover:shadow-unified-lg",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-unified-md hover:shadow-unified-lg",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground hover:shadow-unified-md",
+          "border border-border bg-background hover:bg-muted hover:text-foreground hover:shadow-unified-md",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-unified-md",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline shadow-none",
+          "bg-muted text-muted-foreground hover:bg-muted/80 hover:shadow-unified-md",
+        ghost: "hover:bg-muted hover:text-foreground",
+        link: "text-foreground underline-offset-4 hover:underline shadow-none",
+        primary: "bg-foreground text-background hover:bg-foreground/90 shadow-unified-md hover:shadow-unified-lg",
+        edit: "border border-border bg-background text-foreground hover:bg-muted hover:shadow-unified-md",
+        action: "bg-foreground text-background hover:bg-foreground/90 shadow-unified-md hover:shadow-unified-lg",
+        danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-unified-md hover:shadow-unified-lg"
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-unified-sm px-3 text-unified-xs",
+        sm: "h-8 rounded-unified-sm px-3 text-unified-xs",
         lg: "h-11 rounded-unified-lg px-8 text-unified-base",
-        icon: "h-10 w-10",
+        icon: "h-9 w-9",
       },
     },
     defaultVariants: {
