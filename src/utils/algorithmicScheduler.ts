@@ -199,8 +199,8 @@ export class AlgorithmicScheduler {
   }
 
   /**
-   * CORRECTION CRITIQUE POUR REPLANIFICATION: Application ABSOLUE des contraintes de projet
-   * La contrainte canStartFrom est maintenant STRICTE et INVIOLABLE même lors de la replanification
+   * CORRECTION CRITIQUE POUR MOUVEMENT BIDIRECTIONNEL: Application des contraintes de projet
+   * PERMETTRE LE RECUL quand le projet recule, tout en respectant les contraintes existantes
    */
   private applyProjectConstraints(task: Task, preserveExistingCanStartFrom: boolean = true): Task {
     if (!task.projectId) {
@@ -218,7 +218,7 @@ export class AlgorithmicScheduler {
     const taskDeadline = new Date(task.deadline);
     const now = new Date();
 
-    console.log('🎯 APPLICATION STRICTE des contraintes projet pour:', task.title);
+    console.log('🎯 APPLICATION BIDIRECTIONNELLE des contraintes projet pour:', task.title);
     console.log('   Projet:', project.title, format(projectStart, 'dd/MM'), '-', format(projectEnd, 'dd/MM'));
     console.log('   Tâche deadline originale:', format(taskDeadline, 'dd/MM'));
     console.log('   Mode préservation canStartFrom:', preserveExistingCanStartFrom);
@@ -236,38 +236,43 @@ export class AlgorithmicScheduler {
       console.log('📅 Deadline tâche ajustée au début du projet:', format(projectStart, 'dd/MM'));
     }
 
-    // CONTRAINTE 2 CRITIQUE POUR REPLANIFICATION: Calcul de la date de début ABSOLUE
-    // PRÉSERVER ABSOLUMENT la contrainte canStartFrom existante lors de la replanification
+    // CONTRAINTE 2 CRITIQUE - CORRECTION BIDIRECTIONNELLE:
+    // Permettre le mouvement dans les DEUX directions (avant ET arrière)
     const existingCanStartFrom = task.canStartFrom?.getTime() || 0;
     const projectStartTime = projectStart.getTime();
     const nowTime = now.getTime();
     
-    console.log('🔍 ANALYSE des contraintes pour replanification:');
+    console.log('🔍 ANALYSE BIDIRECTIONNELLE des contraintes:');
     console.log('   - Contrainte existante (canStartFrom):', existingCanStartFrom ? format(new Date(existingCanStartFrom), 'dd/MM HH:mm') : 'aucune');
     console.log('   - Contrainte projet (début):', format(projectStart, 'dd/MM HH:mm'));
     console.log('   - Contrainte temps (maintenant):', format(now, 'dd/MM HH:mm'));
 
-    // RÈGLE ABSOLUE POUR REPLANIFICATION: 
-    // Si preserveExistingCanStartFrom est true, la contrainte existante est INVIOLABLE
-    // Sinon, prendre la plus restrictive (la plus tardive)
     let absoluteEarliestStart: number;
     
     if (preserveExistingCanStartFrom && existingCanStartFrom > 0) {
-      // PRIORITÉ ABSOLUE à la contrainte existante lors de la replanification
-      absoluteEarliestStart = Math.max(existingCanStartFrom, nowTime);
-      console.log('🚨 MODE REPLANIFICATION: Contrainte existante PRÉSERVÉE');
+      // CORRECTION CLÉE: En mode replanification, PERMETTRE le recul si le projet a reculé
+      // Ne plus bloquer avec Math.max(existingCanStartFrom, nowTime)
+      
+      // Si le projet a reculé et que la contrainte existante était basée sur l'ancien projet,
+      // nous devons permettre à la tâche de reculer aussi
+      if (projectStartTime < existingCanStartFrom) {
+        console.log('🔄 DÉTECTION RECUL PROJET: Le projet a reculé, autorisation du recul de la tâche');
+        // Prendre la nouvelle date projet comme référence, en respectant "maintenant" comme minimum
+        absoluteEarliestStart = Math.max(projectStartTime, nowTime);
+      } else {
+        // Le projet n'a pas reculé ou a avancé, garder la contrainte existante
+        absoluteEarliestStart = Math.max(existingCanStartFrom, projectStartTime, nowTime);
+      }
     } else {
-      // Mode normal: prendre la plus restrictive
-      absoluteEarliestStart = Math.max(existingCanStartFrom, projectStartTime, nowTime);
-      console.log('🔧 MODE NORMAL: Contrainte la plus restrictive appliquée');
+      // Mode normal: prendre la plus restrictive en respectant maintenant
+      absoluteEarliestStart = Math.max(projectStartTime, nowTime);
     }
     
     updatedTask.canStartFrom = new Date(absoluteEarliestStart);
 
-    console.log('🔒 CONTRAINTE FINALE ABSOLUE CALCULÉE (INVIOLABLE):');
-    console.log('   - 🎯 RÉSULTAT FINAL INVIOLABLE:', format(updatedTask.canStartFrom, 'dd/MM HH:mm'));
-    console.log('   ⚠️ AUCUNE TÂCHE NE PEUT ÊTRE PROGRAMMÉE AVANT CETTE DATE');
-
+    console.log('🔒 CONTRAINTE FINALE BIDIRECTIONNELLE CALCULÉE:');
+    console.log('   - 🎯 RÉSULTAT FINAL (mouvement bidirectionnel autorisé):', format(updatedTask.canStartFrom, 'dd/MM HH:mm'));
+    
     return updatedTask;
   }
 
@@ -346,18 +351,14 @@ export class AlgorithmicScheduler {
     // RÈGLE ABSOLUE: canStartFrom est PRIORITAIRE sur TOUT
     let absoluteEarliestStart = task.canStartFrom || now;
     
-    // JAMAIS avant maintenant ET JAMAIS avant canStartFrom
-    absoluteEarliestStart = new Date(Math.max(absoluteEarliestStart.getTime(), now.getTime()));
-    
-    if (task.canStartFrom) {
-      console.log('🔒 CONTRAINTE ABSOLUE POUR REPLANIFICATION pour', task.title, ':', format(task.canStartFrom, 'dd/MM HH:mm'));
-      console.log('   Date de début MINIMALE ABSOLUE:', format(absoluteEarliestStart, 'dd/MM HH:mm'));
-      
-      // VÉRIFICATION CRITIQUE: S'assurer que la contrainte est respectée
-      if (absoluteEarliestStart < task.canStartFrom) {
-        console.log('🚨 CORRECTION IMMÉDIATE: Violation de contrainte détectée lors du calcul');
-        absoluteEarliestStart = task.canStartFrom;
-      }
+    // CORRECTION BIDIRECTIONNELLE: Permettre le recul si canStartFrom est dans le passé
+    // mais au minimum maintenant pour les nouvelles planifications
+    if (!task.canStartFrom) {
+      absoluteEarliestStart = new Date(Math.max(absoluteEarliestStart.getTime(), now.getTime()));
+    } else {
+      // Si canStartFrom existe, le respecter même s'il est dans le passé (cas du recul de projet)
+      console.log('🔒 CONTRAINTE BIDIRECTIONNELLE pour', task.title, ':', format(task.canStartFrom, 'dd/MM HH:mm'));
+      console.log('   AUTORISATION mouvement bidirectionnel (peut reculer si projet a reculé)');
     }
     
     // CONTRAINTE 2: Vérifier les dépendances - MAIS JAMAIS avant la contrainte absolue
@@ -395,7 +396,7 @@ export class AlgorithmicScheduler {
       absoluteEarliestStart = task.canStartFrom;
     }
     
-    console.log('🎯 Date de début FINALE ABSOLUE pour', task.title, ':', format(absoluteEarliestStart, 'dd/MM HH:mm'));
+    console.log('🎯 Date de début FINALE BIDIRECTIONNELLE pour', task.title, ':', format(absoluteEarliestStart, 'dd/MM HH:mm'));
     return absoluteEarliestStart;
   }
 
@@ -412,13 +413,13 @@ export class AlgorithmicScheduler {
     
     const now = new Date();
     
-    // RÈGLE ABSOLUE: La contrainte canStartFrom ne peut JAMAIS être violée
-    let effectiveStartTime = Math.max(startDate.getTime(), now.getTime());
+    // CORRECTION BIDIRECTIONNELLE: Respecter canStartFrom même s'il est dans le passé
+    let effectiveStartTime = startDate.getTime();
     
-    // CONTRAINTE INVIOLABLE: Si canStartFrom est défini, il est ABSOLUMENT PRIORITAIRE
+    // CONTRAINTE BIDIRECTIONNELLE: Si canStartFrom est défini, il est ABSOLUMENT PRIORITAIRE
     if (task.canStartFrom) {
       effectiveStartTime = Math.max(effectiveStartTime, task.canStartFrom.getTime());
-      console.log('🔒 CONTRAINTE ABSOLUE APPLIQUÉE:', format(new Date(effectiveStartTime), 'dd/MM HH:mm'));
+      console.log('🔒 CONTRAINTE BIDIRECTIONNELLE APPLIQUÉE:', format(new Date(effectiveStartTime), 'dd/MM HH:mm'));
       
       // VÉRIFICATION CRITIQUE: Ne JAMAIS programmer avant cette date
       if (effectiveStartTime < task.canStartFrom.getTime()) {
@@ -429,7 +430,7 @@ export class AlgorithmicScheduler {
     
     let currentDate = new Date(effectiveStartTime);
     
-    console.log('⏰ Recherche de créneau à partir de (CONTRAINTE ABSOLUE RESPECTÉE):', format(currentDate, 'dd/MM HH:mm'));
+    console.log('⏰ Recherche de créneau à partir de (CONTRAINTE BIDIRECTIONNELLE RESPECTÉE):', format(currentDate, 'dd/MM HH:mm'));
     
     // Chercher jour par jour
     const searchEndDate = this.isTaskOverdue(task) ? endDate : task.deadline;
@@ -446,7 +447,7 @@ export class AlgorithmicScheduler {
       
       // Chercher un créneau assez long
       for (const slot of availableSlots) {
-        // CORRECTION ABSOLUE: Le créneau DOIT respecter la contrainte ABSOLUE
+        // CORRECTION BIDIRECTIONNELLE: Le créneau DOIT respecter la contrainte ABSOLUE
         const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), effectiveStartTime));
         
         // VÉRIFICATION CRITIQUE SUPPLÉMENTAIRE
@@ -485,7 +486,7 @@ export class AlgorithmicScheduler {
             continue;
           }
           
-          console.log('✅ Créneau validé (CONTRAINTE ABSOLUE RESPECTÉE):', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
+          console.log('✅ Créneau validé (CONTRAINTE BIDIRECTIONNELLE RESPECTÉE):', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
           
           // VÉRIFICATION FINALE AVANT RETOUR
           if (task.canStartFrom && scheduledStart < task.canStartFrom) {
@@ -665,7 +666,7 @@ export class AlgorithmicScheduler {
   }
 
   static rescheduleAll(tasks: Task[], events: Event[], options?: Partial<SchedulingOptions>, projects: any[] = []): Task[] {
-    console.log('🔄 Replanification complète des tâches avec protection des tâches en cours et contraintes projet');
+    console.log('🔄 Replanification complète des tâches avec protection des tâches en cours et contraintes projet BIDIRECTIONNELLES');
     const scheduler = new AlgorithmicScheduler(events, options, projects);
     
     // Utiliser le mode replanification pour respecter les contraintes
@@ -688,7 +689,7 @@ export function scheduleTasksAutomatically(
 
 /**
  * CORRECTION CRITIQUE: Fonction pour replanifier après changement d'événements
- * avec préservation STRICTE des contraintes canStartFrom
+ * avec préservation STRICTE des contraintes canStartFrom ET mouvement bidirectionnel
  */
 export function rescheduleAfterEventChange(
   tasks: Task[], 
@@ -696,6 +697,6 @@ export function rescheduleAfterEventChange(
   options?: Partial<SchedulingOptions>,
   projects: any[] = []
 ): Task[] {
-  console.log('🔄 REPLANIFICATION STRICTE avec préservation ABSOLUE des contraintes canStartFrom');
+  console.log('🔄 REPLANIFICATION BIDIRECTIONNELLE avec préservation ABSOLUE des contraintes canStartFrom');
   return AlgorithmicScheduler.rescheduleAll(tasks, events, options, projects);
 }
