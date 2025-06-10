@@ -82,6 +82,7 @@ export class AlgorithmicScheduler {
 
   /**
    * Valide les contraintes de projet pour une tâche et applique les corrections
+   * CORRECTION MAJEURE : Respecter la contrainte canStartFrom même pour les tâches de projet
    */
   private applyProjectConstraints(task: Task): Task {
     if (!task.projectId) {
@@ -102,6 +103,11 @@ export class AlgorithmicScheduler {
     console.log('🎯 Application contraintes projet pour:', task.title);
     console.log('   Projet:', project.title, format(projectStart, 'dd/MM'), '-', format(projectEnd, 'dd/MM'));
     console.log('   Tâche deadline originale:', format(taskDeadline, 'dd/MM'));
+    
+    // NOUVELLE LOGIQUE : Afficher la contrainte canStartFrom existante
+    if (task.canStartFrom) {
+      console.log('   Contrainte canStartFrom existante:', format(task.canStartFrom, 'dd/MM HH:mm'));
+    }
 
     let updatedTask = { ...task };
 
@@ -117,20 +123,22 @@ export class AlgorithmicScheduler {
       console.log('📅 Deadline tâche ajustée au début du projet:', format(projectStart, 'dd/MM'));
     }
 
-    // CONTRAINTE 3: La tâche ne peut pas commencer avant le début du projet
-    // Calculer la date de début effective en tenant compte du projet ET de maintenant
-    const effectiveEarliestStart = Math.max(
-      projectStart.getTime(),
-      task.canStartFrom?.getTime() || projectStart.getTime(),
-      now.getTime() // Ne jamais programmer dans le passé
-    );
+    // CONTRAINTE 3 CORRIGÉE : Calculer la date de début effective en respectant TOUTES les contraintes
+    const constraints = [
+      projectStart.getTime(),                           // Contrainte projet
+      task.canStartFrom?.getTime() || projectStart.getTime(),  // Contrainte tâche (si elle existe)
+      now.getTime()                                     // Contrainte temps (maintenant)
+    ];
 
+    // PRENDRE LA DATE LA PLUS RESTRICTIVE (la plus tardive)
+    const effectiveEarliestStart = Math.max(...constraints);
     updatedTask.canStartFrom = new Date(effectiveEarliestStart);
 
-    console.log('🚀 Date de début effective calculée:', format(updatedTask.canStartFrom, 'dd/MM HH:mm'));
-    console.log('   - Contrainte projet:', format(projectStart, 'dd/MM HH:mm'));
-    console.log('   - Contrainte tâche originale:', task.canStartFrom ? format(task.canStartFrom, 'dd/MM HH:mm') : 'aucune');
+    console.log('🚀 Date de début effective calculée (TOUTES CONTRAINTES RESPECTÉES):', format(updatedTask.canStartFrom, 'dd/MM HH:mm'));
+    console.log('   - Contrainte projet (début):', format(projectStart, 'dd/MM HH:mm'));
+    console.log('   - Contrainte tâche (canStartFrom):', task.canStartFrom ? format(task.canStartFrom, 'dd/MM HH:mm') : 'aucune');
     console.log('   - Contrainte temps (maintenant):', format(now, 'dd/MM HH:mm'));
+    console.log('   - RÉSULTAT FINAL (le plus restrictif):', format(updatedTask.canStartFrom, 'dd/MM HH:mm'));
 
     return updatedTask;
   }
