@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Task, Project, TaskType, Event } from '../types/task';
 import { AddItemForm } from './AddItemForm';
@@ -233,25 +234,37 @@ export function TaskList({
 
   const handleAddNew = () => setShowForm(true);
 
-  const handleRescheduleWithFeedback = async () => {
-    try {
-      toast({
-        title: "Replanification en cours...",
-        description: "Nous optimisons votre planning.",
-      });
-      await onReschedule();
-      toast({
-        title: "Planning optimisé",
-        description: "Votre planning a été replanifié avec succès.",
-      });
-    } catch (error) {
-      console.error('Error rescheduling:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de replanifier le planning.",
-        variant: "destructive",
-      });
-    }
+  // Fonction pour mettre à jour les tâches après replanification
+  const handleTasksUpdate = (updatedTasks: Task[]) => {
+    console.log('📋 TaskList: Mise à jour des tâches après replanification', updatedTasks.length, 'tâches');
+    
+    // Appliquer les mises à jour via onUpdateTask pour chaque tâche modifiée
+    updatedTasks.forEach(async (updatedTask) => {
+      const originalTask = tasks.find(t => t.id === updatedTask.id);
+      if (originalTask) {
+        // Vérifier s'il y a des changements dans la planification
+        const hasSchedulingChanges = 
+          updatedTask.scheduledStart !== originalTask.scheduledStart ||
+          updatedTask.scheduledEnd !== originalTask.scheduledEnd;
+        
+        if (hasSchedulingChanges) {
+          console.log('🔄 TaskList: Application mise à jour tâche:', updatedTask.title, {
+            avant: originalTask.scheduledStart ? new Date(originalTask.scheduledStart).toLocaleString() : 'non programmée',
+            après: updatedTask.scheduledStart ? new Date(updatedTask.scheduledStart).toLocaleString() : 'non programmée'
+          });
+          
+          try {
+            await onUpdateTask(updatedTask.id, {
+              scheduledStart: updatedTask.scheduledStart,
+              scheduledEnd: updatedTask.scheduledEnd,
+              canStartFrom: updatedTask.canStartFrom
+            });
+          } catch (error) {
+            console.error('❌ TaskList: Erreur mise à jour tâche:', updatedTask.id, error);
+          }
+        }
+      }
+    });
   };
 
   return (
@@ -261,7 +274,10 @@ export function TaskList({
         completedTasks={completedTasks.length}
         totalEvents={totalEvents}
         onAddNew={handleAddNew}
-        onReschedule={handleRescheduleWithFeedback}
+        tasks={tasks}
+        events={events}
+        projects={projects}
+        onTasksUpdate={handleTasksUpdate}
       />
 
       <TaskListFilters
