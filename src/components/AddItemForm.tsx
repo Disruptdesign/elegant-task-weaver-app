@@ -14,10 +14,6 @@ interface AddItemFormProps {
   editingEvent?: Event;
   projects?: Project[];
   taskTypes?: TaskType[];
-  prefilledData?: {
-    title?: string;
-    description?: string;
-  };
 }
 
 export function AddItemForm({
@@ -27,8 +23,7 @@ export function AddItemForm({
   editingTask,
   editingEvent,
   projects = [],
-  taskTypes = [],
-  prefilledData
+  taskTypes = []
 }: AddItemFormProps) {
   const [itemType, setItemType] = useState<'task' | 'event'>('task');
 
@@ -37,7 +32,6 @@ export function AddItemForm({
     taskTypesCount: taskTypes.length,
     editingTask: editingTask ? { id: editingTask.id, title: editingTask.title } : null,
     editingEvent: editingEvent ? { id: editingEvent.id, title: editingEvent.title } : null,
-    prefilledData,
     projects: projects.map(p => ({ id: p.id, title: p.title })),
     taskTypes: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
@@ -134,7 +128,6 @@ export function AddItemForm({
             tasks={[]}
             inline={true} // Mode inline activé
             onCancel={onCancel} // Passer la fonction onCancel
-            prefilledData={prefilledData} // Passer les données pré-remplies
           />
         ) : (
           <EventForm
@@ -144,7 +137,6 @@ export function AddItemForm({
             editingEvent={editingEvent}
             inline={true} // Mode inline activé
             onCancel={onCancel} // Passer la fonction onCancel
-            prefilledData={prefilledData} // Passer les données pré-remplies
           />
         )}
       </div>

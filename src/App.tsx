@@ -2,9 +2,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import Dashboard from './components/Dashboard';
+import { Dashboard } from './components/Dashboard';
 import { TaskList } from './components/TaskList';
-import Inbox from './components/Inbox';
+import { Inbox } from './components/Inbox';
 import { ProjectList } from './components/ProjectList';
 import { ProjectTemplates } from './components/ProjectTemplates';
 import { TaskTypeSettings } from './components/TaskTypeSettings';
