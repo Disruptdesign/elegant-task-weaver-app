@@ -40,6 +40,99 @@ export class AlgorithmicScheduler {
   }
 
   /**
+   * MÉTHODE PRINCIPALE: Programme toutes les tâches en respectant ABSOLUMENT les contraintes
+   */
+  scheduleTasks(tasks: Task[], isRescheduling: boolean = false): Task[] {
+    console.log(`🚀 ${isRescheduling ? 'REPLANIFICATION' : 'PLANIFICATION INITIALE'} de ${tasks.length} tâches avec contraintes STRICTES`);
+    
+    // Séparer les tâches terminées, en cours et à programmer
+    const completedTasks = tasks.filter(task => task.completed);
+    const tasksInProgress = tasks.filter(task => this.isTaskInProgress(task));
+    const tasksToSchedule = tasks.filter(task => !task.completed && !this.isTaskInProgress(task));
+    
+    console.log('📊 Répartition des tâches:', {
+      terminées: completedTasks.length,
+      enCours: tasksInProgress.length,
+      àProgrammer: tasksToSchedule.length
+    });
+
+    // Appliquer les contraintes de projet avec mode de préservation pour la replanification
+    const tasksWithProjectConstraints = tasksToSchedule.map(task => 
+      this.applyProjectConstraints(task, isRescheduling)
+    );
+
+    // Résoudre les dépendances
+    const orderedTasks = this.resolveDependencies(tasksWithProjectConstraints);
+    
+    // Prioriser les tâches
+    const prioritizedTasks = this.prioritizeTasks(orderedTasks);
+    
+    console.log('🎯 Ordre de planification final (avec contraintes ABSOLUES):');
+    prioritizedTasks.forEach((task, index) => {
+      const constraintInfo = task.canStartFrom ? 
+        `CONTRAINTE ABSOLUE: ${format(task.canStartFrom, 'dd/MM HH:mm')}` : 
+        'aucune contrainte temporelle';
+      console.log(`   ${index + 1}. ${task.title} (${constraintInfo})`);
+    });
+
+    // Programmer les tâches une par une
+    const scheduledTasks: Task[] = [];
+    const now = new Date();
+    const maxSearchDate = addDays(now, 365); // Chercher jusqu'à 1 an dans le futur
+
+    for (const task of prioritizedTasks) {
+      console.log(`\n🔍 Programmation de: ${task.title}`);
+      
+      // Calculer la date de début la plus tôt possible en respectant ABSOLUMENT les contraintes
+      const earliestStart = this.calculateEarliestStart(task, completedTasks, scheduledTasks);
+      
+      // Essayer de programmer la tâche
+      const scheduledTask = this.scheduleTask(task, earliestStart, maxSearchDate, [...scheduledTasks, ...tasksInProgress]);
+      
+      if (scheduledTask) {
+        // VÉRIFICATION FINALE CRITIQUE avant ajout
+        if (scheduledTask.canStartFrom && scheduledTask.scheduledStart && 
+            new Date(scheduledTask.scheduledStart) < scheduledTask.canStartFrom) {
+          console.log('🚨 ERREUR FINALE DÉTECTÉE: Violation de contrainte après programmation');
+          console.log('   Correction forcée à la contrainte minimale');
+          
+          const correctedStart = scheduledTask.canStartFrom;
+          const correctedEnd = addMinutes(correctedStart, scheduledTask.estimatedDuration);
+          
+          scheduledTasks.push({
+            ...scheduledTask,
+            scheduledStart: correctedStart,
+            scheduledEnd: correctedEnd,
+            canStartFrom: undefined // Nettoyer après programmation
+          });
+        } else {
+          scheduledTasks.push({
+            ...scheduledTask,
+            canStartFrom: undefined // Nettoyer après programmation réussie
+          });
+        }
+        
+        console.log('✅ Tâche programmée avec succès:', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm'));
+      } else {
+        console.log('❌ Impossible de programmer la tâche dans les contraintes de temps');
+        // Garder la tâche sans programmation
+        scheduledTasks.push(task);
+      }
+    }
+
+    // Retourner toutes les tâches (terminées + en cours + nouvellement programmées)
+    const allTasks = [...completedTasks, ...tasksInProgress, ...scheduledTasks];
+    
+    console.log(`✅ ${isRescheduling ? 'REPLANIFICATION' : 'PLANIFICATION'} terminée:`, {
+      total: allTasks.length,
+      programmées: scheduledTasks.filter(t => t.scheduledStart).length,
+      nonProgrammées: scheduledTasks.filter(t => !t.scheduledStart).length
+    });
+
+    return allTasks;
+  }
+
+  /**
    * Vérifie si une tâche est actuellement en cours d'exécution
    */
   private isTaskInProgress(task: Task): boolean {
