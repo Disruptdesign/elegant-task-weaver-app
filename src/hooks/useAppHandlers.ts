@@ -1,6 +1,7 @@
 
 import { useCallback } from 'react';
 import { useTasks } from './useTasks';
+import { useUnifiedRescheduler } from './useUnifiedRescheduler';
 
 export const useAppHandlers = () => {
   const {
@@ -11,8 +12,9 @@ export const useAppHandlers = () => {
     addTask,
     updateTask,
     deleteInboxItem,
-    rescheduleAllTasks,
   } = useTasks();
+
+  const { performUnifiedReschedule } = useUnifiedRescheduler();
 
   const handleConvertInboxItem = useCallback((item: any, openAddForm: (data: any) => void) => {
     const initialData = {
@@ -30,7 +32,7 @@ export const useAppHandlers = () => {
     }
   }, [tasks, updateTask]);
 
-  const handleRescheduleAllTasks = useCallback(() => {
+  const handleRescheduleAllTasks = useCallback(async (onTasksUpdate: (tasks: any[]) => void) => {
     console.log('🔄 Reschedule all tasks requested - CORRECTION avec projets');
     console.log('📊 Données disponibles:', {
       tasks: tasks.length,
@@ -39,9 +41,13 @@ export const useAppHandlers = () => {
       projectsDetails: projects.map(p => ({ id: p.id, title: p.title }))
     });
     
-    // CORRECTION CRITIQUE: Passer TOUS les projets à la replanification
-    rescheduleAllTasks(projects);
-  }, [rescheduleAllTasks, tasks, events, projects]);
+    try {
+      await performUnifiedReschedule(tasks, events, projects, onTasksUpdate);
+      console.log('✅ Replanification terminée avec contraintes projet appliquées');
+    } catch (error) {
+      console.error('❌ Erreur lors de la replanification:', error);
+    }
+  }, [performUnifiedReschedule, tasks, events, projects]);
 
   const handleTaskSubmit = useCallback((taskData: any, taskFormData: any, closeAddForm: () => void) => {
     console.log('Submitting task with dependencies:', taskData);
