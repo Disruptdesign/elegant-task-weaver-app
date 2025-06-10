@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -14,9 +13,11 @@ import { useTasks } from '../hooks/useTasks';
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode;
+  currentView: string;
+  onViewChange: (view: string) => void;
 }
 
-export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
+export function AuthenticatedLayout({ children, currentView, onViewChange }: AuthenticatedLayoutProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -344,7 +345,15 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   );
 
   return (
-    <Layout>
+    <Layout
+      currentView={currentView}
+      onViewChange={onViewChange}
+      sidebarFooter={authSidebarFooter}
+      user={user}
+      session={session}
+      onSignOut={handleSignOut}
+      isAuthenticating={isAuthenticating}
+    >
       {children}
     </Layout>
   );

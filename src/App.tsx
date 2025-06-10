@@ -2,9 +2,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import Dashboard from './components/Dashboard';
+import { Dashboard } from './components/Dashboard';
 import { TaskList } from './components/TaskList';
-import Inbox from './components/Inbox';
+import { Inbox } from './components/Inbox';
 import { ProjectList } from './components/ProjectList';
 import { ProjectTemplates } from './components/ProjectTemplates';
 import { TaskTypeSettings } from './components/TaskTypeSettings';
@@ -42,12 +42,6 @@ function App() {
     createProjectFromTemplate,
   } = useTasks();
 
-  // Wrap functions to return promises for Dashboard compatibility
-  const wrapWithPromise = (fn: (...args: any[]) => void) => 
-    async (...args: any[]) => {
-      fn(...args);
-    };
-
   return (
     <Router>
       <Layout>
@@ -56,40 +50,14 @@ function App() {
             <Dashboard 
               tasks={tasks}
               events={events}
-              inboxItems={inboxItems}
+              onAddTask={addTask}
+              onUpdateTask={updateTask}
+              onDeleteTask={deleteTask}
+              onAddEvent={addEvent}
+              onUpdateEvent={updateEvent}
+              onDeleteEvent={deleteEvent}
               projects={projects}
               taskTypes={taskTypes}
-              projectTemplates={projectTemplates}
-              onAddTask={wrapWithPromise(addTask)}
-              onUpdateTask={wrapWithPromise(updateTask)}
-              onDeleteTask={wrapWithPromise(deleteTask)}
-              onAddEvent={wrapWithPromise(addEvent)}
-              onUpdateEvent={wrapWithPromise(updateEvent)}
-              onDeleteEvent={wrapWithPromise(deleteEvent)}
-              onAddInboxItem={wrapWithPromise(addInboxItem)}
-              onDeleteInboxItem={wrapWithPromise(deleteInboxItem)}
-              onAddProject={wrapWithPromise(addProject)}
-              onUpdateProject={wrapWithPromise(updateProject)}
-              onDeleteProject={wrapWithPromise(deleteProject)}
-              onAddTaskType={wrapWithPromise(addTaskType)}
-              onUpdateTaskType={wrapWithPromise(updateTaskType)}
-              onDeleteTaskType={wrapWithPromise(deleteTaskType)}
-              onAddProjectTemplate={wrapWithPromise(addProjectTemplate)}
-              onUpdateProjectTemplate={wrapWithPromise(updateProjectTemplate)}
-              onDeleteProjectTemplate={wrapWithPromise(deleteProjectTemplate)}
-              onCreateProjectFromTemplate={wrapWithPromise(createProjectFromTemplate)}
-              onRefreshData={async () => {}}
-              onConvertToTask={wrapWithPromise((item) => addTask({
-                title: item.content,
-                description: item.description,
-                priority: 'medium',
-                estimatedDuration: 60,
-                deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                projectId: undefined,
-                taskTypeId: undefined,
-                scheduledStart: undefined,
-                tags: []
-              }))}
             />
           } />
           
