@@ -1,6 +1,6 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { Task, Event, Project, InboxItem, TaskType, ProjectTemplate } from '../types/task';
+import { Task, Event, Project, InboxItem, TaskType, ProjectTemplate, TemplateTask } from '../types/task';
 import { useSupabaseTasks } from './useSupabaseTasks';
 
 export function useTasks() {
@@ -36,9 +36,12 @@ export function useTasks() {
     addProjectTemplate: addSupabaseProjectTemplate,
     updateProjectTemplate: updateSupabaseProjectTemplate,
     deleteProjectTemplate: deleteSupabaseProjectTemplate,
-    loading,
+    loading: supabaseLoading,
     error
   } = useSupabaseTasks();
+
+  // Use supabaseLoading with a fallback
+  const loading = supabaseLoading || false;
 
   // Synchroniser les données Supabase avec l'état local
   useEffect(() => {
@@ -197,8 +200,8 @@ export function useTasks() {
     }
   }, [deleteSupabaseInboxItem]);
 
-  // TaskType operations
-  const addTaskType = useCallback(async (taskTypeData: Omit<TaskType, 'id' | 'createdAt' | 'updatedAt' | 'timeSlots'>) => {
+  // TaskType operations - fix the type mismatch
+  const addTaskType = useCallback(async (taskTypeData: Omit<TaskType, 'id' | 'createdAt' | 'updatedAt'>) => {
     console.log('Adding task type:', taskTypeData);
     try {
       await addSupabaseTaskType(taskTypeData);
@@ -228,8 +231,8 @@ export function useTasks() {
     }
   }, [deleteSupabaseTaskType]);
 
-  // ProjectTemplate operations
-  const addProjectTemplate = useCallback(async (templateData: Omit<ProjectTemplate, 'id' | 'createdAt' | 'updatedAt' | 'tasks'>) => {
+  // ProjectTemplate operations - fix the type mismatch
+  const addProjectTemplate = useCallback(async (templateData: Omit<ProjectTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
     console.log('Adding project template:', templateData);
     try {
       await addSupabaseProjectTemplate(templateData);
@@ -258,6 +261,35 @@ export function useTasks() {
       throw error;
     }
   }, [deleteSupabaseProjectTemplate]);
+
+  // New function to create project from template
+  const createProjectFromTemplate = useCallback(async (templateId: string, projectData: { title: string; description?: string; startDate: Date; deadline: Date }) => {
+    console.log('Creating project from template:', templateId, projectData);
+    try {
+      const template = projectTemplates.find(t => t.id === templateId);
+      if (!template) {
+        throw new Error('Template not found');
+      }
+
+      // Create the project first
+      const project: Omit<Project, 'id' | 'completed' | 'createdAt' | 'updatedAt'> = {
+        title: projectData.title,
+        description: projectData.description,
+        startDate: projectData.startDate,
+        deadline: projectData.deadline,
+        color: template.color,
+      };
+
+      await addProject(project);
+
+      // After project is created, we would create tasks from template
+      // For now, we'll just create the project
+      console.log('Project created from template successfully');
+    } catch (error) {
+      console.error('Error creating project from template:', error);
+      throw error;
+    }
+  }, [projectTemplates, addProject]);
 
   return {
     // State
@@ -297,6 +329,7 @@ export function useTasks() {
     // ProjectTemplate operations
     addProjectTemplate,
     updateProjectTemplate,
-    deleteProjectTemplate
+    deleteProjectTemplate,
+    createProjectFromTemplate
   };
 }
