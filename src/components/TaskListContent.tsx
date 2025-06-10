@@ -5,6 +5,7 @@ import { TaskCard } from './TaskCard';
 import { EventCard } from './EventCard';
 import { Search, ListTodo, Plus } from 'lucide-react';
 import { Button } from './ui/button';
+import { Card } from './ui/card';
 
 interface TaskListContentProps {
   items: (Task & { type: 'task' } | Event & { type: 'event' })[];
@@ -37,21 +38,21 @@ export function TaskListContent({
 }: TaskListContentProps) {
   if (items.length === 0) {
     return (
-      <div className="text-center py-8 sm:py-12 lg:py-16 bg-white rounded-2xl border border-gray-100 shadow-sm mx-2 sm:mx-0">
-        <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full flex items-center justify-center mb-4 sm:mb-6 animate-pulse">
+      <Card className="text-center py-6xl container-padding">
+        <div className="mx-auto w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-2xl">
           {hasActiveFilters ? (
-            <Search className="text-blue-400" size={20} />
+            <Search className="text-muted-foreground" size={24} />
           ) : (
-            <ListTodo className="text-blue-400" size={20} />
+            <ListTodo className="text-muted-foreground" size={24} />
           )}
         </div>
-        <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 mb-2 px-4">
+        <h3 className="text-display-sm text-foreground mb-md">
           {hasActiveFilters
             ? 'Aucun élément trouvé' 
             : 'Aucune tâche ou événement'
           }
         </h3>
-        <p className="text-gray-600 mb-4 sm:mb-6 px-4 text-sm sm:text-base max-w-md mx-auto">
+        <p className="text-body-md text-muted-foreground mb-2xl max-w-md mx-auto">
           {hasActiveFilters
             ? 'Essayez de modifier vos filtres de recherche ou d\'élargir vos critères'
             : 'Commencez par créer votre première tâche ou événement pour organiser votre travail'
@@ -60,25 +61,25 @@ export function TaskListContent({
         {!hasActiveFilters && (
           <Button
             onClick={onAddNew}
-            className="px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 touch-target text-sm sm:text-base"
             size="lg"
+            className="gap-md"
           >
-            <Plus className="mr-2" size={16} />
+            <Plus size={16} />
             Créer le premier élément
           </Button>
         )}
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="grid gap-3 sm:gap-4">
+    <div className="space-y-lg">
+      <div className="grid gap-lg">
         {items.map(item => (
           item.type === 'task' ? (
             <div 
               key={`task-${item.id}`} 
-              className={`transition-all duration-200 ${loadingStates[item.id] ? 'opacity-60 pointer-events-none' : ''}`}
+              className={`transition-normal ${loadingStates[item.id] ? 'opacity-60 pointer-events-none' : ''}`}
             >
               <TaskCard
                 task={item}
@@ -94,7 +95,7 @@ export function TaskListContent({
           ) : (
             <div 
               key={`event-${item.id}`} 
-              className={`transition-all duration-200 ${loadingStates[item.id] ? 'opacity-60 pointer-events-none' : ''}`}
+              className={`transition-normal ${loadingStates[item.id] ? 'opacity-60 pointer-events-none' : ''}`}
             >
               <EventCard
                 event={item}

@@ -5,6 +5,7 @@ import { Task, Event, Project, TaskType } from '../types/task';
 import { TaskForm } from './TaskForm';
 import { EventForm } from './EventForm';
 import { Button } from './ui/button';
+import { Card, CardHeader, CardContent } from './ui/card';
 
 interface AddItemFormProps {
   onSubmitTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -73,50 +74,56 @@ export function AddItemForm({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-      <div className="sticky top-0 bg-white flex items-center justify-between p-6 border-b border-gray-100 rounded-t-2xl">
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {editingTask ? 'Modifier la tâche' : editingEvent ? 'Modifier l\'événement' : 'Ajouter un nouvel élément'}
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Choisissez le type d\'élément à créer.'}
-          </p>
-          
-          {/* Sélecteur de type directement intégré */}
-          <div className="flex gap-2 mt-4">
-            <Button
-              type="button"
-              variant={currentType === 'task' ? 'default' : 'outline'}
-              onClick={handleTaskTypeSelect}
-              disabled={isEditing}
-              className="flex items-center gap-2"
-            >
-              <CheckSquare size={16} />
-              Tâche
-            </Button>
-            <Button
-              type="button"
-              variant={currentType === 'event' ? 'default' : 'outline'}
-              onClick={handleEventTypeSelect}
-              disabled={isEditing}
-              className="flex items-center gap-2"
-            >
-              <Calendar size={16} />
-              Événement
-            </Button>
+    <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
+      <CardHeader className="sticky top-0 bg-card border-b border-border rounded-t-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h2 className="text-display-sm text-foreground">
+              {editingTask ? 'Modifier la tâche' : editingEvent ? 'Modifier l\'événement' : 'Ajouter un nouvel élément'}
+            </h2>
+            <p className="text-body-sm text-muted-foreground mt-sm">
+              {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Choisissez le type d\'élément à créer.'}
+            </p>
+            
+            {/* Sélecteur de type directement intégré */}
+            <div className="flex gap-md mt-xl">
+              <Button
+                type="button"
+                variant={currentType === 'task' ? 'default' : 'outline'}
+                onClick={handleTaskTypeSelect}
+                disabled={isEditing}
+                size="sm"
+                className="gap-md"
+              >
+                <CheckSquare size={16} />
+                Tâche
+              </Button>
+              <Button
+                type="button"
+                variant={currentType === 'event' ? 'default' : 'outline'}
+                onClick={handleEventTypeSelect}
+                disabled={isEditing}
+                size="sm"
+                className="gap-md"
+              >
+                <Calendar size={16} />
+                Événement
+              </Button>
+            </div>
           </div>
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCancel}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            ✕
+          </Button>
         </div>
-        
-        <button 
-          onClick={onCancel} 
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          ✕
-        </button>
-      </div>
+      </CardHeader>
 
-      <div className="p-6">
+      <CardContent>
         {currentType === 'task' ? (
           <TaskForm
             isOpen={true}
@@ -137,7 +144,7 @@ export function AddItemForm({
             inline={true} // Mode inline activé
           />
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
