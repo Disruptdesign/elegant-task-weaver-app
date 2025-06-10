@@ -1,17 +1,23 @@
 
 import { useDragAndDrop } from './useDragAndDrop';
+import { useAlgorithmicScheduler } from './useAlgorithmicScheduler';
 import { Task, Event } from '../types/task';
 
 export function useCalendarDragAndDrop(
   onUpdateTask: (id: string, updates: Partial<Task>) => void,
-  onUpdateEvent: (id: string, updates: Partial<Event>) => void
+  onUpdateEvent: (id: string, updates: Partial<Event>) => void,
+  tasks: Task[] = [],
+  events: Event[] = [],
+  projects: any[] = []
 ) {
   const { dragState, startDrag } = useDragAndDrop({
     onUpdateTask,
     onUpdateEvent,
   });
 
-  console.log('📅 CalendarDragAndDrop: Hook initialized', {
+  const { rescheduleAllTasks } = useAlgorithmicScheduler();
+
+  console.log('📅 CalendarDragAndDrop: Hook initialized with algorithmic scheduler', {
     dragState: {
       isDragging: dragState.isDragging,
       isResizing: dragState.isResizing,
@@ -21,8 +27,54 @@ export function useCalendarDragAndDrop(
     hasCallbacks: { 
       onUpdateTask: !!onUpdateTask, 
       onUpdateEvent: !!onUpdateEvent 
-    }
+    },
+    tasksCount: tasks.length,
+    eventsCount: events.length,
+    projectsCount: projects.length
   });
+
+  // Fonction de replanification qui respecte les contraintes canStartFrom
+  const rescheduleAllTasksWithConstraints = async () => {
+    console.log('🔄 REPLANIFICATION CALENDRIER avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
+    console.log('📊 Données pour replanification:', {
+      tasks: tasks.length,
+      events: events.length,
+      projects: projects.length
+    });
+
+    try {
+      const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects);
+      
+      // Appliquer les mises à jour pour chaque tâche modifiée
+      rescheduledTasks.forEach(task => {
+        const originalTask = tasks.find(t => t.id === task.id);
+        if (originalTask) {
+          // Vérifier s'il y a des changements dans la planification
+          const hasSchedulingChanges = 
+            task.scheduledStart !== originalTask.scheduledStart ||
+            task.scheduledEnd !== originalTask.scheduledEnd;
+          
+          if (hasSchedulingChanges) {
+            console.log('🔄 Mise à jour tâche:', task.title, {
+              avant: originalTask.scheduledStart ? new Date(originalTask.scheduledStart).toLocaleString() : 'non programmée',
+              après: task.scheduledStart ? new Date(task.scheduledStart).toLocaleString() : 'non programmée',
+              constraintRespected: task.canStartFrom ? 'contrainte canStartFrom préservée' : 'aucune contrainte'
+            });
+            
+            onUpdateTask(task.id, {
+              scheduledStart: task.scheduledStart,
+              scheduledEnd: task.scheduledEnd,
+              canStartFrom: task.canStartFrom
+            });
+          }
+        }
+      });
+
+      console.log('✅ Replanification calendrier terminée avec contraintes STRICTEMENT respectées');
+    } catch (error) {
+      console.error('❌ Erreur lors de la replanification calendrier:', error);
+    }
+  };
 
   const startTaskDrag = (
     e: React.MouseEvent,
@@ -37,7 +89,8 @@ export function useCalendarDragAndDrop(
       action, 
       resizeHandle,
       hasScheduledStart: !!task.scheduledStart,
-      projectId: task.projectId || 'none'
+      projectId: task.projectId || 'none',
+      canStartFrom: task.canStartFrom ? new Date(task.canStartFrom).toLocaleString() : 'aucune contrainte'
     });
     
     if (!task.scheduledStart) {
@@ -75,5 +128,6 @@ export function useCalendarDragAndDrop(
     dragState,
     startTaskDrag,
     startEventDrag,
+    rescheduleAllTasksWithConstraints,
   };
 }

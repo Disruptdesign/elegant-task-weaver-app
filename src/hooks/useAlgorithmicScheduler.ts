@@ -53,8 +53,16 @@ export function useAlgorithmicScheduler() {
     }
   }, [settings]);
 
-  const rescheduleAllTasks = useCallback(async (tasks: Task[], events: Event[], projects: any[] = []): Promise<Task[]> => {
-    if (!settings.autoSchedule) {
+  // Version flexible qui accepte des paramètres optionnels pour être utilisée depuis d'autres composants
+  const rescheduleAllTasks = useCallback(async (
+    tasks: Task[], 
+    events: Event[], 
+    projects: any[] = [],
+    customSettings?: Partial<SchedulerSettings>
+  ): Promise<Task[]> => {
+    const effectiveSettings = customSettings ? { ...settings, ...customSettings } : settings;
+    
+    if (!effectiveSettings.autoSchedule) {
       console.log('📴 Replanification automatique désactivée');
       return tasks;
     }
@@ -64,9 +72,9 @@ export function useAlgorithmicScheduler() {
 
     try {
       const rescheduledTasks = rescheduleAfterEventChange(tasks, events, {
-        workingHours: settings.workingHours,
-        bufferBetweenTasks: settings.bufferBetweenTasks,
-        allowWeekends: settings.allowWeekends
+        workingHours: effectiveSettings.workingHours,
+        bufferBetweenTasks: effectiveSettings.bufferBetweenTasks,
+        allowWeekends: effectiveSettings.allowWeekends
       }, projects);
 
       console.log('✅ Replanification aggressive terminée - contraintes canStartFrom PRÉSERVÉES et contraintes projet appliquées');
