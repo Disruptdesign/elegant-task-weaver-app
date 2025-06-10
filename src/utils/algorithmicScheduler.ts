@@ -1,3 +1,4 @@
+
 import { Task, Event } from '../types/task';
 import { addMinutes, startOfDay, endOfDay, isAfter, isBefore, isWithinInterval, addDays, format } from 'date-fns';
 
@@ -211,7 +212,7 @@ export class AlgorithmicScheduler {
     // CONTRAINTE ABSOLUE 1: "can start from" - respecter cette date impérativement
     if (task.canStartFrom && task.canStartFrom > earliestStart) {
       earliestStart = task.canStartFrom;
-      console.log('📅 Contrainte "peut commencer à partir de":', format(task.canStartFrom, 'dd/MM HH:mm'));
+      console.log('📅 Contrainte "peut commencer à partir de" APPLIQUÉE:', format(task.canStartFrom, 'dd/MM HH:mm'));
     }
     
     // CONTRAINTE 2: Vérifier les dépendances
@@ -244,6 +245,7 @@ export class AlgorithmicScheduler {
       }
     }
     
+    console.log('🎯 Date de début calculée finale pour', task.title, ':', format(earliestStart, 'dd/MM HH:mm'));
     return earliestStart;
   }
 
@@ -481,29 +483,28 @@ export class AlgorithmicScheduler {
 
   /**
    * Programme une tâche spécifique dans le premier créneau disponible
+   * CORRECTION: Respecter strictement la contrainte canStartFrom
    */
   private scheduleTask(task: Task, startDate: Date, endDate: Date, existingTasks: Task[]): Task | null {
     console.log('🔍 Recherche de créneau pour:', task.title, '(durée:', task.estimatedDuration, 'min)');
     
     const now = new Date();
     
-    // RÈGLE ABSOLUE : S'assurer que la tâche ne peut pas commencer avant maintenant
-    // MAIS si la tâche a une contrainte canStartFrom (par ex. après un événement ou contrainte projet), respecter cette contrainte
-    let earliestStart = Math.max(
-      startDate.getTime(), 
-      task.canStartFrom?.getTime() || startDate.getTime(),
-      now.getTime() // ← Contrainte absolue : jamais avant maintenant
+    // CORRECTION PRINCIPALE: Calculer l'heure de début effective en respectant TOUTES les contraintes
+    let effectiveStartTime = Math.max(
+      startDate.getTime(),
+      now.getTime() // Jamais avant maintenant
     );
     
-    // Si canStartFrom est défini et est après maintenant, l'utiliser comme référence
-    if (task.canStartFrom && task.canStartFrom.getTime() > now.getTime()) {
-      earliestStart = task.canStartFrom.getTime();
-      console.log('📅 Tâche contrainte à commencer après:', format(task.canStartFrom, 'dd/MM HH:mm'), '(contrainte absolue respectée)');
+    // CONTRAINTE ABSOLUE: Si canStartFrom est défini, le respecter impérativement
+    if (task.canStartFrom) {
+      effectiveStartTime = Math.max(effectiveStartTime, task.canStartFrom.getTime());
+      console.log('🔒 CONTRAINTE ABSOLUE "peut commencer à partir de":', format(task.canStartFrom, 'dd/MM HH:mm'));
     }
     
-    let currentDate = new Date(earliestStart);
+    let currentDate = new Date(effectiveStartTime);
     
-    console.log('⏰ Recherche à partir de:', format(currentDate, 'dd/MM HH:mm'));
+    console.log('⏰ Recherche de créneau à partir de (CORRIGÉ):', format(currentDate, 'dd/MM HH:mm'));
     
     // Chercher jour par jour jusqu'à la deadline (avec extension possible si en retard)
     const searchEndDate = this.isTaskOverdue(task) ? endDate : task.deadline;
@@ -520,8 +521,8 @@ export class AlgorithmicScheduler {
       
       // Chercher un créneau assez long
       for (const slot of availableSlots) {
-        // RÈGLE ABSOLUE : S'assurer que le créneau commence au plus tôt à l'heure de contrainte
-        const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), earliestStart));
+        // CORRECTION: S'assurer que le créneau commence au plus tôt à l'heure de contrainte effective
+        const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), effectiveStartTime));
         
         if (adjustedSlotStart >= slot.end) {
           continue; // Le créneau est entièrement avant notre contrainte
@@ -547,7 +548,7 @@ export class AlgorithmicScheduler {
             continue;
           }
           
-          console.log('✅ Créneau validé (sans conflit):', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
+          console.log('✅ Créneau validé (sans conflit) AVEC RESPECT DES CONTRAINTES:', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
           
           return {
             ...task,
