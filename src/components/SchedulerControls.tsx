@@ -12,21 +12,22 @@ import { Task, Event } from '../types/task';
 interface SchedulerControlsProps {
   tasks: Task[];
   events: Event[];
+  projects?: any[];
   onTasksUpdate: (tasks: Task[]) => void;
 }
 
-export function SchedulerControls({ tasks, events, onTasksUpdate }: SchedulerControlsProps) {
+export function SchedulerControls({ tasks, events, projects = [], onTasksUpdate }: SchedulerControlsProps) {
   const { settings, isScheduling, scheduleAllTasks, rescheduleAllTasks, updateSettings } = useAlgorithmicScheduler();
 
   const handleManualSchedule = async () => {
-    console.log('🎯 Planification manuelle déclenchée');
-    const scheduledTasks = await scheduleAllTasks(tasks, events);
+    console.log('🎯 Planification manuelle déclenchée avec', projects.length, 'projet(s)');
+    const scheduledTasks = await scheduleAllTasks(tasks, events, projects);
     onTasksUpdate(scheduledTasks);
   };
 
   const handleReschedule = async () => {
-    console.log('🔄 Replanification manuelle déclenchée');
-    const rescheduledTasks = await rescheduleAllTasks(tasks, events);
+    console.log('🔄 Replanification manuelle déclenchée avec', projects.length, 'projet(s) - CONTRAINTES canStartFrom PRÉSERVÉES');
+    const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects);
     onTasksUpdate(rescheduledTasks);
   };
 
@@ -41,7 +42,7 @@ export function SchedulerControls({ tasks, events, onTasksUpdate }: SchedulerCon
           Planificateur Algorithmique
         </CardTitle>
         <CardDescription>
-          Planification automatique des tâches en fonction des événements, deadlines et priorités
+          Planification automatique des tâches en fonction des événements, deadlines et priorités avec respect des contraintes "peut commencer à partir de"
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

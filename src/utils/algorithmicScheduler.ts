@@ -283,6 +283,7 @@ export class AlgorithmicScheduler {
 
   /**
    * Planifie automatiquement les tâches selon leur priorité, deadline et dépendances
+   * CORRECTION CRITIQUE: Préserver les contraintes canStartFrom lors de la replanification
    */
   scheduleTasks(tasks: Task[], isRescheduling: boolean = false): Task[] {
     console.log('🤖 Début de la planification algorithmique pour', tasks.length, 'tâches');
@@ -295,7 +296,7 @@ export class AlgorithmicScheduler {
     let tasksToSchedule: Task[] = [];
 
     if (isRescheduling) {
-      console.log('🔄 MODE REPLANIFICATION AGGRESSIVE avec protection des tâches en cours');
+      console.log('🔄 MODE REPLANIFICATION AGGRESSIVE avec protection des tâches en cours ET des contraintes canStartFrom');
       
       // PROTECTION ABSOLUE : Figer les tâches terminées ET les tâches en cours
       protectedTasks = tasks.filter(task => task.completed || this.isTaskInProgress(task));
@@ -307,23 +308,51 @@ export class AlgorithmicScheduler {
       // TOUTES les autres tâches seront replanifiées (y compris les tâches en retard)
       const otherTasks = tasks.filter(task => !task.completed && !this.isTaskInProgress(task));
       
-      // Appliquer les contraintes de projet AVANT la planification
+      // CORRECTION CRITIQUE: Préserver les contraintes canStartFrom existantes lors de la replanification
       tasksToSchedule = otherTasks.map(task => {
-        const taskWithProjectConstraints = this.applyProjectConstraints(task);
-        return {
+        // Sauvegarder la contrainte canStartFrom originale AVANT d'appliquer les contraintes projet
+        const originalCanStartFrom = task.canStartFrom;
+        
+        console.log('🔄 REPLANIFICATION de la tâche:', task.title);
+        if (originalCanStartFrom) {
+          console.log('   🔒 PRÉSERVATION de la contrainte canStartFrom originale:', format(originalCanStartFrom, 'dd/MM HH:mm'));
+        }
+        
+        // Appliquer les contraintes de projet en tenant compte de la contrainte originale
+        const taskWithProjectConstraints = this.applyProjectConstraints({
+          ...task,
+          canStartFrom: originalCanStartFrom // Conserver la contrainte originale
+        });
+        
+        // Effacer SEULEMENT la planification, JAMAIS les contraintes
+        const replanifiedTask = {
           ...taskWithProjectConstraints,
           scheduledStart: undefined,
           scheduledEnd: undefined
+          // canStartFrom est PRÉSERVÉ grâce à applyProjectConstraints
         };
+        
+        if (replanifiedTask.canStartFrom) {
+          console.log('   ✅ Contrainte canStartFrom PRÉSERVÉE après replanification:', format(replanifiedTask.canStartFrom, 'dd/MM HH:mm'));
+        }
+        
+        return replanifiedTask;
       });
       
       console.log('🔒 Tâches protégées (terminées):', completedTasks.length);
       console.log('🔒 Tâches protégées (EN COURS - INTOUCHABLES):', tasksInProgress.length);
-      console.log('🔄 Tâches à replanifier (incluant celles en retard):', tasksToSchedule.length);
+      console.log('🔄 Tâches à replanifier (contraintes canStartFrom PRÉSERVÉES):', tasksToSchedule.length);
       
       // CORRECTION : Compter les tâches en retard CORRECTEMENT (deadline dépassée seulement)
       const overdueTasks = tasksToSchedule.filter(task => this.isTaskOverdue(task));
       console.log('⏰ Tâches VRAIMENT en retard à replanifier (deadline dépassée):', overdueTasks.length);
+      
+      // Afficher les détails des tâches à replanifier avec leurs contraintes
+      tasksToSchedule.forEach(task => {
+        if (task.canStartFrom) {
+          console.log(`   🔒 "${task.title}" : contrainte canStartFrom préservée - ${format(task.canStartFrom, 'dd/MM HH:mm')}`);
+        }
+      });
       
       // Afficher les détails des tâches en cours protégées
       tasksInProgress.forEach(task => {
@@ -436,7 +465,8 @@ export class AlgorithmicScheduler {
         const isReallyOverdue = this.isTaskOverdue(task);
         const overdueNote = isReallyOverdue ? ' (était VRAIMENT en retard - deadline dépassée)' : '';
         const projectNote = task.projectId ? ' (contraintes projet appliquées)' : '';
-        console.log('✅ Tâche programmée:', task.title, 'à', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm') + overdueNote + projectNote);
+        const constraintNote = task.canStartFrom ? ' (contrainte canStartFrom RESPECTÉE)' : '';
+        console.log('✅ Tâche programmée:', task.title, 'à', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm') + overdueNote + projectNote + constraintNote);
       } else {
         console.log('❌ Impossible de programmer:', task.title);
         newlyScheduledTasks.push(task); // Garder la tâche même si non programmée
@@ -448,7 +478,7 @@ export class AlgorithmicScheduler {
     // CORRECTION : Statistiques plus précises
     const reallyOverdueTasks = result.filter(t => this.isTaskOverdue(t));
     
-    console.log('📊 Résumé de la planification avec contraintes projet CORRIGÉES:');
+    console.log('📊 Résumé de la planification avec contraintes projet ET canStartFrom CORRIGÉES:');
     console.log(`   - Tâches traitées: ${result.length}`);
     console.log(`   - Tâches programmées: ${result.filter(t => t.scheduledStart && !t.completed).length}`);
     console.log(`   - Tâches non programmées: ${result.filter(t => !t.scheduledStart && !t.completed).length}`);
@@ -457,6 +487,7 @@ export class AlgorithmicScheduler {
     console.log(`   - Tâches VRAIMENT en retard (deadline dépassée): ${reallyOverdueTasks.length}`);
     console.log(`   - Tâches avec dépendances: ${result.filter(t => t.dependencies && t.dependencies.length > 0).length}`);
     console.log(`   - Tâches liées à des projets: ${result.filter(t => t.projectId).length}`);
+    console.log(`   - Tâches avec contraintes canStartFrom: ${result.filter(t => t.canStartFrom).length}`);
 
     return result;
   }

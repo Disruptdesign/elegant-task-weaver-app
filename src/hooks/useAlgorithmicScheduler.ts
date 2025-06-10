@@ -59,7 +59,7 @@ export function useAlgorithmicScheduler() {
       return tasks;
     }
 
-    console.log('🔄 Démarrage de la replanification AGGRESSIVE avec contraintes projet (toutes les tâches seront replanifiées)...');
+    console.log('🔄 Démarrage de la replanification AGGRESSIVE avec contraintes projet ET préservation des contraintes canStartFrom...');
     setIsScheduling(true);
 
     try {
@@ -69,7 +69,7 @@ export function useAlgorithmicScheduler() {
         allowWeekends: settings.allowWeekends
       }, projects);
 
-      console.log('✅ Replanification aggressive terminée - optimisation globale avec contraintes projet appliquée');
+      console.log('✅ Replanification aggressive terminée - contraintes canStartFrom PRÉSERVÉES et contraintes projet appliquées');
       return rescheduledTasks;
     } catch (error) {
       console.error('❌ Erreur lors de la replanification:', error);
