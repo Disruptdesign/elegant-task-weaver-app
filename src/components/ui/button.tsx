@@ -11,10 +11,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         // Bouton principal - action primaire
-        primary: "bg-foreground text-background hover:bg-foreground/90 shadow-unified-md hover:shadow-unified-lg",
+        primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-unified-md hover:shadow-unified-lg",
         
         // Bouton secondaire - action secondaire importante
-        secondary: "bg-muted text-foreground hover:bg-muted/80 border border-border hover:shadow-unified-md",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border hover:shadow-unified-md",
         
         // Bouton avec contour - action alternative
         outline: "border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-unified-md",
@@ -26,7 +26,7 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-unified-md hover:shadow-unified-lg",
         
         // Bouton lien - navigation ou action légère
-        link: "text-foreground underline-offset-4 hover:underline shadow-none p-0 h-auto",
+        link: "text-primary underline-offset-4 hover:underline shadow-none p-0 h-auto",
         
         // États spéciaux pour certains contextes
         success: "bg-green-600 text-white hover:bg-green-700 shadow-unified-md hover:shadow-unified-lg",
