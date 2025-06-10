@@ -5,10 +5,13 @@ import { useTasks } from './useTasks';
 export const useAppHandlers = () => {
   const {
     tasks,
+    events,
+    projects,
     inboxItems,
     addTask,
     updateTask,
     deleteInboxItem,
+    rescheduleAllTasks,
   } = useTasks();
 
   const handleConvertInboxItem = useCallback((item: any, openAddForm: (data: any) => void) => {
@@ -28,8 +31,17 @@ export const useAppHandlers = () => {
   }, [tasks, updateTask]);
 
   const handleRescheduleAllTasks = useCallback(() => {
-    console.log('Reschedule all tasks requested');
-  }, []);
+    console.log('🔄 Reschedule all tasks requested - CORRECTION avec projets');
+    console.log('📊 Données disponibles:', {
+      tasks: tasks.length,
+      events: events.length,
+      projects: projects.length,
+      projectsDetails: projects.map(p => ({ id: p.id, title: p.title }))
+    });
+    
+    // CORRECTION CRITIQUE: Passer TOUS les projets à la replanification
+    rescheduleAllTasks(projects);
+  }, [rescheduleAllTasks, tasks, events, projects]);
 
   const handleTaskSubmit = useCallback((taskData: any, taskFormData: any, closeAddForm: () => void) => {
     console.log('Submitting task with dependencies:', taskData);
