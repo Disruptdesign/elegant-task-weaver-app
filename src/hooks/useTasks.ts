@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { Task, Event, Project, InboxItem, TaskType, ProjectTemplate, TemplateTask } from '../types/task';
 import { useSupabaseTasks } from './useSupabaseTasks';
@@ -36,7 +35,7 @@ export function useTasks() {
     addProjectTemplate: addSupabaseProjectTemplate,
     updateProjectTemplate: updateSupabaseProjectTemplate,
     deleteProjectTemplate: deleteSupabaseProjectTemplate,
-    loading: supabaseLoading,
+    isLoading: supabaseLoading,
     error
   } = useSupabaseTasks();
 
