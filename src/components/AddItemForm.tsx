@@ -86,7 +86,7 @@ export function AddItemForm({
           
           {/* Sélecteur de type directement intégré */}
           <div className="flex gap-2 mt-4">
-            <Button type="button" variant={currentType === 'task' ? 'primary' : 'outline'} onClick={handleTaskTypeSelect} disabled={isEditing} size="sm" className="flex items-center gap-2 text-slate-950">
+            <Button type="button" variant={currentType === 'task' ? 'primary' : 'outline'} onClick={handleTaskTypeSelect} disabled={isEditing} size="sm" className="flex items-center gap-2">
               <CheckSquare size={16} />
               Tâche
             </Button>
