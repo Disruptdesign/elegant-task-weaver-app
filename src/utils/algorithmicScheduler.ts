@@ -1,4 +1,3 @@
-
 import { Task, Event } from '../types/task';
 import { addMinutes, startOfDay, endOfDay, isAfter, isBefore, isWithinInterval, addDays, format } from 'date-fns';
 
@@ -204,18 +203,19 @@ export class AlgorithmicScheduler {
 
   /**
    * Calcule la date de début la plus tôt possible pour une tâche en fonction de ses dépendances et contraintes
+   * CORRECTION MAJEURE: Respecter ABSOLUMENT la contrainte canStartFrom
    */
   private calculateEarliestStart(task: Task, completedTasks: Task[], scheduledTasks: Task[]): Date {
     const now = new Date();
     let earliestStart = now;
     
-    // CONTRAINTE ABSOLUE 1: "can start from" - respecter cette date impérativement
-    if (task.canStartFrom && task.canStartFrom > earliestStart) {
-      earliestStart = task.canStartFrom;
-      console.log('📅 Contrainte "peut commencer à partir de" APPLIQUÉE:', format(task.canStartFrom, 'dd/MM HH:mm'));
+    // VÉRIFICATION INITIALE de la contrainte canStartFrom
+    if (task.canStartFrom) {
+      console.log('🔒 CONTRAINTE ABSOLUE détectée pour', task.title, ':', format(task.canStartFrom, 'dd/MM HH:mm'));
+      earliestStart = new Date(Math.max(task.canStartFrom.getTime(), now.getTime()));
     }
     
-    // CONTRAINTE 2: Vérifier les dépendances
+    // CONTRAINTE 2: Vérifier les dépendances - MAIS JAMAIS avant canStartFrom
     if (task.dependencies && task.dependencies.length > 0) {
       console.log('🔗 Calcul de la date de début pour', task.title, 'avec', task.dependencies.length, 'dépendance(s)');
       
@@ -233,11 +233,16 @@ export class AlgorithmicScheduler {
           const depEnd = new Date(scheduledDep.scheduledEnd);
           const depEndWithBuffer = addMinutes(depEnd, this.options.bufferBetweenTasks);
           
-          if (depEndWithBuffer > earliestStart) {
-            earliestStart = depEndWithBuffer;
+          // CORRECTION MAJEURE: Respecter canStartFrom même pour les dépendances
+          const effectiveDepEnd = task.canStartFrom ? 
+            new Date(Math.max(depEndWithBuffer.getTime(), task.canStartFrom.getTime())) : 
+            depEndWithBuffer;
+          
+          if (effectiveDepEnd > earliestStart) {
+            earliestStart = effectiveDepEnd;
             console.log('   ⏰ Dépendance programmée:', scheduledDep.title, 
               'se termine à', format(depEnd, 'dd/MM HH:mm'),
-              'donc début au plus tôt à', format(earliestStart, 'dd/MM HH:mm'));
+              'mais contrainte canStartFrom appliquée, début à', format(earliestStart, 'dd/MM HH:mm'));
           }
         } else {
           console.warn('   ⚠️ Dépendance non programmée:', depId);
@@ -245,7 +250,14 @@ export class AlgorithmicScheduler {
       }
     }
     
-    console.log('🎯 Date de début calculée finale pour', task.title, ':', format(earliestStart, 'dd/MM HH:mm'));
+    // VÉRIFICATION FINALE: S'assurer que canStartFrom est TOUJOURS respecté
+    if (task.canStartFrom && earliestStart < task.canStartFrom) {
+      console.log('🚨 CORRECTION: La date calculée', format(earliestStart, 'dd/MM HH:mm'), 
+        'est avant canStartFrom', format(task.canStartFrom, 'dd/MM HH:mm'), '- APPLICATION FORCÉE');
+      earliestStart = task.canStartFrom;
+    }
+    
+    console.log('🎯 Date de début FINALE calculée pour', task.title, ':', format(earliestStart, 'dd/MM HH:mm'));
     return earliestStart;
   }
 
@@ -483,28 +495,33 @@ export class AlgorithmicScheduler {
 
   /**
    * Programme une tâche spécifique dans le premier créneau disponible
-   * CORRECTION: Respecter strictement la contrainte canStartFrom
+   * CORRECTION ABSOLUE: Respecter strictement la contrainte canStartFrom
    */
   private scheduleTask(task: Task, startDate: Date, endDate: Date, existingTasks: Task[]): Task | null {
     console.log('🔍 Recherche de créneau pour:', task.title, '(durée:', task.estimatedDuration, 'min)');
     
+    // VÉRIFICATION PRÉALABLE de la contrainte canStartFrom
+    if (task.canStartFrom) {
+      console.log('🔒 CONTRAINTE DÉTECTÉE "peut commencer à partir de":', format(task.canStartFrom, 'dd/MM HH:mm'));
+    }
+    
     const now = new Date();
     
-    // CORRECTION PRINCIPALE: Calculer l'heure de début effective en respectant TOUTES les contraintes
+    // CORRECTION ABSOLUE: La contrainte canStartFrom est PRIORITAIRE sur tout
     let effectiveStartTime = Math.max(
       startDate.getTime(),
       now.getTime() // Jamais avant maintenant
     );
     
-    // CONTRAINTE ABSOLUE: Si canStartFrom est défini, le respecter impérativement
+    // CONTRAINTE ABSOLUE: Si canStartFrom est défini, il est IMPÉRATIF
     if (task.canStartFrom) {
       effectiveStartTime = Math.max(effectiveStartTime, task.canStartFrom.getTime());
-      console.log('🔒 CONTRAINTE ABSOLUE "peut commencer à partir de":', format(task.canStartFrom, 'dd/MM HH:mm'));
+      console.log('🔒 CONTRAINTE ABSOLUE APPLIQUÉE "peut commencer à partir de":', format(new Date(effectiveStartTime), 'dd/MM HH:mm'));
     }
     
     let currentDate = new Date(effectiveStartTime);
     
-    console.log('⏰ Recherche de créneau à partir de (CORRIGÉ):', format(currentDate, 'dd/MM HH:mm'));
+    console.log('⏰ Recherche de créneau à partir de (CONTRAINTE RESPECTÉE):', format(currentDate, 'dd/MM HH:mm'));
     
     // Chercher jour par jour jusqu'à la deadline (avec extension possible si en retard)
     const searchEndDate = this.isTaskOverdue(task) ? endDate : task.deadline;
@@ -521,7 +538,7 @@ export class AlgorithmicScheduler {
       
       // Chercher un créneau assez long
       for (const slot of availableSlots) {
-        // CORRECTION: S'assurer que le créneau commence au plus tôt à l'heure de contrainte effective
+        // CORRECTION ABSOLUE: Le créneau DOIT respecter la contrainte
         const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), effectiveStartTime));
         
         if (adjustedSlotStart >= slot.end) {
@@ -536,6 +553,12 @@ export class AlgorithmicScheduler {
           const scheduledStart = adjustedSlotStart;
           const scheduledEnd = addMinutes(scheduledStart, task.estimatedDuration);
           
+          // VÉRIFICATION FINALE ABSOLUE: La tâche ne commence PAS avant canStartFrom
+          if (task.canStartFrom && scheduledStart < task.canStartFrom) {
+            console.log('🚨 ERREUR: Tentative de programmer avant canStartFrom - REJET du créneau');
+            continue;
+          }
+          
           // VÉRIFICATION FINALE : S'assurer qu'il n'y a pas de conflit avec les événements
           const testTask: Task = {
             ...task,
@@ -548,7 +571,7 @@ export class AlgorithmicScheduler {
             continue;
           }
           
-          console.log('✅ Créneau validé (sans conflit) AVEC RESPECT DES CONTRAINTES:', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
+          console.log('✅ Créneau validé (CONTRAINTE RESPECTÉE + sans conflit):', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
           
           return {
             ...task,
@@ -562,7 +585,7 @@ export class AlgorithmicScheduler {
       currentDate = addDays(currentDate, 1);
     }
 
-    console.log('❌ Aucun créneau valide trouvé pour:', task.title);
+    console.log('❌ Aucun créneau valide trouvé pour:', task.title, '(contrainte canStartFrom respectée)');
     return null;
   }
 
