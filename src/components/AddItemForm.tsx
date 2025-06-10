@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Calendar, CheckSquare } from 'lucide-react';
-import { Task, Event, Project, TaskType } from '../types/task';
+import { Task, Event, Project, TaskType, InboxItem } from '../types/task';
 import { TaskForm } from './TaskForm';
 import { EventForm } from './EventForm';
 import { Button } from './ui/button';
@@ -12,6 +12,7 @@ interface AddItemFormProps {
   onCancel: () => void;
   editingTask?: Task;
   editingEvent?: Event;
+  prefilledFromInbox?: InboxItem;
   projects?: Project[];
   taskTypes?: TaskType[];
 }
@@ -22,6 +23,7 @@ export function AddItemForm({
   onCancel,
   editingTask,
   editingEvent,
+  prefilledFromInbox,
   projects = [],
   taskTypes = []
 }: AddItemFormProps) {
@@ -32,6 +34,7 @@ export function AddItemForm({
     taskTypesCount: taskTypes.length,
     editingTask: editingTask ? { id: editingTask.id, title: editingTask.title } : null,
     editingEvent: editingEvent ? { id: editingEvent.id, title: editingEvent.title } : null,
+    prefilledFromInbox: prefilledFromInbox ? { id: prefilledFromInbox.id, title: prefilledFromInbox.title } : null,
     projects: projects.map(p => ({ id: p.id, title: p.title })),
     taskTypes: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
@@ -41,10 +44,12 @@ export function AddItemForm({
       setItemType('task');
     } else if (editingEvent) {
       setItemType('event');
+    } else if (prefilledFromInbox) {
+      setItemType('task'); // Par défaut, convertir en tâche
     } else {
       setItemType('task');
     }
-  }, [editingTask, editingEvent]);
+  }, [editingTask, editingEvent, prefilledFromInbox]);
 
   // Si on édite une tâche ou un événement, déterminer le type automatiquement
   const currentType = editingTask ? 'task' : editingEvent ? 'event' : itemType;
@@ -77,10 +82,10 @@ export function AddItemForm({
       <div className="sticky top-0 bg-white flex items-center justify-between p-6 border-b border-gray-100 rounded-t-2xl">
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-gray-900">
-            {editingTask ? 'Modifier la tâche' : editingEvent ? 'Modifier l\'événement' : 'Ajouter un nouvel élément'}
+            {editingTask ? 'Modifier la tâche' : editingEvent ? 'Modifier l\'événement' : prefilledFromInbox ? 'Créer une tâche depuis l\'inbox' : 'Ajouter un nouvel élément'}
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Choisissez le type d\'élément à créer.'}
+            {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : prefilledFromInbox ? 'Créez une tâche à partir de votre idée.' : 'Choisissez le type d\'élément à créer.'}
           </p>
           
           {/* Sélecteur de type directement intégré */}
@@ -89,7 +94,7 @@ export function AddItemForm({
               type="button"
               variant={currentType === 'task' ? 'default' : 'outline'}
               onClick={handleTaskTypeSelect}
-              disabled={isEditing}
+              disabled={isEditing || prefilledFromInbox}
               className="flex items-center gap-2"
             >
               <CheckSquare size={16} />
@@ -99,7 +104,7 @@ export function AddItemForm({
               type="button"
               variant={currentType === 'event' ? 'default' : 'outline'}
               onClick={handleEventTypeSelect}
-              disabled={isEditing}
+              disabled={isEditing || prefilledFromInbox}
               className="flex items-center gap-2"
             >
               <Calendar size={16} />
@@ -123,6 +128,10 @@ export function AddItemForm({
             onClose={() => {}} // Pas utilisé en mode inline
             onSubmit={handleTaskSubmit}
             editingTask={editingTask}
+            prefilledData={prefilledFromInbox ? {
+              title: prefilledFromInbox.title,
+              description: prefilledFromInbox.description || ''
+            } : undefined}
             projects={projects}
             taskTypes={taskTypes}
             tasks={[]}

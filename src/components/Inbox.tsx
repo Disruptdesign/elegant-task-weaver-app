@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Plus, Inbox as InboxIcon, ArrowRight, Edit3, Trash2 } from 'lucide-react';
 import { InboxItem } from '../types/task';
@@ -26,6 +27,11 @@ function Inbox({ inboxItems, onAddInboxItem, onDeleteInboxItem, onConvertToTask 
 
     setTitle('');
     setDescription('');
+  };
+
+  const handleConvertToTask = (item: InboxItem) => {
+    console.log('Converting inbox item to task:', item);
+    onConvertToTask(item);
   };
 
   return (
@@ -104,7 +110,7 @@ function Inbox({ inboxItems, onAddInboxItem, onDeleteInboxItem, onConvertToTask 
                 
                 <div className="flex items-center gap-2 ml-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => onConvertToTask(item)}
+                    onClick={() => handleConvertToTask(item)}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md text-xs font-medium transition-colors"
                   >
                     <ArrowRight size={12} />
