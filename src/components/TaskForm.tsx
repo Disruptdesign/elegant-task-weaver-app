@@ -19,6 +19,7 @@ interface TaskFormProps {
   taskTypes?: TaskType[];
   tasks?: Task[];
   inline?: boolean; // Nouveau prop pour le mode inline
+  onCancel?: () => void; // Nouvelle fonction pour gérer l'annulation en mode inline
 }
 
 export function TaskForm({
@@ -30,7 +31,8 @@ export function TaskForm({
   projects = [],
   taskTypes = [],
   tasks = [],
-  inline = false
+  inline = false,
+  onCancel
 }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -127,6 +129,16 @@ export function TaskForm({
       setDependencies([]);
     }
   }, [editingTask, initialData, isOpen]);
+
+  // Fonction pour gérer l'annulation
+  const handleCancel = () => {
+    if (inline && onCancel) {
+      onCancel();
+    } else {
+      onClose();
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !deadline) return;
@@ -378,7 +390,7 @@ export function TaskForm({
 
         {/* Actions */}
         <div className="flex gap-3 pt-4 border-t border-gray-100">
-          <button type="button" onClick={onClose} className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium">
+          <button type="button" onClick={handleCancel} className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium">
             Annuler
           </button>
           <button type="submit" disabled={!title.trim() || !deadline} className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl">

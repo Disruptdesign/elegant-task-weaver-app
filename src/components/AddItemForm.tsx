@@ -127,6 +127,7 @@ export function AddItemForm({
             taskTypes={taskTypes}
             tasks={[]}
             inline={true} // Mode inline activé
+            onCancel={onCancel} // Passer la fonction onCancel
           />
         ) : (
           <EventForm
@@ -135,6 +136,7 @@ export function AddItemForm({
             onSubmit={handleEventSubmit}
             editingEvent={editingEvent}
             inline={true} // Mode inline activé
+            onCancel={onCancel} // Passer la fonction onCancel
           />
         )}
       </div>

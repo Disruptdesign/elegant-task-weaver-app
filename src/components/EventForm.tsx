@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin } from 'lucide-react';
 import { Event } from '../types/task';
@@ -13,6 +14,7 @@ interface EventFormProps {
   onSubmit: (event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   editingEvent?: Event;
   inline?: boolean; // Nouveau prop pour le mode inline
+  onCancel?: () => void; // Nouvelle fonction pour gérer l'annulation en mode inline
 }
 
 export function EventForm({
@@ -20,7 +22,8 @@ export function EventForm({
   onClose,
   onSubmit,
   editingEvent,
-  inline = false
+  inline = false,
+  onCancel
 }: EventFormProps) {
   const [formData, setFormData] = useState({
     title: '',
@@ -56,6 +59,15 @@ export function EventForm({
       });
     }
   }, [editingEvent]);
+
+  // Fonction pour gérer l'annulation
+  const handleCancel = () => {
+    if (inline && onCancel) {
+      onCancel();
+    } else {
+      onClose();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +112,6 @@ export function EventForm({
         />
       </div>
 
-      {/* Description */}
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
           Description
@@ -115,7 +126,6 @@ export function EventForm({
         />
       </div>
 
-      {/* Toute la journée */}
       <div className="flex items-center space-x-2">
         <Checkbox
           id="allDay"
@@ -127,7 +137,6 @@ export function EventForm({
         </label>
       </div>
 
-      {/* Dates */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -154,7 +163,6 @@ export function EventForm({
         </div>
       </div>
 
-      {/* Lieu */}
       <div>
         <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
           <MapPin size={14} className="inline mr-1" />
@@ -175,7 +183,7 @@ export function EventForm({
         <Button
           type="button"
           variant="outline"
-          onClick={onClose}
+          onClick={handleCancel}
           disabled={isSubmitting}
         >
           Annuler
