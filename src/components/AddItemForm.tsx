@@ -1,11 +1,10 @@
 
 import React, { useState } from 'react';
-import { Calendar, CheckSquare } from 'lucide-react';
+import { Calendar, CheckSquare, X } from 'lucide-react';
 import { Task, Event, Project, TaskType } from '../types/task';
 import { TaskForm } from './TaskForm';
 import { EventForm } from './EventForm';
 import { Button } from './ui/button';
-import { Card, CardHeader, CardContent } from './ui/card';
 
 interface AddItemFormProps {
   onSubmitTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -31,10 +30,22 @@ export function AddItemForm({
   console.log('AddItemForm: Rendering with', {
     projectsCount: projects.length,
     taskTypesCount: taskTypes.length,
-    editingTask: editingTask ? { id: editingTask.id, title: editingTask.title } : null,
-    editingEvent: editingEvent ? { id: editingEvent.id, title: editingEvent.title } : null,
-    projects: projects.map(p => ({ id: p.id, title: p.title })),
-    taskTypes: taskTypes.map(t => ({ id: t.id, name: t.name }))
+    editingTask: editingTask ? {
+      id: editingTask.id,
+      title: editingTask.title
+    } : null,
+    editingEvent: editingEvent ? {
+      id: editingEvent.id,
+      title: editingEvent.title
+    } : null,
+    projects: projects.map(p => ({
+      id: p.id,
+      title: p.title
+    })),
+    taskTypes: taskTypes.map(t => ({
+      id: t.id,
+      name: t.name
+    }))
   });
 
   React.useEffect(() => {
@@ -47,7 +58,6 @@ export function AddItemForm({
     }
   }, [editingTask, editingEvent]);
 
-  // Si on édite une tâche ou un événement, déterminer le type automatiquement
   const currentType = editingTask ? 'task' : editingEvent ? 'event' : itemType;
   const isEditing = !!(editingTask || editingEvent);
 
@@ -65,86 +75,80 @@ export function AddItemForm({
 
   const handleTaskSubmit = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
     await onSubmitTask(taskData);
-    onCancel(); // Fermer le formulaire après soumission
+    onCancel();
   };
 
   const handleEventSubmit = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
     await onSubmitEvent(eventData);
-    onCancel(); // Fermer le formulaire après soumission
+    onCancel();
   };
 
   return (
-    <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
-      <CardHeader className="sticky top-0 bg-card border-b border-border rounded-t-xl">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h2 className="text-display-sm text-foreground">
-              {editingTask ? 'Modifier la tâche' : editingEvent ? 'Modifier l\'événement' : 'Ajouter un nouvel élément'}
-            </h2>
-            <p className="text-body-sm text-muted-foreground mt-sm">
-              {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Choisissez le type d\'élément à créer.'}
-            </p>
-            
-            {/* Sélecteur de type directement intégré */}
-            <div className="flex gap-md mt-xl">
-              <Button
-                type="button"
-                variant={currentType === 'task' ? 'default' : 'outline'}
-                onClick={handleTaskTypeSelect}
-                disabled={isEditing}
-                size="sm"
-                className="gap-md"
-              >
-                <CheckSquare size={16} />
-                Tâche
-              </Button>
-              <Button
-                type="button"
-                variant={currentType === 'event' ? 'default' : 'outline'}
-                onClick={handleEventTypeSelect}
-                disabled={isEditing}
-                size="sm"
-                className="gap-md"
-              >
-                <Calendar size={16} />
-                Événement
-              </Button>
-            </div>
-          </div>
+    <div className="card-base w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="sticky top-0 bg-background flex items-center justify-between spacing-lg border-b border-border rounded-t-unified">
+        <div className="flex-1">
+          <h2 className="text-unified-xl font-semibold text-foreground">
+            {editingTask ? 'Modifier la tâche' : editingEvent ? 'Modifier l\'événement' : 'Ajouter un nouvel élément'}
+          </h2>
+          <p className="text-unified-sm text-muted-foreground mt-1">
+            {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Choisissez le type d\'élément à créer.'}
+          </p>
           
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onCancel}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            ✕
-          </Button>
+          <div className="flex gap-2 mt-4">
+            <Button 
+              variant={currentType === 'task' ? 'primary' : 'outline'} 
+              onClick={handleTaskTypeSelect} 
+              disabled={isEditing} 
+              size="sm"
+              isActive={currentType === 'task'}
+            >
+              <CheckSquare size={16} />
+              Tâche
+            </Button>
+            <Button 
+              variant={currentType === 'event' ? 'primary' : 'outline'} 
+              onClick={handleEventTypeSelect} 
+              disabled={isEditing} 
+              size="sm"
+              isActive={currentType === 'event'}
+            >
+              <Calendar size={16} />
+              Événement
+            </Button>
+          </div>
         </div>
-      </CardHeader>
+        
+        <Button 
+          onClick={onCancel} 
+          variant="ghost" 
+          size="icon"
+        >
+          <X size={16} />
+        </Button>
+      </div>
 
-      <CardContent>
+      <div className="spacing-lg">
         {currentType === 'task' ? (
-          <TaskForm
-            isOpen={true}
-            onClose={() => {}} // Pas utilisé en mode inline
-            onSubmit={handleTaskSubmit}
-            editingTask={editingTask}
-            projects={projects}
-            taskTypes={taskTypes}
-            tasks={[]}
-            inline={true} // Mode inline activé
+          <TaskForm 
+            isOpen={true} 
+            onClose={() => {}}
+            onSubmit={handleTaskSubmit} 
+            editingTask={editingTask} 
+            projects={projects} 
+            taskTypes={taskTypes} 
+            tasks={[]} 
+            inline={true}
           />
         ) : (
-          <EventForm
-            isOpen={true}
-            onClose={() => {}} // Pas utilisé en mode inline
-            onSubmit={handleEventSubmit}
-            editingEvent={editingEvent}
-            inline={true} // Mode inline activé
+          <EventForm 
+            isOpen={true} 
+            onClose={() => {}}
+            onSubmit={handleEventSubmit} 
+            editingEvent={editingEvent} 
+            inline={true}
           />
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

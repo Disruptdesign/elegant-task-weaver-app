@@ -24,23 +24,23 @@ export function QuickInbox({ onAddInboxItem }: QuickInboxProps) {
   };
 
   return (
-    <div className="p-xl border-t border-border bg-card">
-      <div className="flex items-center gap-md mb-lg">
+    <div className="spacing-sm border-t border-border">
+      <div className="flex items-center gap-2 mb-3">
         <InboxIcon size={16} className="text-muted-foreground" />
-        <span className="text-label-md text-foreground">Ajout rapide</span>
+        <span className="text-unified-sm font-medium text-foreground">Ajout rapide</span>
       </div>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-lg">
+      <form onSubmit={handleSubmit} className="space-y-2">
         <Input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Ajouter une idée..."
-          className="w-full"
         />
         <Button
           type="submit"
+          variant="primary"
           size="sm"
-          className="w-full gap-sm"
+          className="w-full"
         >
           <Plus size={14} />
           Ajouter

@@ -5,7 +5,6 @@ import { TaskCard } from './TaskCard';
 import { EventCard } from './EventCard';
 import { Search, ListTodo, Plus } from 'lucide-react';
 import { Button } from './ui/button';
-import { Card } from './ui/card';
 
 interface TaskListContentProps {
   items: (Task & { type: 'task' } | Event & { type: 'event' })[];
@@ -38,21 +37,21 @@ export function TaskListContent({
 }: TaskListContentProps) {
   if (items.length === 0) {
     return (
-      <Card className="text-center py-6xl container-padding">
-        <div className="mx-auto w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-2xl">
+      <div className="text-center py-responsive bg-background rounded-unified border border-border shadow-unified-sm mx-responsive">
+        <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-muted rounded-full flex items-center justify-center mb-4 sm:mb-6 animate-pulse">
           {hasActiveFilters ? (
-            <Search className="text-muted-foreground" size={24} />
+            <Search className="text-muted-foreground" size={20} />
           ) : (
-            <ListTodo className="text-muted-foreground" size={24} />
+            <ListTodo className="text-muted-foreground" size={20} />
           )}
         </div>
-        <h3 className="text-display-sm text-foreground mb-md">
+        <h3 className="text-responsive font-semibold text-foreground mb-2 px-4">
           {hasActiveFilters
             ? 'Aucun élément trouvé' 
             : 'Aucune tâche ou événement'
           }
         </h3>
-        <p className="text-body-md text-muted-foreground mb-2xl max-w-md mx-auto">
+        <p className="text-muted-foreground mb-4 sm:mb-6 px-4 text-unified-sm sm:text-unified-base max-w-md mx-auto">
           {hasActiveFilters
             ? 'Essayez de modifier vos filtres de recherche ou d\'élargir vos critères'
             : 'Commencez par créer votre première tâche ou événement pour organiser votre travail'
@@ -61,25 +60,25 @@ export function TaskListContent({
         {!hasActiveFilters && (
           <Button
             onClick={onAddNew}
+            variant="primary"
             size="lg"
-            className="gap-md"
           >
             <Plus size={16} />
             Créer le premier élément
           </Button>
         )}
-      </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-lg">
-      <div className="grid gap-lg">
+    <div className="space-responsive">
+      <div className="grid gap-3 sm:gap-4">
         {items.map(item => (
           item.type === 'task' ? (
             <div 
               key={`task-${item.id}`} 
-              className={`transition-normal ${loadingStates[item.id] ? 'opacity-60 pointer-events-none' : ''}`}
+              className={`transition-unified ${loadingStates[item.id] ? 'opacity-60 pointer-events-none' : ''}`}
             >
               <TaskCard
                 task={item}
@@ -95,7 +94,7 @@ export function TaskListContent({
           ) : (
             <div 
               key={`event-${item.id}`} 
-              className={`transition-normal ${loadingStates[item.id] ? 'opacity-60 pointer-events-none' : ''}`}
+              className={`transition-unified ${loadingStates[item.id] ? 'opacity-60 pointer-events-none' : ''}`}
             >
               <EventCard
                 event={item}

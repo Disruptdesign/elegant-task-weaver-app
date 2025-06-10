@@ -46,10 +46,10 @@ export function TaskListHeader({
   };
 
   return (
-    <div className="flex flex-col gap-2xl">
-      <div className="space-y-sm">
-        <h1 className="text-display-lg text-foreground flex items-center gap-lg flex-wrap">
-          <ListTodo className="text-primary" size={32} />
+    <div className="flex flex-col gap-4 items-start">
+      <div className="space-y-1 w-full">
+        <h1 className="text-responsive-xl font-bold text-foreground flex items-center gap-3 flex-wrap">
+          <ListTodo className="text-foreground" size={32} />
           Tâches et événements
         </h1>
         <TaskListStats 
@@ -59,19 +59,22 @@ export function TaskListHeader({
         />
       </div>
       
-      <div className="flex gap-lg flex-wrap">
+      <div className="flex gap-3 w-full sm:w-auto">
         <Button
           onClick={handleReschedule}
           disabled={isScheduling}
-          variant="outline"
-          className="gap-md"
+          variant="secondary"
+          size="default"
+          isLoading={isScheduling}
         >
           <RefreshCw size={16} className={isScheduling ? 'animate-spin' : ''} />
           <span>{isScheduling ? 'Replanification...' : 'Replanifier'}</span>
         </Button>
+        
         <Button
           onClick={onAddNew}
-          className="gap-md shadow-sm"
+          variant="primary"
+          size="default"
         >
           <Plus size={16} />
           <span>Nouveau</span>
