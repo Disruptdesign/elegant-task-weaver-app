@@ -7,6 +7,7 @@ import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { CalendarClock, Settings, Zap } from 'lucide-react';
 import { useAlgorithmicScheduler } from '../hooks/useAlgorithmicScheduler';
+import { useUnifiedRescheduler } from '../hooks/useUnifiedRescheduler';
 import { Task, Event } from '../types/task';
 
 interface SchedulerControlsProps {
@@ -17,7 +18,8 @@ interface SchedulerControlsProps {
 }
 
 export function SchedulerControls({ tasks, events, projects = [], onTasksUpdate }: SchedulerControlsProps) {
-  const { settings, isScheduling, scheduleAllTasks, rescheduleAllTasks, updateSettings } = useAlgorithmicScheduler();
+  const { settings, isScheduling: isManualScheduling, scheduleAllTasks, updateSettings } = useAlgorithmicScheduler();
+  const { performUnifiedReschedule, isScheduling: isUnifiedScheduling } = useUnifiedRescheduler();
 
   const handleManualSchedule = async () => {
     console.log('🎯 Planification manuelle déclenchée avec', projects.length, 'projet(s)');
@@ -25,14 +27,14 @@ export function SchedulerControls({ tasks, events, projects = [], onTasksUpdate 
     onTasksUpdate(scheduledTasks);
   };
 
-  const handleReschedule = async () => {
-    console.log('🔄 Replanification manuelle déclenchée avec', projects.length, 'projet(s) - CONTRAINTES canStartFrom PRÉSERVÉES');
-    const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects);
-    onTasksUpdate(rescheduledTasks);
+  const handleUnifiedReschedule = async () => {
+    console.log('🔄 UNIFICATION SCHEDULER: Replanification avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
+    await performUnifiedReschedule(tasks, events, projects, onTasksUpdate);
   };
 
   const unscheduledTasks = tasks.filter(task => !task.scheduledStart && !task.completed);
   const scheduledTasks = tasks.filter(task => task.scheduledStart);
+  const isAnyScheduling = isManualScheduling || isUnifiedScheduling;
 
   return (
     <Card className="w-full">
@@ -66,21 +68,21 @@ export function SchedulerControls({ tasks, events, projects = [], onTasksUpdate 
         <div className="flex gap-2">
           <Button 
             onClick={handleManualSchedule}
-            disabled={isScheduling || unscheduledTasks.length === 0}
+            disabled={isAnyScheduling || unscheduledTasks.length === 0}
             className="flex items-center gap-2"
           >
             <Zap className="h-4 w-4" />
-            {isScheduling ? 'Planification...' : 'Programmer les tâches'}
+            {isManualScheduling ? 'Planification...' : 'Programmer les tâches'}
           </Button>
           
           <Button 
             variant="outline"
-            onClick={handleReschedule}
-            disabled={isScheduling}
+            onClick={handleUnifiedReschedule}
+            disabled={isAnyScheduling}
             className="flex items-center gap-2"
           >
-            <CalendarClock className="h-4 w-4" />
-            {isScheduling ? 'Replanification...' : 'Replanifier tout'}
+            <CalendarClock className={`h-4 w-4 ${isUnifiedScheduling ? 'animate-spin' : ''}`} />
+            {isUnifiedScheduling ? 'Replanification...' : 'Replanifier tout'}
           </Button>
         </div>
 
@@ -163,10 +165,10 @@ export function SchedulerControls({ tasks, events, projects = [], onTasksUpdate 
         </div>
 
         {/* Informations */}
-        {isScheduling && (
+        {isAnyScheduling && (
           <div className="p-3 bg-blue-50 border-l-4 border-blue-400 text-blue-700">
             <p className="text-sm">
-              🤖 Planification en cours... Les tâches sont organisées selon leur priorité et deadline.
+              🤖 {isUnifiedScheduling ? 'Replanification' : 'Planification'} en cours... Les tâches sont organisées selon leur priorité et deadline avec respect strict des contraintes "peut commencer à partir de".
             </p>
           </div>
         )}

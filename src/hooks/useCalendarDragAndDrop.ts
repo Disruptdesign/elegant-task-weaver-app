@@ -1,6 +1,6 @@
 
 import { useDragAndDrop } from './useDragAndDrop';
-import { useAlgorithmicScheduler } from './useAlgorithmicScheduler';
+import { useUnifiedRescheduler } from './useUnifiedRescheduler';
 import { Task, Event } from '../types/task';
 
 export function useCalendarDragAndDrop(
@@ -15,9 +15,9 @@ export function useCalendarDragAndDrop(
     onUpdateEvent,
   });
 
-  const { rescheduleAllTasks } = useAlgorithmicScheduler();
+  const { performUnifiedReschedule, isScheduling } = useUnifiedRescheduler();
 
-  console.log('📅 CalendarDragAndDrop: Hook initialized with algorithmic scheduler', {
+  console.log('📅 CalendarDragAndDrop: Hook initialized with unified rescheduler', {
     dragState: {
       isDragging: dragState.isDragging,
       isResizing: dragState.isResizing,
@@ -33,20 +33,17 @@ export function useCalendarDragAndDrop(
     projectsCount: projects.length
   });
 
-  // Fonction de replanification qui respecte les contraintes canStartFrom
+  // Fonction de replanification unifiée qui respecte les contraintes canStartFrom
   const rescheduleAllTasksWithConstraints = async () => {
-    console.log('🔄 REPLANIFICATION CALENDRIER avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
-    console.log('📊 Données pour replanification:', {
+    console.log('🔄 CALENDRIER: Replanification UNIFIÉE avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
+    console.log('📊 Données pour replanification calendrier:', {
       tasks: tasks.length,
       events: events.length,
       projects: projects.length
     });
 
-    try {
-      const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects);
-      
-      // Appliquer les mises à jour pour chaque tâche modifiée
-      rescheduledTasks.forEach(task => {
+    const onTasksUpdateForCalendar = (updatedTasks: Task[]) => {
+      updatedTasks.forEach(task => {
         const originalTask = tasks.find(t => t.id === task.id);
         if (originalTask) {
           // Vérifier s'il y a des changements dans la planification
@@ -55,12 +52,6 @@ export function useCalendarDragAndDrop(
             task.scheduledEnd !== originalTask.scheduledEnd;
           
           if (hasSchedulingChanges) {
-            console.log('🔄 Mise à jour tâche:', task.title, {
-              avant: originalTask.scheduledStart ? new Date(originalTask.scheduledStart).toLocaleString() : 'non programmée',
-              après: task.scheduledStart ? new Date(task.scheduledStart).toLocaleString() : 'non programmée',
-              constraintRespected: task.canStartFrom ? 'contrainte canStartFrom préservée' : 'aucune contrainte'
-            });
-            
             onUpdateTask(task.id, {
               scheduledStart: task.scheduledStart,
               scheduledEnd: task.scheduledEnd,
@@ -69,11 +60,9 @@ export function useCalendarDragAndDrop(
           }
         }
       });
+    };
 
-      console.log('✅ Replanification calendrier terminée avec contraintes STRICTEMENT respectées');
-    } catch (error) {
-      console.error('❌ Erreur lors de la replanification calendrier:', error);
-    }
+    await performUnifiedReschedule(tasks, events, projects, onTasksUpdateForCalendar);
   };
 
   const startTaskDrag = (
@@ -129,5 +118,6 @@ export function useCalendarDragAndDrop(
     startTaskDrag,
     startEventDrag,
     rescheduleAllTasksWithConstraints,
+    isRescheduling: isScheduling,
   };
 }
