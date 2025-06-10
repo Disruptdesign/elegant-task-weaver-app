@@ -63,9 +63,9 @@ export function TaskListHeader({
         <Button
           onClick={handleReschedule}
           disabled={isScheduling}
-          variant="outline"
+          variant="secondary"
           size="default"
-          className="flex items-center gap-2 touch-target flex-1 sm:flex-none justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          isLoading={isScheduling}
         >
           <RefreshCw size={16} className={isScheduling ? 'animate-spin' : ''} />
           <span>{isScheduling ? 'Replanification...' : 'Replanifier'}</span>
@@ -75,7 +75,6 @@ export function TaskListHeader({
           onClick={onAddNew}
           variant="primary"
           size="default"
-          className="flex items-center gap-2 touch-target flex-1 sm:flex-none justify-center"
         >
           <Plus size={16} />
           <span>Nouveau</span>

@@ -62,9 +62,8 @@ export function TaskListContent({
             onClick={onAddNew}
             variant="primary"
             size="lg"
-            className="px-responsive py-responsive touch-target text-unified-sm sm:text-unified-base"
           >
-            <Plus className="mr-2" size={16} />
+            <Plus size={16} />
             Créer le premier élément
           </Button>
         )}

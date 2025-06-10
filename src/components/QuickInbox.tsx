@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Plus, Inbox as InboxIcon } from 'lucide-react';
 import { InboxItem } from '../types/task';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 
 interface QuickInboxProps {
   onAddInboxItem: (item: Omit<InboxItem, 'id' | 'createdAt'>) => void;
@@ -22,26 +24,27 @@ export function QuickInbox({ onAddInboxItem }: QuickInboxProps) {
   };
 
   return (
-    <div className="p-3 border-t border-gray-200">
+    <div className="spacing-sm border-t border-border">
       <div className="flex items-center gap-2 mb-3">
-        <InboxIcon size={16} className="text-gray-600" />
-        <span className="text-sm font-medium text-gray-700">Ajout rapide</span>
+        <InboxIcon size={16} className="text-muted-foreground" />
+        <span className="text-unified-sm font-medium text-foreground">Ajout rapide</span>
       </div>
       <form onSubmit={handleSubmit} className="space-y-2">
-        <input
+        <Input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Ajouter une idée..."
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
-        <button
+        <Button
           type="submit"
-          className="w-full flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+          variant="primary"
+          size="sm"
+          className="w-full"
         >
           <Plus size={14} />
           Ajouter
-        </button>
+        </Button>
       </form>
     </div>
   );
