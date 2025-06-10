@@ -2,7 +2,7 @@
 import React from 'react';
 import { ListTodo, Plus, RefreshCw } from 'lucide-react';
 import { TaskListStats } from './TaskListStats';
-import { useAlgorithmicScheduler } from '../hooks/useAlgorithmicScheduler';
+import { useUnifiedRescheduler } from '../hooks/useUnifiedRescheduler';
 import { Task, Event } from '../types/task';
 
 interface TaskListHeaderProps {
@@ -26,42 +26,21 @@ export function TaskListHeader({
   projects = [],
   onTasksUpdate
 }: TaskListHeaderProps) {
-  const { rescheduleAllTasks, isScheduling } = useAlgorithmicScheduler();
+  const { performUnifiedReschedule, isScheduling } = useUnifiedRescheduler();
 
   const handleReschedule = async () => {
-    console.log('🔄 UNIFORMISATION: Replanification depuis TaskListHeader avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
-    console.log('📊 Données pour replanification uniformisée:', {
+    console.log('🔄 TASKLISTHEADER: Replanification unifiée avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
+    console.log('📊 Données pour replanification TaskListHeader:', {
       tasks: tasks.length,
       events: events.length,
       projects: projects.length
     });
 
     try {
-      const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects);
-      
-      // Appliquer les mises à jour pour chaque tâche modifiée
-      rescheduledTasks.forEach(task => {
-        const originalTask = tasks.find(t => t.id === task.id);
-        if (originalTask) {
-          // Vérifier s'il y a des changements dans la planification
-          const hasSchedulingChanges = 
-            task.scheduledStart !== originalTask.scheduledStart ||
-            task.scheduledEnd !== originalTask.scheduledEnd;
-          
-          if (hasSchedulingChanges) {
-            console.log('🔄 UNIFORMISATION: Mise à jour tâche:', task.title, {
-              avant: originalTask.scheduledStart ? new Date(originalTask.scheduledStart).toLocaleString() : 'non programmée',
-              après: task.scheduledStart ? new Date(task.scheduledStart).toLocaleString() : 'non programmée',
-              constraintRespected: task.canStartFrom ? 'contrainte canStartFrom préservée' : 'aucune contrainte'
-            });
-          }
-        }
-      });
-
-      onTasksUpdate(rescheduledTasks);
-      console.log('✅ UNIFORMISATION: Replanification TaskListHeader terminée avec contraintes STRICTEMENT respectées');
+      await performUnifiedReschedule(tasks, events, projects, onTasksUpdate);
+      console.log('✅ TASKLISTHEADER: Replanification unifiée terminée avec contraintes STRICTEMENT respectées');
     } catch (error) {
-      console.error('❌ UNIFORMISATION: Erreur lors de la replanification TaskListHeader:', error);
+      console.error('❌ TASKLISTHEADER: Erreur lors de la replanification unifiée:', error);
     }
   };
 

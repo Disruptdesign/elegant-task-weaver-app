@@ -33,7 +33,7 @@ export function useCalendarDragAndDrop(
     projectsCount: projects.length
   });
 
-  // Fonction de replanification unifiée qui respecte les contraintes canStartFrom
+  // Fonction de replanification unifiée qui respecte ABSOLUMENT les contraintes canStartFrom
   const rescheduleAllTasksWithConstraints = async () => {
     console.log('🔄 CALENDRIER: Replanification UNIFIÉE avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
     console.log('📊 Données pour replanification calendrier:', {
@@ -43,6 +43,8 @@ export function useCalendarDragAndDrop(
     });
 
     const onTasksUpdateForCalendar = (updatedTasks: Task[]) => {
+      console.log('📅 CALENDRIER: Application des mises à jour depuis le calendrier');
+      
       updatedTasks.forEach(task => {
         const originalTask = tasks.find(t => t.id === task.id);
         if (originalTask) {
@@ -52,11 +54,30 @@ export function useCalendarDragAndDrop(
             task.scheduledEnd !== originalTask.scheduledEnd;
           
           if (hasSchedulingChanges) {
-            onUpdateTask(task.id, {
-              scheduledStart: task.scheduledStart,
-              scheduledEnd: task.scheduledEnd,
-              canStartFrom: task.canStartFrom
+            console.log('🔄 CALENDRIER: Mise à jour tâche:', task.title, {
+              avant: originalTask.scheduledStart ? new Date(originalTask.scheduledStart).toLocaleString() : 'non programmée',
+              après: task.scheduledStart ? new Date(task.scheduledStart).toLocaleString() : 'non programmée',
+              constraintRespected: task.canStartFrom ? 'contrainte canStartFrom VÉRIFIÉE' : 'aucune contrainte'
             });
+            
+            // VÉRIFICATION FINALE avant mise à jour
+            if (task.canStartFrom && task.scheduledStart && new Date(task.scheduledStart) < new Date(task.canStartFrom)) {
+              console.log('🚨 CALENDRIER: Violation détectée, correction forcée');
+              const correctedStart = new Date(task.canStartFrom);
+              const correctedEnd = new Date(correctedStart.getTime() + task.estimatedDuration * 60000);
+              
+              onUpdateTask(task.id, {
+                scheduledStart: correctedStart,
+                scheduledEnd: correctedEnd,
+                canStartFrom: task.canStartFrom
+              });
+            } else {
+              onUpdateTask(task.id, {
+                scheduledStart: task.scheduledStart,
+                scheduledEnd: task.scheduledEnd,
+                canStartFrom: task.canStartFrom
+              });
+            }
           }
         }
       });

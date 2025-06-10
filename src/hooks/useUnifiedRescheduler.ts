@@ -20,10 +20,41 @@ export function useUnifiedRescheduler() {
     });
 
     try {
-      const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects);
+      // CORRECTION CRITIQUE: Forcer la replanification en mode STRICT avec préservation des contraintes
+      const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects, {
+        autoSchedule: true,
+        workingHours: {
+          start: "09:00",
+          end: "18:00"
+        },
+        bufferBetweenTasks: 15,
+        allowWeekends: false
+      });
+      
+      // VÉRIFICATION CRITIQUE: S'assurer qu'aucune tâche ne viole sa contrainte canStartFrom
+      const correctedTasks = rescheduledTasks.map(task => {
+        if (task.canStartFrom && task.scheduledStart) {
+          const canStartFromDate = new Date(task.canStartFrom);
+          const scheduledStartDate = new Date(task.scheduledStart);
+          
+          if (scheduledStartDate < canStartFromDate) {
+            console.log('🚨 CORRECTION FORCÉE: Tâche', task.title, 'programmée avant sa contrainte');
+            console.log('   Programmée à:', scheduledStartDate.toLocaleString());
+            console.log('   Contrainte à:', canStartFromDate.toLocaleString());
+            
+            // Corriger en reprogrammant à la date de contrainte minimum
+            return {
+              ...task,
+              scheduledStart: canStartFromDate,
+              scheduledEnd: new Date(canStartFromDate.getTime() + task.estimatedDuration * 60000)
+            };
+          }
+        }
+        return task;
+      });
       
       // Appliquer les mises à jour pour chaque tâche modifiée
-      const updatedTasks = rescheduledTasks.map(task => {
+      const updatedTasks = correctedTasks.map(task => {
         const originalTask = tasks.find(t => t.id === task.id);
         if (originalTask) {
           // Vérifier s'il y a des changements dans la planification
@@ -35,7 +66,7 @@ export function useUnifiedRescheduler() {
             console.log('🔄 UNIFICATION: Mise à jour tâche:', task.title, {
               avant: originalTask.scheduledStart ? new Date(originalTask.scheduledStart).toLocaleString() : 'non programmée',
               après: task.scheduledStart ? new Date(task.scheduledStart).toLocaleString() : 'non programmée',
-              constraintRespected: task.canStartFrom ? 'contrainte canStartFrom préservée' : 'aucune contrainte'
+              constraintRespected: task.canStartFrom ? 'contrainte canStartFrom VÉRIFIÉE ET RESPECTÉE' : 'aucune contrainte'
             });
           }
         }

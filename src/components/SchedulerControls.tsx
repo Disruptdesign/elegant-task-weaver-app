@@ -22,13 +22,13 @@ export function SchedulerControls({ tasks, events, projects = [], onTasksUpdate 
   const { performUnifiedReschedule, isScheduling: isUnifiedScheduling } = useUnifiedRescheduler();
 
   const handleManualSchedule = async () => {
-    console.log('🎯 Planification manuelle déclenchée avec', projects.length, 'projet(s)');
+    console.log('🎯 SCHEDULERCONTROLS: Planification manuelle déclenchée avec', projects.length, 'projet(s)');
     const scheduledTasks = await scheduleAllTasks(tasks, events, projects);
     onTasksUpdate(scheduledTasks);
   };
 
   const handleUnifiedReschedule = async () => {
-    console.log('🔄 UNIFICATION SCHEDULER: Replanification avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
+    console.log('🔄 SCHEDULERCONTROLS: Replanification unifiée avec contraintes canStartFrom STRICTEMENT PRÉSERVÉES');
     await performUnifiedReschedule(tasks, events, projects, onTasksUpdate);
   };
 
@@ -44,7 +44,7 @@ export function SchedulerControls({ tasks, events, projects = [], onTasksUpdate 
           Planificateur Algorithmique
         </CardTitle>
         <CardDescription>
-          Planification automatique des tâches en fonction des événements, deadlines et priorités avec respect des contraintes "peut commencer à partir de"
+          Planification automatique des tâches en fonction des événements, deadlines et priorités avec respect STRICT des contraintes "peut commencer à partir de"
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -168,7 +168,7 @@ export function SchedulerControls({ tasks, events, projects = [], onTasksUpdate 
         {isAnyScheduling && (
           <div className="p-3 bg-blue-50 border-l-4 border-blue-400 text-blue-700">
             <p className="text-sm">
-              🤖 {isUnifiedScheduling ? 'Replanification' : 'Planification'} en cours... Les tâches sont organisées selon leur priorité et deadline avec respect strict des contraintes "peut commencer à partir de".
+              🤖 {isUnifiedScheduling ? 'Replanification unifiée' : 'Planification'} en cours... Les tâches sont organisées selon leur priorité et deadline avec respect STRICT des contraintes "peut commencer à partir de".
             </p>
           </div>
         )}
