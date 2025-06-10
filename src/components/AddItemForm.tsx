@@ -94,7 +94,7 @@ export function AddItemForm({
               type="button"
               variant={currentType === 'task' ? 'default' : 'outline'}
               onClick={handleTaskTypeSelect}
-              disabled={isEditing || prefilledFromInbox}
+              disabled={isEditing || !!prefilledFromInbox}
               className="flex items-center gap-2"
             >
               <CheckSquare size={16} />
@@ -104,7 +104,7 @@ export function AddItemForm({
               type="button"
               variant={currentType === 'event' ? 'default' : 'outline'}
               onClick={handleEventTypeSelect}
-              disabled={isEditing || prefilledFromInbox}
+              disabled={isEditing || !!prefilledFromInbox}
               className="flex items-center gap-2"
             >
               <Calendar size={16} />
@@ -128,7 +128,7 @@ export function AddItemForm({
             onClose={() => {}} // Pas utilisé en mode inline
             onSubmit={handleTaskSubmit}
             editingTask={editingTask}
-            prefilledData={prefilledFromInbox ? {
+            initialData={prefilledFromInbox ? {
               title: prefilledFromInbox.title,
               description: prefilledFromInbox.description || ''
             } : undefined}
