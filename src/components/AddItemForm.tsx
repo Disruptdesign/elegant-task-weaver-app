@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Calendar, CheckSquare, X } from 'lucide-react';
+import { Calendar, CheckSquare } from 'lucide-react';
 import { Task, Event, Project, TaskType } from '../types/task';
 import { TaskForm } from './TaskForm';
 import { EventForm } from './EventForm';
@@ -30,22 +30,10 @@ export function AddItemForm({
   console.log('AddItemForm: Rendering with', {
     projectsCount: projects.length,
     taskTypesCount: taskTypes.length,
-    editingTask: editingTask ? {
-      id: editingTask.id,
-      title: editingTask.title
-    } : null,
-    editingEvent: editingEvent ? {
-      id: editingEvent.id,
-      title: editingEvent.title
-    } : null,
-    projects: projects.map(p => ({
-      id: p.id,
-      title: p.title
-    })),
-    taskTypes: taskTypes.map(t => ({
-      id: t.id,
-      name: t.name
-    }))
+    editingTask: editingTask ? { id: editingTask.id, title: editingTask.title } : null,
+    editingEvent: editingEvent ? { id: editingEvent.id, title: editingEvent.title } : null,
+    projects: projects.map(p => ({ id: p.id, title: p.title })),
+    taskTypes: taskTypes.map(t => ({ id: t.id, name: t.name }))
   });
 
   React.useEffect(() => {
@@ -58,6 +46,7 @@ export function AddItemForm({
     }
   }, [editingTask, editingEvent]);
 
+  // Si on édite une tâche ou un événement, déterminer le type automatiquement
   const currentType = editingTask ? 'task' : editingEvent ? 'event' : itemType;
   const isEditing = !!(editingTask || editingEvent);
 
@@ -75,42 +64,43 @@ export function AddItemForm({
 
   const handleTaskSubmit = async (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'updatedAt'>) => {
     await onSubmitTask(taskData);
-    onCancel();
+    onCancel(); // Fermer le formulaire après soumission
   };
 
   const handleEventSubmit = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
     await onSubmitEvent(eventData);
-    onCancel();
+    onCancel(); // Fermer le formulaire après soumission
   };
 
   return (
-    <div className="card-base w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-      <div className="sticky top-0 bg-background flex items-center justify-between spacing-lg border-b border-border rounded-t-unified">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="sticky top-0 bg-white flex items-center justify-between p-6 border-b border-gray-100 rounded-t-2xl">
         <div className="flex-1">
-          <h2 className="text-unified-xl font-semibold text-foreground">
+          <h2 className="text-xl font-semibold text-gray-900">
             {editingTask ? 'Modifier la tâche' : editingEvent ? 'Modifier l\'événement' : 'Ajouter un nouvel élément'}
           </h2>
-          <p className="text-unified-sm text-muted-foreground mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             {editingTask ? 'Modifiez les détails de la tâche.' : editingEvent ? 'Modifiez les détails de l\'événement.' : 'Choisissez le type d\'élément à créer.'}
           </p>
           
+          {/* Sélecteur de type directement intégré */}
           <div className="flex gap-2 mt-4">
-            <Button 
-              variant={currentType === 'task' ? 'primary' : 'outline'} 
-              onClick={handleTaskTypeSelect} 
-              disabled={isEditing} 
-              size="sm"
-              isActive={currentType === 'task'}
+            <Button
+              type="button"
+              variant={currentType === 'task' ? 'default' : 'outline'}
+              onClick={handleTaskTypeSelect}
+              disabled={isEditing}
+              className="flex items-center gap-2"
             >
               <CheckSquare size={16} />
               Tâche
             </Button>
-            <Button 
-              variant={currentType === 'event' ? 'primary' : 'outline'} 
-              onClick={handleEventTypeSelect} 
-              disabled={isEditing} 
-              size="sm"
-              isActive={currentType === 'event'}
+            <Button
+              type="button"
+              variant={currentType === 'event' ? 'default' : 'outline'}
+              onClick={handleEventTypeSelect}
+              disabled={isEditing}
+              className="flex items-center gap-2"
             >
               <Calendar size={16} />
               Événement
@@ -118,34 +108,33 @@ export function AddItemForm({
           </div>
         </div>
         
-        <Button 
+        <button 
           onClick={onCancel} 
-          variant="ghost" 
-          size="icon"
+          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          <X size={16} />
-        </Button>
+          ✕
+        </button>
       </div>
 
-      <div className="spacing-lg">
+      <div className="p-6">
         {currentType === 'task' ? (
-          <TaskForm 
-            isOpen={true} 
-            onClose={() => {}}
-            onSubmit={handleTaskSubmit} 
-            editingTask={editingTask} 
-            projects={projects} 
-            taskTypes={taskTypes} 
-            tasks={[]} 
-            inline={true}
+          <TaskForm
+            isOpen={true}
+            onClose={() => {}} // Pas utilisé en mode inline
+            onSubmit={handleTaskSubmit}
+            editingTask={editingTask}
+            projects={projects}
+            taskTypes={taskTypes}
+            tasks={[]}
+            inline={true} // Mode inline activé
           />
         ) : (
-          <EventForm 
-            isOpen={true} 
-            onClose={() => {}}
-            onSubmit={handleEventSubmit} 
-            editingEvent={editingEvent} 
-            inline={true}
+          <EventForm
+            isOpen={true}
+            onClose={() => {}} // Pas utilisé en mode inline
+            onSubmit={handleEventSubmit}
+            editingEvent={editingEvent}
+            inline={true} // Mode inline activé
           />
         )}
       </div>
