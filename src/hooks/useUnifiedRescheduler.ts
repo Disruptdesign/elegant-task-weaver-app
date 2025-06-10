@@ -19,6 +19,13 @@ export function useUnifiedRescheduler() {
       projects: projects.length
     });
 
+    // PRÉSERVATION DEBUG: Afficher les contraintes avant replanification
+    const tasksWithCanStartFrom = tasks.filter(t => t.canStartFrom);
+    console.log('🔒 AVANT REPLANIFICATION - Tâches avec canStartFrom:', tasksWithCanStartFrom.length);
+    tasksWithCanStartFrom.forEach(task => {
+      console.log(`   - ${task.title}: ${new Date(task.canStartFrom!).toLocaleString()}`);
+    });
+
     try {
       // CORRECTION CRITIQUE: Forcer la replanification en mode STRICT avec préservation des contraintes
       const rescheduledTasks = await rescheduleAllTasks(tasks, events, projects, {
@@ -31,52 +38,44 @@ export function useUnifiedRescheduler() {
         allowWeekends: false
       });
       
-      // VÉRIFICATION CRITIQUE: S'assurer qu'aucune tâche ne viole sa contrainte canStartFrom
-      const correctedTasks = rescheduledTasks.map(task => {
-        if (task.canStartFrom && task.scheduledStart) {
-          const canStartFromDate = new Date(task.canStartFrom);
-          const scheduledStartDate = new Date(task.scheduledStart);
-          
-          if (scheduledStartDate < canStartFromDate) {
-            console.log('🚨 CORRECTION FORCÉE: Tâche', task.title, 'programmée avant sa contrainte');
-            console.log('   Programmée à:', scheduledStartDate.toLocaleString());
-            console.log('   Contrainte à:', canStartFromDate.toLocaleString());
-            
-            // Corriger en reprogrammant à la date de contrainte minimum
-            return {
-              ...task,
-              scheduledStart: canStartFromDate,
-              scheduledEnd: new Date(canStartFromDate.getTime() + task.estimatedDuration * 60000)
-            };
-          }
-        }
-        return task;
-      });
-      
-      // Appliquer les mises à jour pour chaque tâche modifiée
-      const updatedTasks = correctedTasks.map(task => {
-        const originalTask = tasks.find(t => t.id === task.id);
-        if (originalTask) {
-          // Vérifier s'il y a des changements dans la planification
-          const hasSchedulingChanges = 
-            task.scheduledStart !== originalTask.scheduledStart ||
-            task.scheduledEnd !== originalTask.scheduledEnd;
-          
-          if (hasSchedulingChanges) {
-            console.log('🔄 UNIFICATION: Mise à jour tâche:', task.title, {
-              avant: originalTask.scheduledStart ? new Date(originalTask.scheduledStart).toLocaleString() : 'non programmée',
-              après: task.scheduledStart ? new Date(task.scheduledStart).toLocaleString() : 'non programmée',
-              constraintRespected: task.canStartFrom ? 'contrainte canStartFrom VÉRIFIÉE ET RESPECTÉE' : 'aucune contrainte'
-            });
-          }
-        }
-        return task;
+      // VÉRIFICATION FINALE: S'assurer qu'aucune contrainte canStartFrom n'a disparu
+      const finalTasksWithCanStartFrom = rescheduledTasks.filter(t => t.canStartFrom);
+      console.log('🔒 APRÈS REPLANIFICATION - Tâches avec canStartFrom:', finalTasksWithCanStartFrom.length);
+      finalTasksWithCanStartFrom.forEach(task => {
+        console.log(`   - ${task.title}: ${new Date(task.canStartFrom!).toLocaleString()}`);
       });
 
-      onTasksUpdate(updatedTasks);
+      // VÉRIFICATION CRITIQUE: Detecter les pertes de contraintes
+      const lostConstraints = tasksWithCanStartFrom.filter(originalTask => {
+        const rescheduledTask = rescheduledTasks.find(t => t.id === originalTask.id);
+        return rescheduledTask && !rescheduledTask.canStartFrom;
+      });
+
+      if (lostConstraints.length > 0) {
+        console.error('🚨 CONTRAINTES PERDUES DÉTECTÉES:', lostConstraints.map(t => t.title));
+        
+        // RESTAURER LES CONTRAINTES PERDUES
+        const correctedTasks = rescheduledTasks.map(task => {
+          const originalTask = tasks.find(t => t.id === task.id);
+          if (originalTask && originalTask.canStartFrom && !task.canStartFrom) {
+            console.log('🔧 RESTAURATION contrainte pour:', task.title);
+            return {
+              ...task,
+              canStartFrom: originalTask.canStartFrom
+            };
+          }
+          return task;
+        });
+
+        onTasksUpdate(correctedTasks);
+        console.log('✅ UNIFICATION GLOBALE: Contraintes perdues RESTAURÉES');
+        return correctedTasks;
+      }
+      
+      onTasksUpdate(rescheduledTasks);
       console.log('✅ UNIFICATION GLOBALE: Replanification terminée avec contraintes STRICTEMENT respectées');
       
-      return updatedTasks;
+      return rescheduledTasks;
     } catch (error) {
       console.error('❌ UNIFICATION GLOBALE: Erreur lors de la replanification:', error);
       throw error;

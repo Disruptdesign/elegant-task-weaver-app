@@ -40,10 +40,10 @@ export class AlgorithmicScheduler {
   }
 
   /**
-   * MÉTHODE PRINCIPALE: Programme toutes les tâches en respectant ABSOLUMENT les contraintes
+   * CORRECTION DÉFINITIVE: Programme toutes les tâches en PRÉSERVANT ABSOLUMENT les contraintes canStartFrom
    */
   scheduleTasks(tasks: Task[], isRescheduling: boolean = false): Task[] {
-    console.log(`🚀 ${isRescheduling ? 'REPLANIFICATION' : 'PLANIFICATION INITIALE'} de ${tasks.length} tâches avec contraintes STRICTES`);
+    console.log(`🚀 ${isRescheduling ? 'REPLANIFICATION' : 'PLANIFICATION INITIALE'} de ${tasks.length} tâches avec PRÉSERVATION canStartFrom`);
     
     // Séparer les tâches terminées, en cours et à programmer
     const completedTasks = tasks.filter(task => task.completed);
@@ -56,10 +56,21 @@ export class AlgorithmicScheduler {
       àProgrammer: tasksToSchedule.length
     });
 
-    // Appliquer les contraintes de projet avec mode de préservation pour la replanification
-    const tasksWithProjectConstraints = tasksToSchedule.map(task => 
-      this.applyProjectConstraints(task, isRescheduling)
-    );
+    // CORRECTION CRITIQUE: Préserver les contraintes canStartFrom lors de la replanification
+    const tasksWithProjectConstraints = tasksToSchedule.map(task => {
+      const updatedTask = this.applyProjectConstraints(task, isRescheduling);
+      
+      // RÈGLE ABSOLUE: Si la tâche originale avait un canStartFrom, le PRÉSERVER
+      if (isRescheduling && task.canStartFrom) {
+        console.log('🔒 PRÉSERVATION canStartFrom pour', task.title, ':', format(task.canStartFrom, 'dd/MM HH:mm'));
+        return {
+          ...updatedTask,
+          canStartFrom: task.canStartFrom // PRÉSERVER la contrainte originale
+        };
+      }
+      
+      return updatedTask;
+    });
 
     // Résoudre les dépendances
     const orderedTasks = this.resolveDependencies(tasksWithProjectConstraints);
@@ -67,10 +78,10 @@ export class AlgorithmicScheduler {
     // Prioriser les tâches
     const prioritizedTasks = this.prioritizeTasks(orderedTasks);
     
-    console.log('🎯 Ordre de planification final (avec contraintes ABSOLUES):');
+    console.log('🎯 Ordre de planification final (canStartFrom PRÉSERVÉ):');
     prioritizedTasks.forEach((task, index) => {
       const constraintInfo = task.canStartFrom ? 
-        `CONTRAINTE ABSOLUE: ${format(task.canStartFrom, 'dd/MM HH:mm')}` : 
+        `canStartFrom PRÉSERVÉ: ${format(task.canStartFrom, 'dd/MM HH:mm')}` : 
         'aucune contrainte temporelle';
       console.log(`   ${index + 1}. ${task.title} (${constraintInfo})`);
     });
@@ -90,43 +101,50 @@ export class AlgorithmicScheduler {
       const scheduledTask = this.scheduleTask(task, earliestStart, maxSearchDate, [...scheduledTasks, ...tasksInProgress]);
       
       if (scheduledTask) {
+        // CORRECTION CRITIQUE: PRÉSERVER canStartFrom même après programmation réussie
+        const finalTask = {
+          ...scheduledTask,
+          canStartFrom: task.canStartFrom // PRÉSERVER la contrainte originale
+        };
+        
         // VÉRIFICATION FINALE CRITIQUE avant ajout
-        if (scheduledTask.canStartFrom && scheduledTask.scheduledStart && 
-            new Date(scheduledTask.scheduledStart) < scheduledTask.canStartFrom) {
+        if (finalTask.canStartFrom && finalTask.scheduledStart && 
+            new Date(finalTask.scheduledStart) < finalTask.canStartFrom) {
           console.log('🚨 ERREUR FINALE DÉTECTÉE: Violation de contrainte après programmation');
           console.log('   Correction forcée à la contrainte minimale');
           
-          const correctedStart = scheduledTask.canStartFrom;
-          const correctedEnd = addMinutes(correctedStart, scheduledTask.estimatedDuration);
+          const correctedStart = finalTask.canStartFrom;
+          const correctedEnd = addMinutes(correctedStart, finalTask.estimatedDuration);
           
           scheduledTasks.push({
-            ...scheduledTask,
+            ...finalTask,
             scheduledStart: correctedStart,
-            scheduledEnd: correctedEnd,
-            canStartFrom: undefined // Nettoyer après programmation
+            scheduledEnd: correctedEnd
+            // canStartFrom PRÉSERVÉ (pas supprimé)
           });
         } else {
-          scheduledTasks.push({
-            ...scheduledTask,
-            canStartFrom: undefined // Nettoyer après programmation réussie
-          });
+          scheduledTasks.push(finalTask); // canStartFrom PRÉSERVÉ
         }
         
-        console.log('✅ Tâche programmée avec succès:', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm'));
+        console.log('✅ Tâche programmée avec canStartFrom PRÉSERVÉ:', format(scheduledTask.scheduledStart!, 'dd/MM HH:mm'));
       } else {
         console.log('❌ Impossible de programmer la tâche dans les contraintes de temps');
-        // Garder la tâche sans programmation
-        scheduledTasks.push(task);
+        // CORRECTION: Garder la tâche avec sa contrainte canStartFrom
+        scheduledTasks.push({
+          ...task,
+          canStartFrom: task.canStartFrom // PRÉSERVER même si non programmée
+        });
       }
     }
 
     // Retourner toutes les tâches (terminées + en cours + nouvellement programmées)
     const allTasks = [...completedTasks, ...tasksInProgress, ...scheduledTasks];
     
-    console.log(`✅ ${isRescheduling ? 'REPLANIFICATION' : 'PLANIFICATION'} terminée:`, {
+    console.log(`✅ ${isRescheduling ? 'REPLANIFICATION' : 'PLANIFICATION'} terminée avec canStartFrom PRÉSERVÉ:`, {
       total: allTasks.length,
       programmées: scheduledTasks.filter(t => t.scheduledStart).length,
-      nonProgrammées: scheduledTasks.filter(t => !t.scheduledStart).length
+      nonProgrammées: scheduledTasks.filter(t => !t.scheduledStart).length,
+      avecCanStartFrom: scheduledTasks.filter(t => t.canStartFrom).length
     });
 
     return allTasks;
@@ -382,7 +400,7 @@ export class AlgorithmicScheduler {
   }
 
   /**
-   * CORRECTION CRITIQUE: Vérification ABSOLUE de la contrainte canStartFrom avant programmation
+   * CORRECTION DÉFINITIVE: Vérification ABSOLUE et PRÉSERVATION de canStartFrom
    */
   private scheduleTask(task: Task, startDate: Date, endDate: Date, existingTasks: Task[]): Task | null {
     console.log('🔍 Recherche de créneau pour:', task.title, '(durée:', task.estimatedDuration, 'min)');
@@ -475,11 +493,12 @@ export class AlgorithmicScheduler {
             continue;
           }
           
+          // CORRECTION DÉFINITIVE: NE PAS SUPPRIMER canStartFrom
           return {
             ...task,
             scheduledStart,
-            scheduledEnd,
-            canStartFrom: undefined // Nettoyer la contrainte une fois la tâche programmée
+            scheduledEnd
+            // canStartFrom PRÉSERVÉ (pas supprimé)
           };
         }
       }
