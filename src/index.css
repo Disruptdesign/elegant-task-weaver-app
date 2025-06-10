@@ -29,7 +29,11 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --radius: 8px;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 
   .dark {
@@ -65,12 +69,91 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-foreground;
+  }
+  
+  h1 {
+    @apply text-2xl;
+  }
+  
+  h2 {
+    @apply text-xl;
+  }
+  
+  h3 {
+    @apply text-lg;
+  }
+  
+  h4, h5, h6 {
+    @apply text-base;
   }
 }
 
-/* Classes utilitaires pour l'accessibilité tactile et responsivité */
+/* Système de design unifié */
 @layer utilities {
+  /* Ombres standardisées */
+  .shadow-unified-sm {
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .shadow-unified-md {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .shadow-unified-lg {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .shadow-unified-xl {
+    box-shadow: var(--shadow-xl);
+  }
+
+  /* Border radius unifié */
+  .rounded-unified {
+    border-radius: var(--radius);
+  }
+  
+  .rounded-unified-sm {
+    border-radius: calc(var(--radius) - 2px);
+  }
+  
+  .rounded-unified-lg {
+    border-radius: calc(var(--radius) + 4px);
+  }
+
+  /* Espacement unifié */
+  .spacing-xs {
+    @apply p-2;
+  }
+  
+  .spacing-sm {
+    @apply p-3;
+  }
+  
+  .spacing-md {
+    @apply p-4;
+  }
+  
+  .spacing-lg {
+    @apply p-6;
+  }
+  
+  .spacing-xl {
+    @apply p-8;
+  }
+
+  /* Transitions unifiées */
+  .transition-unified {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  /* Classes utilitaires pour l'accessibilité tactile et responsivité */
   .touch-target {
     @apply min-w-[44px] min-h-[44px];
   }
@@ -104,26 +187,51 @@
     }
   }
 
-  /* Classes pour la responsivité des textes */
+  /* Classes pour la responsivité des textes unifiées */
+  .text-unified-xs {
+    @apply text-xs;
+  }
+  
+  .text-unified-sm {
+    @apply text-sm;
+  }
+  
+  .text-unified-base {
+    @apply text-base;
+  }
+  
+  .text-unified-lg {
+    @apply text-lg;
+  }
+  
+  .text-unified-xl {
+    @apply text-xl;
+  }
+  
+  .text-unified-2xl {
+    @apply text-2xl;
+  }
+
+  /* Classes responsive unifiées */
   .text-responsive {
-    @apply text-sm sm:text-base lg:text-lg;
+    @apply text-unified-sm sm:text-unified-base lg:text-unified-lg;
   }
 
   .text-responsive-lg {
-    @apply text-base sm:text-lg lg:text-xl;
+    @apply text-unified-base sm:text-unified-lg lg:text-unified-xl;
   }
 
   .text-responsive-xl {
-    @apply text-lg sm:text-xl lg:text-2xl;
+    @apply text-unified-lg sm:text-unified-xl lg:text-unified-2xl;
   }
 
-  /* Classes pour l'espacement responsive */
+  /* Classes pour l'espacement responsive unifié */
   .space-responsive {
     @apply space-y-3 sm:space-y-4 lg:space-y-6;
   }
 
   .p-responsive {
-    @apply p-3 sm:p-4 lg:p-6;
+    @apply spacing-sm sm:spacing-md lg:spacing-lg;
   }
 
   .px-responsive {
@@ -134,7 +242,7 @@
     @apply py-3 sm:py-4 lg:py-6;
   }
 
-  /* Classes pour les marges responsive */
+  /* Classes pour les marges responsive unifiées */
   .m-responsive {
     @apply m-2 sm:m-4 lg:m-6;
   }
@@ -145,5 +253,33 @@
 
   .my-responsive {
     @apply my-3 sm:my-4 lg:my-6;
+  }
+
+  /* États interactifs unifiés */
+  .interactive-element {
+    @apply transition-unified hover:shadow-unified-md focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none;
+  }
+  
+  .clickable-card {
+    @apply interactive-element rounded-unified shadow-unified-sm hover:shadow-unified-lg cursor-pointer;
+  }
+}
+
+/* Composants de base unifiés */
+@layer components {
+  .btn-base {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-unified text-unified-sm font-medium transition-unified focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 touch-target;
+  }
+  
+  .input-base {
+    @apply flex h-10 w-full rounded-unified border border-input bg-background px-3 py-2 text-unified-sm ring-offset-background file:border-0 file:bg-transparent file:text-unified-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-unified;
+  }
+  
+  .card-base {
+    @apply rounded-unified border bg-card text-card-foreground shadow-unified-sm transition-unified;
+  }
+  
+  .dialog-base {
+    @apply fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background spacing-lg shadow-unified-xl duration-200 rounded-unified;
   }
 }

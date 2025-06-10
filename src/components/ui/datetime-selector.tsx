@@ -64,23 +64,23 @@ export function DateTimeSelector({
           <Button
             variant="outline"
             className={cn(
-              "w-full justify-start text-left font-normal",
+              "w-full justify-start text-left font-normal shadow-unified-sm hover:shadow-unified-md",
               !value && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {value ? (
-              <span>
+              <span className="text-unified-sm">
                 {format(value, "PPP", { locale: fr })}
                 {includeTime && ` à ${format(value, "HH:mm")}`}
               </span>
             ) : (
-              <span>{placeholder}</span>
+              <span className="text-unified-sm">{placeholder}</span>
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 bg-white" align="start">
-          <div className="space-y-3 p-3">
+        <PopoverContent className="w-auto p-0 bg-background shadow-unified-xl" align="start">
+          <div className="space-y-3 spacing-sm">
             <Calendar
               mode="single"
               selected={value}
@@ -91,7 +91,7 @@ export function DateTimeSelector({
             
             {includeTime && (
               <div className="border-t pt-3 space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <div className="flex items-center gap-2 text-unified-sm font-medium text-foreground">
                   <Clock size={16} />
                   Heure
                 </div>
@@ -102,10 +102,10 @@ export function DateTimeSelector({
                       key={time}
                       type="button"
                       onClick={() => handleTimeChange(time)}
-                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                      className={`px-2 py-1 text-unified-xs rounded-unified transition-unified shadow-unified-sm hover:shadow-unified-md ${
                         getCurrentTime() === time
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                       }`}
                     >
                       {time}
@@ -114,12 +114,12 @@ export function DateTimeSelector({
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Heure personnalisée :</span>
+                  <span className="text-unified-sm text-muted-foreground">Heure personnalisée :</span>
                   <input
                     type="time"
                     value={getCurrentTime()}
                     onChange={(e) => handleTimeChange(e.target.value)}
-                    className="px-2 py-1 border border-gray-200 rounded text-sm"
+                    className="px-2 py-1 border border-input rounded-unified text-unified-sm bg-background transition-unified focus:ring-2 focus:ring-ring focus:ring-offset-2"
                   />
                 </div>
               </div>
