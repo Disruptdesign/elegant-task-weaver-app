@@ -71,14 +71,14 @@ export class TaskScheduler {
         // CORRECTION BIDIRECTIONNELLE + FONDAMENTALE: Le créneau DOIT respecter TOUTES les contraintes
         const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), effectiveStartTime, now.getTime()));
         
-        // VÉRIFICATION CRITIQUE SUPPLÉMENTAIRE
-        if (task.canStartFrom && adjustedSlotStart < Math.max(task.canStartFrom.getTime(), now.getTime())) {
+        // VÉRIFICATION CRITIQUE SUPPLÉMENTAIRE - CORRECTION: Comparer les timestamps
+        if (task.canStartFrom && adjustedSlotStart.getTime() < Math.max(task.canStartFrom.getTime(), now.getTime())) {
           console.log('🚨 REJET: Créneau avant contrainte canStartFrom ou maintenant');
           continue;
         }
         
         // VÉRIFICATION FONDAMENTALE: Jamais avant maintenant
-        if (adjustedSlotStart < now) {
+        if (adjustedSlotStart.getTime() < now.getTime()) {
           console.log('🚨 REJET: Créneau avant maintenant (contrainte fondamentale)');
           continue;
         }
@@ -96,12 +96,12 @@ export class TaskScheduler {
           const scheduledEnd = addMinutes(scheduledStart, task.estimatedDuration);
           
           // VÉRIFICATION FINALE CRITIQUE: Triple vérification des contraintes
-          if (scheduledStart < now) {
+          if (scheduledStart.getTime() < now.getTime()) {
             console.log('🚨 ERREUR FINALE: Tentative de programmer avant maintenant - REJET ABSOLU');
             continue;
           }
           
-          if (task.canStartFrom && scheduledStart < task.canStartFrom) {
+          if (task.canStartFrom && scheduledStart.getTime() < task.canStartFrom.getTime()) {
             console.log('🚨 ERREUR FINALE: Tentative de programmer avant canStartFrom - REJET ABSOLU');
             continue;
           }
@@ -121,7 +121,7 @@ export class TaskScheduler {
           console.log('✅ Créneau validé (CONTRAINTES FONDAMENTALE + BIDIRECTIONNELLE RESPECTÉES):', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
           
           // VÉRIFICATION FINALE AVANT RETOUR
-          if (scheduledStart < now || (task.canStartFrom && scheduledStart < task.canStartFrom)) {
+          if (scheduledStart.getTime() < now.getTime() || (task.canStartFrom && scheduledStart.getTime() < task.canStartFrom.getTime())) {
             console.log('🚨 DERNIÈRE VÉRIFICATION ÉCHOUÉE - REJET');
             continue;
           }
