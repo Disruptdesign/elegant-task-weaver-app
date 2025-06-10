@@ -137,21 +137,28 @@ export class TaskConstraintResolver {
 
   /**
    * CORRECTION ABSOLUE POUR REPLANIFICATION: La contrainte canStartFrom ne peut JAMAIS être violée
+   * NOUVELLE RÈGLE FONDAMENTALE: Aucune tâche ne peut être programmée avant MAINTENANT
    */
   calculateEarliestStart(task: Task, completedTasks: Task[], scheduledTasks: Task[]): Date {
     const now = new Date();
     
-    // RÈGLE ABSOLUE: canStartFrom est PRIORITAIRE sur TOUT
+    // RÈGLE FONDAMENTALE NOUVELLE: JAMAIS avant maintenant, même sans contrainte
+    console.log('🕒 CONTRAINTE FONDAMENTALE: Aucune tâche ne peut être programmée avant maintenant:', format(now, 'dd/MM HH:mm'));
+    
+    // RÈGLE ABSOLUE: canStartFrom est PRIORITAIRE sur TOUT, mais jamais avant maintenant
     let absoluteEarliestStart = task.canStartFrom || now;
     
-    // CORRECTION BIDIRECTIONNELLE: Permettre le recul si canStartFrom est dans le passé
-    // mais au minimum maintenant pour les nouvelles planifications
-    if (!task.canStartFrom) {
-      absoluteEarliestStart = new Date(Math.max(absoluteEarliestStart.getTime(), now.getTime()));
-    } else {
-      // Si canStartFrom existe, le respecter même s'il est dans le passé (cas du recul de projet)
+    // CORRECTION CRITIQUE: Toujours respecter "maintenant" comme minimum absolu
+    if (absoluteEarliestStart < now) {
+      console.log('🚨 CORRECTION AUTOMATIQUE: canStartFrom dans le passé détecté, ajustement à maintenant');
+      absoluteEarliestStart = now;
+    }
+    
+    if (task.canStartFrom) {
       console.log('🔒 CONTRAINTE BIDIRECTIONNELLE pour', task.title, ':', format(task.canStartFrom, 'dd/MM HH:mm'));
-      console.log('   AUTORISATION mouvement bidirectionnel (peut reculer si projet a reculé)');
+      console.log('   MAIS respect absolu de "maintenant" comme minimum:', format(absoluteEarliestStart, 'dd/MM HH:mm'));
+    } else {
+      console.log('📅 Aucune contrainte canStartFrom, utilisation de maintenant:', format(absoluteEarliestStart, 'dd/MM HH:mm'));
     }
     
     // CONTRAINTE 2: Vérifier les dépendances - MAIS JAMAIS avant la contrainte absolue
@@ -172,24 +179,24 @@ export class TaskConstraintResolver {
           const depEnd = new Date(scheduledDep.scheduledEnd);
           const depEndWithBuffer = addMinutes(depEnd, 15); // Use default buffer
           
-          // RÈGLE CRITIQUE: La contrainte absolue canStartFrom ne peut JAMAIS être violée
+          // RÈGLE CRITIQUE: La contrainte absolue (maintenant + canStartFrom) ne peut JAMAIS être violée
           const candidateStart = Math.max(depEndWithBuffer.getTime(), absoluteEarliestStart.getTime());
           
           if (candidateStart > absoluteEarliestStart.getTime()) {
             absoluteEarliestStart = new Date(candidateStart);
-            console.log('   ⏰ Dépendance appliquée mais contrainte canStartFrom RESPECTÉE:', format(absoluteEarliestStart, 'dd/MM HH:mm'));
+            console.log('   ⏰ Dépendance appliquée mais contrainte fondamentale RESPECTÉE:', format(absoluteEarliestStart, 'dd/MM HH:mm'));
           }
         }
       }
     }
     
-    // VÉRIFICATION FINALE CRITIQUE
-    if (task.canStartFrom && absoluteEarliestStart < task.canStartFrom) {
-      console.log('🚨 ERREUR FINALE DÉTECTÉE: Correction forcée de la contrainte');
-      absoluteEarliestStart = task.canStartFrom;
+    // VÉRIFICATION FINALE CRITIQUE: Toujours respecter maintenant
+    if (absoluteEarliestStart < now) {
+      console.log('🚨 ERREUR FINALE DÉTECTÉE: Correction forcée à maintenant');
+      absoluteEarliestStart = now;
     }
     
-    console.log('🎯 Date de début FINALE BIDIRECTIONNELLE pour', task.title, ':', format(absoluteEarliestStart, 'dd/MM HH:mm'));
+    console.log('🎯 Date de début FINALE AVEC CONTRAINTE FONDAMENTALE pour', task.title, ':', format(absoluteEarliestStart, 'dd/MM HH:mm'));
     return absoluteEarliestStart;
   }
 }

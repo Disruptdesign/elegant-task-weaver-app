@@ -18,35 +18,40 @@ export class TaskScheduler {
 
   /**
    * CORRECTION DÉFINITIVE: Vérification ABSOLUE et PRÉSERVATION de canStartFrom
+   * NOUVELLE RÈGLE FONDAMENTALE: Jamais avant MAINTENANT
    */
   scheduleTask(task: Task, startDate: Date, endDate: Date, existingTasks: Task[]): Task | null {
     console.log('🔍 Recherche de créneau pour:', task.title, '(durée:', task.estimatedDuration, 'min)');
+    
+    // CONTRAINTE FONDAMENTALE NOUVELLE: Jamais avant maintenant
+    const now = new Date();
+    console.log('🕒 CONTRAINTE FONDAMENTALE: Jamais avant maintenant:', format(now, 'dd/MM HH:mm'));
     
     // VÉRIFICATION PRÉLIMINAIRE CRITIQUE
     if (task.canStartFrom) {
       console.log('🚨 CONTRAINTE CRITIQUE DÉTECTÉE "peut commencer à partir de":', format(task.canStartFrom, 'dd/MM HH:mm'));
     }
     
-    const now = new Date();
+    // CORRECTION BIDIRECTIONNELLE: Respecter canStartFrom ET maintenant (le plus restrictif)
+    let effectiveStartTime = Math.max(startDate.getTime(), now.getTime());
     
-    // CORRECTION BIDIRECTIONNELLE: Respecter canStartFrom même s'il est dans le passé
-    let effectiveStartTime = startDate.getTime();
-    
-    // CONTRAINTE BIDIRECTIONNELLE: Si canStartFrom est défini, il est ABSOLUMENT PRIORITAIRE
+    // CONTRAINTE BIDIRECTIONNELLE: Si canStartFrom est défini, il est ABSOLUMENT PRIORITAIRE, mais jamais avant maintenant
     if (task.canStartFrom) {
-      effectiveStartTime = Math.max(effectiveStartTime, task.canStartFrom.getTime());
-      console.log('🔒 CONTRAINTE BIDIRECTIONNELLE APPLIQUÉE:', format(new Date(effectiveStartTime), 'dd/MM HH:mm'));
+      effectiveStartTime = Math.max(effectiveStartTime, task.canStartFrom.getTime(), now.getTime());
+      console.log('🔒 CONTRAINTE BIDIRECTIONNELLE + FONDAMENTALE APPLIQUÉE:', format(new Date(effectiveStartTime), 'dd/MM HH:mm'));
       
       // VÉRIFICATION CRITIQUE: Ne JAMAIS programmer avant cette date
-      if (effectiveStartTime < task.canStartFrom.getTime()) {
-        console.log('🚨 ERREUR CRITIQUE: Tentative de violation de canStartFrom - ARRÊT');
+      if (effectiveStartTime < Math.max(task.canStartFrom.getTime(), now.getTime())) {
+        console.log('🚨 ERREUR CRITIQUE: Tentative de violation de contrainte - ARRÊT');
         return null;
       }
+    } else {
+      console.log('📅 Pas de canStartFrom, mais respect de la contrainte fondamentale (maintenant):', format(new Date(effectiveStartTime), 'dd/MM HH:mm'));
     }
     
     let currentDate = new Date(effectiveStartTime);
     
-    console.log('⏰ Recherche de créneau à partir de (CONTRAINTE BIDIRECTIONNELLE RESPECTÉE):', format(currentDate, 'dd/MM HH:mm'));
+    console.log('⏰ Recherche de créneau à partir de (CONTRAINTES FONDAMENTALE + BIDIRECTIONNELLE RESPECTÉES):', format(currentDate, 'dd/MM HH:mm'));
     
     // Chercher jour par jour
     const searchEndDate = this.constraintResolver.isTaskOverdue(task) ? endDate : new Date(task.deadline);
@@ -63,17 +68,23 @@ export class TaskScheduler {
       
       // Chercher un créneau assez long
       for (const slot of availableSlots) {
-        // CORRECTION BIDIRECTIONNELLE: Le créneau DOIT respecter la contrainte ABSOLUE
-        const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), effectiveStartTime));
+        // CORRECTION BIDIRECTIONNELLE + FONDAMENTALE: Le créneau DOIT respecter TOUTES les contraintes
+        const adjustedSlotStart = new Date(Math.max(slot.start.getTime(), effectiveStartTime, now.getTime()));
         
         // VÉRIFICATION CRITIQUE SUPPLÉMENTAIRE
-        if (task.canStartFrom && adjustedSlotStart < task.canStartFrom) {
-          console.log('🚨 REJET: Créneau avant contrainte canStartFrom');
+        if (task.canStartFrom && adjustedSlotStart < Math.max(task.canStartFrom.getTime(), now.getTime())) {
+          console.log('🚨 REJET: Créneau avant contrainte canStartFrom ou maintenant');
+          continue;
+        }
+        
+        // VÉRIFICATION FONDAMENTALE: Jamais avant maintenant
+        if (adjustedSlotStart < now) {
+          console.log('🚨 REJET: Créneau avant maintenant (contrainte fondamentale)');
           continue;
         }
         
         if (adjustedSlotStart >= slot.end) {
-          continue; // Le créneau est entièrement avant notre contrainte
+          continue; // Le créneau est entièrement avant nos contraintes
         }
         
         const availableSlotEnd = slot.end;
@@ -84,7 +95,12 @@ export class TaskScheduler {
           const scheduledStart = adjustedSlotStart;
           const scheduledEnd = addMinutes(scheduledStart, task.estimatedDuration);
           
-          // VÉRIFICATION FINALE CRITIQUE: Triple vérification de la contrainte
+          // VÉRIFICATION FINALE CRITIQUE: Triple vérification des contraintes
+          if (scheduledStart < now) {
+            console.log('🚨 ERREUR FINALE: Tentative de programmer avant maintenant - REJET ABSOLU');
+            continue;
+          }
+          
           if (task.canStartFrom && scheduledStart < task.canStartFrom) {
             console.log('🚨 ERREUR FINALE: Tentative de programmer avant canStartFrom - REJET ABSOLU');
             continue;
@@ -102,10 +118,10 @@ export class TaskScheduler {
             continue;
           }
           
-          console.log('✅ Créneau validé (CONTRAINTE BIDIRECTIONNELLE RESPECTÉE):', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
+          console.log('✅ Créneau validé (CONTRAINTES FONDAMENTALE + BIDIRECTIONNELLE RESPECTÉES):', format(scheduledStart, 'dd/MM HH:mm'), '-', format(scheduledEnd, 'HH:mm'));
           
           // VÉRIFICATION FINALE AVANT RETOUR
-          if (task.canStartFrom && scheduledStart < task.canStartFrom) {
+          if (scheduledStart < now || (task.canStartFrom && scheduledStart < task.canStartFrom)) {
             console.log('🚨 DERNIÈRE VÉRIFICATION ÉCHOUÉE - REJET');
             continue;
           }
@@ -123,7 +139,7 @@ export class TaskScheduler {
       currentDate = addDays(currentDate, 1);
     }
 
-    console.log('❌ Aucun créneau valide trouvé pour:', task.title, '(contrainte canStartFrom ABSOLUMENT respectée)');
+    console.log('❌ Aucun créneau valide trouvé pour:', task.title, '(contraintes fondamentale + canStartFrom ABSOLUMENT respectées)');
     return null;
   }
 
